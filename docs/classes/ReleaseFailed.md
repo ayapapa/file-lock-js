@@ -6,7 +6,7 @@
 
 # Class: ReleaseFailed
 
-Defined in: [src/lib/LockBaseErrors.ts:102](https://github.com/ayapapa/file-lock-js/blob/c1b3854305037c71cf52a8db854595e87d7a07ee/src/lib/LockBaseErrors.ts#L102)
+Defined in: [src/lib/LockBaseErrors.ts:102](https://github.com/ayapapa/file-lock-js/blob/720ea188f35e0ba1698492ac1a5649885d6e9b6c/src/lib/LockBaseErrors.ts#L102)
 
 Processing was interrupted due to a failure to release the lock or decrement the lock counter. 
 As this is likely caused by a file I/O error, a system check is recommended. 
@@ -23,7 +23,7 @@ may remain, so they must be manually deleted.
 
 > **new ReleaseFailed**(`msg`, `params?`): `ReleaseFailed`
 
-Defined in: [src/lib/LockBaseErrors.ts:108](https://github.com/ayapapa/file-lock-js/blob/c1b3854305037c71cf52a8db854595e87d7a07ee/src/lib/LockBaseErrors.ts#L108)
+Defined in: [src/lib/LockBaseErrors.ts:108](https://github.com/ayapapa/file-lock-js/blob/720ea188f35e0ba1698492ac1a5649885d6e9b6c/src/lib/LockBaseErrors.ts#L108)
 
 Constructor.
 
@@ -73,7 +73,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/c1b3854305037c71cf52a8db854595e87d7a07ee/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/720ea188f35e0ba1698492ac1a5649885d6e9b6c/src/lib/LockBaseErrors.ts#L8)
 
 #### Inherited from
 

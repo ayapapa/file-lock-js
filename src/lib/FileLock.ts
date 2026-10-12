@@ -513,9 +513,9 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     super._prepare(options);
     // ディレクトリ指定はsetConfig()で変更される可能性があるため、各パスはここで構築する。
     const dirPath       = FileLock.#lockDir;
-    //const fileDir     = path.join(dirPath, this._key);
-    options._filePath   = path.join(dirPath, this._key + '.json');
-    options._sharerDir  = path.join(dirPath, this._key + '.sharer');
+    const encodedKey = this._key.replace(/[<>:/\\|?*]/g, () => '_').replace(/"/g, () => '');
+    options._filePath   = path.join(dirPath, encodedKey + '.json');
+    options._sharerDir  = path.join(dirPath, encodedKey + '.sharer');
     options._contextId  = options._filePath;  // Use the file path as the context ID 
                                               // to avoid issues caused by changes 
                                               // to the lock directory configuration.

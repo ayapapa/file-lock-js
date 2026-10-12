@@ -802,5 +802,10 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
     expect(await lock["withLock"](()=>{return 'complete'}, FileLock.getDefaultOptions())).toBe('complete');
   });
 
+  it("ファイル名禁止文字を含むキー", async () => {
+    const key = 'Hoge[<>:/\\*]""';
+    expect(await FileLock.withLock(key, () => { return 'complete'; })).toBe('complete');
+  });
+
 });
 
