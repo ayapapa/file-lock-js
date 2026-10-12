@@ -21,7 +21,7 @@ Examples include limiting access to a specific service to a single process or th
 ## Definitions of Terms
 |        Term     |  Explanation  |  See also  |
 | --------------- | ------------- | -------------|
-| `lock key`        | A key used to apply a lock. When multiple operations use the same key, they are executed sequentially.　| `lock file`, `temporary lock file`, `lock sharers` | 
+| `lock key`        | A key used to apply a lock. When multiple operations use the same key, they are executed sequentially. If the specified `lock key` contains characters that are invalid for a file path, it is converted into a valid file path by replacing those characters with underscores and removing double quotation marks. | `lock file`, `temporary lock file`, `lock sharers` | 
 | `lock directory`  | The directory where `lock file`s are stored. | `lock file`, [Configurations](#configurations) |
 | `lock file`       | It is associated with the specified `lock key` and stores information related to the lock owner, the actual expiration time, and so forth. <br>For example, if the `lock key` is "key001", a file named "key001.json" is created under the `lock directory` and deleted when the lock is released. <br>As long as this file exists, the key is considered to be locked. | `lock key`, `lock directory` |
 | `temporary lock file` | A file created temporarily during the initial write and subsequent updates of the `lock file`. <br>For example, if the `lock key` is "key001", a file named "key001.json.tmp" is created under the `lock directory`.  <br>After this file is created, the `lock file` is updated atomically using `fs.renameSync` (renaming the `temporary lock file` to the `lock file`). | `lock file` |

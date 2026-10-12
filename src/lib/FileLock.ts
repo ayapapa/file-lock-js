@@ -197,6 +197,9 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * and returns a Promise that resolves with the return value of `onLockFn` after the lock is released. 
    *
    * @param key       Lock key.
+   * If the specified key contains characters that are invalid for a file path, 
+   * it is converted into a valid file path by replacing those characters with underscores 
+   * and removing double quotation marks.
    * @param onLockFn  Callback function to execute while the lock is held.
    *                  Both synchronous and asynchronous functions can be specified.
    * @param options   Lock options.
