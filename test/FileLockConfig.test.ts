@@ -46,8 +46,8 @@ describe('FileLock.Config', () => {
       pollIntervalMs:       -1,
       heartbeatIntervalMs:  -1,
       heartbeatTtlMs:       -1,
-      retriesOnIOErr:       -1,
-      retryIntervalMs:      -1,
+      retriesOnIoErr:       -1,
+      retryIoIntervalMs:    -1,
     };
     const exp = {
       timeoutMs:            0,
@@ -55,8 +55,8 @@ describe('FileLock.Config', () => {
       pollIntervalMs:       100,
       heartbeatIntervalMs:  1000,
       heartbeatTtlMs:       2000,
-      retriesOnIOErr:       0,
-      retryIntervalMs:      100,
+      retriesOnIoErr:       0,
+      retryIoIntervalMs:    100,
     };
     // Verify that the default option values ​​in the configuration settings are resolved.
     FileLock.setConfig({ defaultOptions: defaults });

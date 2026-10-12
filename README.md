@@ -136,8 +136,8 @@ npm install @ayapapa-npm/file-locking-js
 | `invalidTtlMs` | `number` | `Unspecified` `heartbeatTtlMs` | Expiration period in milliseconds for invalid lock files and related items. | If not specified, forced deletion is disabled. Cannot be used with `invalidTtlSec`. Values below `heartbeatTtlMs` are treated as `heartbeatTtlMs`.[^invalidLockFile] |
 | `pollIntervalMs` | `number` | `100` `100` | Polling interval in milliseconds while waiting for the lock. | Cannot be used with `pollIntervalSec`. `0` also falls back to the default value. Values below `100` are treated as `100`. |
 | `pollIntervalSec` | `number` | Same as `pollIntervalMs` | Polling interval in seconds while waiting for the lock. | Cannot be used with `pollIntervalMs`. Internally converted to `pollIntervalMs`. |
-| `retriesOnIOErr` | `number` | `1` `0` | Number of retries for lock file operations after I/O errors. | Values below `0` are treated as `0`. |
-| `retryIntervalMs` | `number` | `100` `100` | Retry interval in milliseconds after I/O errors. | Cannot be used with `retryIntervalSec`. Values below `100` are treated as `100`. |
+| `retriesOnIoErr` | `number` | `1` `0` | Number of retries for lock file operations after I/O errors. | Values below `0` are treated as `0`. |
+| `retryIoIntervalMs` | `number` | `100` `100` | Retry interval in milliseconds after I/O errors. | Cannot be used with `retryIntervalSec`. Values below `100` are treated as `100`. |
 | `retryIntervalSec` | `number` | Same as `retryIntervalMs` | Retry interval in seconds after I/O errors. | Cannot be used with `retryIntervalMs`. Internally converted to `retryIntervalMs`. |
 | `timeoutMs` | `number` | `5000` `0` | Maximum time to wait for acquiring the lock, in milliseconds. | Cannot be used with `timeoutSec`. `0` means no waiting. Values below `0` are treated as `0`. |
 | `timeoutSec` | `number` | Same as `timeoutMs` | Maximum time to wait for acquiring the lock, in seconds. | Cannot be used with `timeoutMs`. Internally converted to `timeoutMs`. |

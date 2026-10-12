@@ -56,14 +56,14 @@ export interface FileLockOptions extends LockBaseOptions {
    * Minimum is `0`; if a value lower than this is specified, this minimum value is used.
    * Default is `1`.
    */
-  retriesOnIOErr?: number;
+  retriesOnIoErr?: number;
 
   /**
    * Interval in seconds between lock file operation retries.  <br>
    * Internally converted to `retryIntervalMs`. Cannot be used together with `retryIntervalMs`. 
    * The default and minimum values ​​are the same as those for `retryIntervalMs`.
    */
-  retryIntervalSec?: number;
+  retryIoIntervalSec?: number;
 
   /**
    * Interval in milliseconds between lock file operation retries.  <br>
@@ -71,7 +71,7 @@ export interface FileLockOptions extends LockBaseOptions {
    * Minimum is `100`; if a value lower than this is specified, this minimum value is used.
    * Default is `100`.
    */
-  retryIntervalMs?: number;
+  retryIoIntervalMs?: number;
 
   /**
    * Validity period in seconds for the modification time of invalid lock files and related items. <br>
@@ -96,7 +96,7 @@ export interface FileLockOptions extends LockBaseOptions {
  * @internal
  * Definition of required properties for the FileLockOtions.
  */
-export type FileLockRequiredOptions = Required<Pick<FileLockOptions, 'pollIntervalMs' | 'heartbeatIntervalMs' | 'heartbeatTtlMs' | 'retriesOnIOErr' | 'retryIntervalMs'>> & LockBaseRequiredOptions;
+export type FileLockRequiredOptions = Required<Pick<FileLockOptions, 'pollIntervalMs' | 'heartbeatIntervalMs' | 'heartbeatTtlMs' | 'retriesOnIoErr' | 'retryIoIntervalMs'>> & LockBaseRequiredOptions;
 
 /**
  * @internal
@@ -107,15 +107,15 @@ export const defaultFileLockOptions : Readonly<FileLockRequiredOptions> = {
   pollIntervalMs:       100,
   heartbeatIntervalMs:  1000,
   heartbeatTtlMs:       5000,
-  retriesOnIOErr:       1,
-  retryIntervalMs:      100,
+  retriesOnIoErr:       1,
+  retryIoIntervalMs:      100,
 };
 
 /**
  * @internal
  * Definition of required numeric properties of the FileLockOtions.
  */
-export type FileLockRequiredNumericOptions = Pick<FileLockRequiredOptions, 'pollIntervalMs' | 'heartbeatIntervalMs' | 'heartbeatTtlMs' | 'retriesOnIOErr' | 'retryIntervalMs'> & LockBaseRequiredNumericOptions;
+export type FileLockRequiredNumericOptions = Pick<FileLockRequiredOptions, 'pollIntervalMs' | 'heartbeatIntervalMs' | 'heartbeatTtlMs' | 'retriesOnIoErr' | 'retryIoIntervalMs'> & LockBaseRequiredNumericOptions;
 
 /**
  * @internal
@@ -126,6 +126,6 @@ export const minimumFileLockOptions: Readonly<FileLockRequiredNumericOptions> = 
   pollIntervalMs:       100,
   heartbeatIntervalMs:  1000,
   heartbeatTtlMs:       2000,
-  retriesOnIOErr:       0,
-  retryIntervalMs:      100,
+  retriesOnIoErr:       0,
+  retryIoIntervalMs:      100,
 }

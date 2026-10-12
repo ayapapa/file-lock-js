@@ -562,8 +562,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param errMsg    If error, a message to pass to `Error class`.
    */
   #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: 'normal' | 'no-retry' | 'double' = 'normal'): unknown {
-    const retries = retryMode === 'no-retry' ? 0 : (retryMode === 'double' ? options.retriesOnIOErr * 2 : options.retriesOnIOErr);
-    const retryIntervalMs = options.retryIntervalMs;
+    const retries = retryMode === 'no-retry' ? 0 : (retryMode === 'double' ? options.retriesOnIoErr * 2 : options.retriesOnIoErr);
+    const retryIntervalMs = options.retryIoIntervalMs;
     const causes = [] as unknown[];
     for (let i = 0; i <= retries; i++) {
       try {
