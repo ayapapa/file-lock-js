@@ -84,7 +84,7 @@ export interface FileLockOptions extends LockBaseOptions {
   /**
    * Validity period in milliseconds for the modification time of invalid lock files and related items. <br>
    * If the specified amount of time has elapsed since the modification time of an invalid lock file or related item, it is deemed invalid and forcibly deleted. 
-   * If not specified, forced deletion of malicious files will not be performed. 
+   * If not specified, forced deletion of invalid files will not be performed. 
    * Cannot be used together with `invalidTtlSec`. 
    * Minimum is `heartbeatTtlMs`; if a value lower than this is specified, this minimum value is used.
    * Default is unspecified.
