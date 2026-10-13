@@ -1,9 +1,7 @@
-import { Contracts } from '@ayapapa-npm/contracts-js';
+import { REQUIRE, REQUIRE_DEBUG, VERIFY_DEBUG } from './Contracts.ts';
 import { type LockBaseOptions, type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions } from './LockBaseOptions.ts';
 import { InvalidOptions } from './LockBaseErrors.ts';
 import { includesAllKeysOf, typedKeys, type KeyTypeMap, type TimeBasedKey } from './Util.ts'
-
-const {REQUIRE, REQUIRE_DEBUG, VERIFY_DEBUG} = Contracts;
 
 /**
  * @internal

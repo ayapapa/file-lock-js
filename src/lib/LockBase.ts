@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { onExit } from 'signal-exit';
-import { Contracts } from '@ayapapa-npm/contracts-js';
+import { Contracts, ENSURE_DEBUG, REQUIRE_DEBUG } from './Contracts.ts';
 import { LockError, DeadlockDetected, TTLExceeded } from './LockBaseErrors.ts';
 import { type AllOptions } from './AllOptions.ts';
 import { type LockBaseRequiredOptions } from './LockBaseOptions.ts';
@@ -8,8 +8,6 @@ import { type LockBaseInternalState } from './LockBaseInternalState.ts'
 import { defaultLockBaseConfig, type LockBaseConfig, type LogProvider } from './LockBaseConfig.ts'
 import { isEqualObjectType } from './Util.ts';
 import { type Monitor } from './LockMonitor.ts';
-
-const { ENSURE_DEBUG, REQUIRE_DEBUG } = Contracts;
 
 /** Definition of the callback function to be executed after acquiring the lock. */
 export type CallbackOnLock = (monitor: Monitor) => MaybePromise;

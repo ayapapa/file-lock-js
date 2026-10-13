@@ -50,7 +50,7 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "@ayapapa-npm/pretty-console-js": "^0.2.4",
+    "@ayapapa-npm/pretty-console-js": "^0.2.5",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.19.0",
     "@vitest/coverage-v8": "^5.0.3",

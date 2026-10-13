@@ -8,6 +8,6 @@
 
 > **LockErrorProps** = `Record`\<`string`, `unknown`\>
 
-Defined in: [src/lib/LockBaseErrors.ts:2](https://github.com/ayapapa/file-lock-js/blob/afe88d3bcc78f92a2bf6203ce55b0f8415a9d919/src/lib/LockBaseErrors.ts#L2)
+Defined in: [src/lib/LockBaseErrors.ts:2](https://github.com/ayapapa/file-lock-js/blob/9ad7d67d490d9f154cb8c404fc9de8e8933c151f/src/lib/LockBaseErrors.ts#L2)
 
 Type of LockeError proerties.

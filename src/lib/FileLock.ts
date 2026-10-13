@@ -3,9 +3,7 @@ import fs from 'node:fs';
 
 import { LRUCache } from 'lru-cache';
 import { DateFormatter } from '@ayapapa-npm/date-formatter-js';
-import { Contracts } from '@ayapapa-npm/contracts-js';
-const { ENSURE_DEBUG, REQUIRE, REQUIRE_DEBUG, VERIFY } = Contracts;
-
+import { ENSURE_DEBUG, REQUIRE, REQUIRE_DEBUG, VERIFY } from './Contracts.ts';
 import { LockBase, type CallbackOnLock } from "./LockBase.ts";
 import { defaultFileLockOptions, minimumFileLockOptions, type FileLockRequiredOptions, type FileLockOptions } from './FileLockOptions.ts';
 import { type FileLockInternalState } from './FileLockInternalState.ts';
