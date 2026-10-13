@@ -122,6 +122,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     let logger: LogProvider = config.logger;
     if (logger === console) {
       logger = {...console as LogProvider};
+      const orgDebug = logger.debug;
+      logger.debug = (...args:unknown[]) => { if (LockBase._config._debug) orgDebug(...args); }
       logger.trace = logger.debug;
     }
     // There are cases where 'fatal' is not present; in such instances, use 'error'.

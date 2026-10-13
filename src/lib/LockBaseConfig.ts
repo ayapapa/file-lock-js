@@ -7,14 +7,17 @@ export interface LockBaseConfig {
   /**
   * External logger. 
   * Default is `console`.
+  * 
   */
   logger?: LogProvider;
 
   /**
    * @internal
-   * Indicates whether to execute in debug mode.
-   * If `true`, process-related information is added to the lock information file, 
-   * and history tracking is enabled.
+   * Indicates whether to execute in debug mode. <br>
+   * If `true`:
+   * - Process-related information is added to the lock information file.
+   * - History tracking is enabled.
+   * - If no logger is specified, or if `console` is specified as the logger, `trace` and `debug` logs from this library are output.   
    * This is a debug flag for this class and is intended for use only during development.
    * However, if an external logger is injected, it cannot be controlled; 
    * please adjust the log level yourself as necessary.
