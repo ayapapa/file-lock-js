@@ -139,7 +139,7 @@ describe('別プロセスとの競合テスト', () => {
     expect(results[1]).toMatchObject({
       status: 'rejected',
       reason: {
-        message: "Lock file already exists.",
+        message: "The `lock file` already exists.",
         code: 'EALREADYLOCKED',
         reason: "ExistingLock",
         key: key
@@ -281,7 +281,7 @@ describe('別プロセスとの競合テスト', () => {
       reason: {
         code: "EALREADYLOCKED",
         key,
-        message: "Lock file already exists."
+        message: "The `lock file` already exists."
       }
     });
     expect(TestLock.isReleasedState(key)).toBeTruthy();

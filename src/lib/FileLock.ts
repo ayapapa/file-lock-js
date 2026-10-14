@@ -85,7 +85,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * The lock directory
+   * The `lock directory`
    */
   static #lockDir = FileLock._getLockDirPath();
 
@@ -179,7 +179,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       FileLock.#cache = null;
     }
 
-    // lock directory
+    // `lock directory`
     FileLock.#lockDir = FileLock._getLockDirPath();
 
     // history
@@ -295,7 +295,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Check whether the directory is one specified by the user.
     const isSpecified = (i: number) => i === 0;
 
-    // Create a lock directory.
+    // Create a `lock directory`.
     let candidates: string = '';
     const keys = typedKeys(candies);
     for(let i = 0; i < keys.length; i++) {
@@ -311,9 +311,9 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         continue;
       }
     };
-    // Failed to create lock directory.
+    // Failed to create `lock directory`.
     throw new LockDirectoryCreationFailed(
-      "Failed to create the lock directory." +
+      "Failed to create the `lock directory`." +
       "\nAttempted to locate and create it in the following order:" +
       candidates,
       { props: { candidates } }
@@ -424,13 +424,13 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     }
     // Couldn't acquire the lock
     const errIns = {
-      'EALREADYLOCKED': () => newAlreadyLocked('Lock file already exists.', 'ExistingLock'),
+      'EALREADYLOCKED': () => newAlreadyLocked('The `lock file` already exists.', 'ExistingLock'),
       'EUPDATING'     : () => {
-        return newAlreadyLocked('Lock file already exists and may still be updating.', 'Updating'); 
+        return newAlreadyLocked('The `lock file` already exists and may still be updating.', 'Updating'); 
       },
-      'EINITIALIZING' : () => newAlreadyLocked('Lock file already exists and may still be initializing.', 'Initializing'), 
-      'EBROKEN'       : () => newAlreadyLocked('Lock file already exists, but its metadata is invalid.', 'InvalidMetadata'),
-      'EEXISTANDEIO'  : () => newAlreadyLocked('The lock file already exists, but its validity could not be determined due to an I/O error.', 'MetadataReadError'),
+      'EINITIALIZING' : () => newAlreadyLocked('The `lock file` already exists and may still be initializing.', 'Initializing'), 
+      'EBROKEN'       : () => newAlreadyLocked('The `lock file` already exists, but its metadata is invalid.', 'InvalidMetadata'),
+      'EEXISTANDEIO'  : () => newAlreadyLocked('The `lock file` already exists, but its validity could not be determined due to an I/O error.', 'MetadataReadError'),
       'EIO'           : () => FileLockError.lockFailedDueToIO(this._key, causes),
       'EHISTORY'      : () => FileLockError.lockFailedDueToHistory(FileLock.#historyPath, causes),
     } as const as Record<string, () => void>;
@@ -450,7 +450,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   protected override async _decReantryCount(options: AllOptions): Promise<void> {
     try {
       await this.#removeSharer(options);
-      const count = this.#countSharer(options, "Failed to count the lock sharer.");
+      const count = this.#countSharer(options, "Failed to count the `lock sharer`.");
       if (count === 0) {
         this.#releaseActually(options);
       }
@@ -519,7 +519,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     options._sharerDir  = path.join(dirPath, encodedKey + '.sharer');
     options._contextId  = options._filePath;  // Use the file path as the context ID 
                                               // to avoid issues caused by changes 
-                                              // to the lock directory configuration.
+                                              // to the `lock directory` configuration.
     options._sharerLockIntervalMs = Math.max(options._sharerLockIntervalMs ?? 100, 100);
     options._sharerLocktimeoutMs = Math.max(options._sharerLocktimeoutMs ?? 5000, 0);
 
@@ -652,22 +652,22 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   async #addOwnerAs1stSharer(options: AllOptions): Promise<void> {
     const sharerDir = options._sharerDir;
-    // Create the lock sharer directory
-    this.#mkdirSync(sharerDir, options, { recursive: true }, "Couldn't create the lock sharer directory.");
+    // Create the `lock sharer directory`
+    this.#mkdirSync(sharerDir, options, { recursive: true }, "Couldn't create the `lock sharer directory`.");
     // There might be an old shared information directory, so delete the shared information.
     await this.#removeSharers(options);
-    // Add myself as owner into the lock sharer directory
+    // Add myself as owner into the `lock sharer directory`
     return this.#addSharer(options);
   }
 
   /**
    * @internal
-   * Add a lock sharer. 
-   * The intention is to add a lock owner and a lock sharer designated as permitted for reentrant locking.
+   * Add a `lock sharer`. 
+   * The intention is to add a lock owner and a `lock sharer` designated as permitted for reentrant locking.
    * @param options Lock options.
    * @param msg     Message displayed upon an addition error.
    */
-  async #addSharer(options: AllOptions, msg: string = "Failed to add the lock request to lock sharers.") {
+  async #addSharer(options: AllOptions, msg: string = "Failed to add the lock request to `lock sharer directory`.") {
     const sharerPath = path.join(options._sharerDir, options._sharerId);
     try {
       await this.#share(() => this.#writeFileSync(sharerPath, '', options), options);
@@ -687,7 +687,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #assertLock(options: AllOptions): { lockable: boolean, reason: string, cause?: unknown } {
     try {
-      //Open the temporary lock file exclusively to check whether locking is possible.
+      //Open the temporary `lock file` exclusively to check whether locking is possible.
       const tmpLockFile = options._filePath + '.tmp';
       const tmpCreated = this.#openLockFileExclusively(options, tmpLockFile);
 
@@ -697,13 +697,13 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
           cause: 'Found a temporary `lock file` was found, so the `lock file` may still be updating.' };
       }
 
-      // Open the lock file exclusively to check whether it can be locked.
+      // Open the `lock file` exclusively to check whether it can be locked.
       const opened = this.#openLockFileExclusively(options);
       if (opened) {
         return { lockable: true, reason: 'LOCKFILEOPENED' };
       }
       
-      // Unable to open the lock file exclusively (because the lock file already existed), so its validity is being checked.
+      // Unable to open the `lock file` exclusively (because the `lock file` already existed), so its validity is being checked.
       const info = this.#getInfoIfExists(options);
       if (info.meta) {
         // Check validity based on the retrieved metadata.
@@ -729,7 +729,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
           }
         }
 
-        // Determined that the existing lock file is valid, so the lock cannot be acquired. 
+        // Determined that the existing `lock file` is valid, so the lock cannot be acquired. 
         // Therefore, delete the created temporary file.
         tmpCreated && this.#unlinkSync(tmpLockFile, options, 'double', "Failed to remove the temporary `lock file`.");
 
@@ -752,10 +752,10 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Get the number of lock sharers.
+   * Get the number of `lock sharer`s.
    * @param options Lock options.
    * @param msg     Message displayed upon an addition error.
-   * @returns The number of lock sharers.
+   * @returns The number of `lock sharer`s.
    */
   #countSharer(options: AllOptions, msg: string): number {
     return this.#listSharer(options, msg).length;
@@ -763,15 +763,15 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Create the lock file.
+   * Create the `lock file`.
    * @param options Lock options.
    */
   #createLockFile(options: AllOptions): void {
-      // Create the lock file.
+      // Create the `lock file`.
     this.#updateInfo(
       {
         // When this lock request becomes the lock owner, 
-        // the optional lock sharer ID and optional owner ID are set to match `this._ownerId`.
+        // the optional `lock sharer` ID and optional owner ID are set to match `this._ownerId`.
         ownerId: options._ownerId = options._sharerId = this._ownerId, 
         expirationTime: Date.now() + options.ttlMs,
         heartbeatTtlMs: options.heartbeatTtlMs,
@@ -799,20 +799,20 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   /**
    * @internal
    * Get the lock information.<br>
-   * This function assumes the existence of a valid lock file. <br>
+   * This function assumes the existence of a valid `lock file`. <br>
    * Consequently, it throws an error (exception) if the file is missing, corrupted, or has a different owner. <br>
    * Whether or not to perform an ownership check can be controlled via an argument.   
    * @param options Lock options.
    * @returns Lock information object.
    */
   #getInfo(options: AllOptions, checkOwner: boolean = true): FileLockMeta {
-    // lock file should exist.
-    REQUIRE(this.#existsSync(options._filePath, options), 'The lock file does not exist.', 
+    // `lock file` should exist.
+    REQUIRE(this.#existsSync(options._filePath, options), 'The `lock file` does not exist.', 
       LockCompromised, {key: this._key, props: { path: options._filePath } });
 
     const contents = this.#readFileSync(options._filePath, options);
     if (contents.length === 0) {
-      throw new FileLockError("Found an empty lock file. It should be a file currently undergoing a lock acquisition process.", {
+      throw new FileLockError("Found an empty `lock file`. It should be a file currently undergoing a lock acquisition process.", {
         code: 'EINITIALIZING', props: { path: options._filePath }
       });
     }
@@ -823,12 +823,12 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     }
     catch (err) {
       throw new LockCompromised(
-        `Couldn't parse the lock file, it is probably broken.`,
+        "Couldn't parse the `lock file`, it is probably broken.",
         {key: this._key, props: { path: options._filePath, contents } });
     }
 
     VERIFY(checkOwner === false || options._ownerId == null || options._ownerId === meta.ownerId,
-      'The lock file was overwritten by another lock.',
+      "The `lock file` was overwritten by another lock.",
       LockCompromised,
       { key: this._key, props: { path: options._filePath, ownerId: options._ownerId, lockFileOwnerId: meta.ownerId } }
     );
@@ -918,7 +918,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options 
    */
   #isLockExpired(meta: FileLockMeta): boolean {
-    this._logger.trace("Lock file contents in isLockExpired():", meta);
+    this._logger.trace("The `lock file` contents in isLockExpired():", meta);
     const expired = meta.expirationTime <= Date.now();
     const dead = meta.lastHeartbeatAt + meta.heartbeatTtlMs <= Date.now();
     this._logger.trace("expired:", expired, "dead:", dead);
@@ -939,7 +939,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Get the list of lock sharers.
+   * Get the list of `lock sharer`s.
    * @param options 
    * @param msg 
    * @returns 
@@ -982,7 +982,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Open the lock file exclusively.
+   * Open the `lock file` exclusively.
    * @param options Lock options.
    */
   #openLockFileExclusively(options: AllOptions, path?: string): boolean {
@@ -1039,7 +1039,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    * 
    */
-  #readFileSync(path: string, options: AllOptions, msg: string = "Couldn't read the lock file."): string {
+  #readFileSync(path: string, options: AllOptions, msg: string = "Couldn't read the `lock file`."): string {
     return this.#accessInfo(
       path,
       () => fs.readFileSync(path, 'utf8'), 
@@ -1059,7 +1059,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     try {
       // Stop the heartbeat (must be stopped before deletion)
       this.#stopHeartbeat()
-      // removes lock file, etc.
+      // removes `lock file`, etc.
       this.#removeLockFile(options);
     }
     catch (err) {
@@ -1088,13 +1088,13 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Remove the lock file.<br>
+   * Remove the `lock file`.<br>
    *  - Modified during the process or corrupted ⇒ Do not delete<br>
    *  - Unable to read meta-information ⇒ Do not delete<br>
    *  - Unable to read due to an I/O error (during existence check, unlink, or read) ⇒ Do not delete<br>
-   *  - Report the above errors properly—specifically, that the lock file could not be deleted due to the error!!<br>
+   *  - Report the above errors properly—specifically, that the `lock file` could not be deleted due to the error!!<br>
    *
-   * In other words: delete only if the lock file exists, the metadata can be read, and the owner information matches expectations.
+   * In other words: delete only if the `lock file` exists, the metadata can be read, and the owner information matches expectations.
    * 
    * @param options Lock options.
    * @param errMsg 
@@ -1108,12 +1108,12 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Remove unauthorized lock sharers.
+   * Remove `lock sharer`s.
    * @param options Lock options.
    * @param msg     Message displayed upon an addition error.
    */
-  async #removeSharers(options: AllOptions, sharers?: string[], msg: string = "Failed to remove lock sharers."): Promise<void> {
-    sharers = sharers ?? this.#listSharer(options, "Failed to get the list of lock sharers.");
+  async #removeSharers(options: AllOptions, sharers?: string[], msg: string = "Failed to remove `lock sharer`s."): Promise<void> {
+    sharers = sharers ?? this.#listSharer(options, "Failed to get the list of `lock sharer`s.");
     if (sharers.length === 0) return;
     try {
       return await this.#share(() => {
@@ -1133,7 +1133,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    * @param msg     Error message. 
    */
-  async #removeSharer(options: AllOptions, msg: string = "Failed to remove the lock request from the lock sharer."): Promise<void> {
+  async #removeSharer(options: AllOptions, msg: string = "Failed to remove the lock request from the `lock sharer`."): Promise<void> {
     return this.#removeSharers(options, [path.join(options._sharerDir, options._sharerId)], msg);
   }
 
@@ -1283,7 +1283,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   }
 
   /**
-   * Attempt to acquire the lock; that is, create the lock file.
+   * Attempt to acquire the lock; that is, create the `lock file`.
    * @param options Lock options
    * @returns `true` if acquired lock. 
    */
@@ -1296,7 +1296,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         return { locked: false, reason: al.reason, cause: al.cause };
     }
 
-    // Create the lock file. 
+    // Create the `lock file`. 
     let lastErr;
     try {
       this.#createLockFile(options);
@@ -1305,7 +1305,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     catch (err) {
       lastErr = err;
       try {
-        // An empty lock file should already have been created, so delete it.
+        // An empty `lock file` should already have been created, so delete it.
         this.#removeFile(options);
       }
       catch (err2) {
@@ -1395,7 +1395,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       }
       catch (err2) {
         // Preserve the original cleanup failure; the caller will wrap it as a generic I/O lock acquisition error.
-        this._logger.trace("Failed to remove the temporary file for the lock file.", err2);
+        this._logger.trace("Failed to remove the temporary file for the `lock file`.", err2);
         let causes: unknown[];
         err2 instanceof FileLockError && 
           (causes = ('causes' in err2 ? err2.causes : []) as unknown[]).unshift(err) &&
@@ -1415,7 +1415,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Write the file.
    * @param options Lock options.
    */
-  #writeFileSync(path: string, data: unknown, options: AllOptions, msg: string = "Couldn't write the lock file."): void {
+  #writeFileSync(path: string, data: unknown, options: AllOptions, msg: string = "Couldn't write the `lock file`."): void {
     const str = JSON.stringify(data, null , "  ");
     this.#accessInfo(
       path,

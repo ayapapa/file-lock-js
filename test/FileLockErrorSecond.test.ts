@@ -32,7 +32,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
       expect(err).toMatchObject({
         code: "EALREADYLOCKED",
         key,
-        message: "Lock file already exists, but its metadata is invalid.",
+        message: "The `lock file` already exists, but its metadata is invalid.",
         reason: "InvalidMetadata",
         causes: [{
           contents: '()',
@@ -87,7 +87,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   }
 
-  it("The generation (writing) of the lock file fails when the preliminary lock is not held, " +
+  it("The generation (writing) of the `lock file` fails when the preliminary lock is not held, " +
      "and the subsequent attempt to delete the empty file also fails.(FileLockError)", async () => {
     const key = 'testKey_18465xx_unlink'
     await testWriteAndUnlinkError(key, 50, FileLockError, {
@@ -97,12 +97,12 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     });
   });
 
-  it("The generation (writing) of the lock file fails when the preliminary lock is not held, " +
+  it("The generation (writing) of the `lock file` fails when the preliminary lock is not held, " +
      "and the subsequent attempt to delete the empty file also fails.(AlreadyLocked)", async () => {
     const key = 'testKey_18465xx_unlink_AlreadyLocked'
     await testWriteAndUnlinkError(key, 500, AlreadyLocked, {
       code: "EALREADYLOCKED",
-      message: "Lock file already exists and may still be updating.",
+      message: "The `lock file` already exists and may still be updating.",
       reason: "Updating",
       key,
     });
@@ -191,7 +191,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
       expect(err).instanceOf(AlreadyLocked);
       expect(err).toMatchObject({
         code: "EALREADYLOCKED",
-        message: "Lock file already exists and may still be initializing.",
+        message: "The `lock file` already exists and may still be initializing.",
         key,
         reason: "Initializing",
       });
@@ -336,7 +336,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   }
 
-  it("When an invalid lock file exists, an exclusive open attempt fails after the file is deleted. A subsequent lock succeeds.", async () => {
+  it("When an invalid `lock file` exists, an exclusive open attempt fails after the file is deleted. A subsequent lock succeeds.", async () => {
     const key = "testKey_staleMeta_reopenFailed_lockOK";
     await testSpyIO(
       key,
@@ -351,8 +351,8 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     );
   });
   
-  it("An invalid lock file exists; the initial attempt to open exclusively failed, determin that it is invalid; " +
-     "a subsequent attempt to open the temporary lock file exclusively also failed; consequently, the locking operation fails..", async () => {
+  it("An invalid `lock file` exists; the initial attempt to open exclusively failed, determin that it is invalid; " +
+     "a subsequent attempt to open the temporary `lock file` exclusively also failed; consequently, the locking operation fails..", async () => {
     const key = "testKey_staleMeta_reopenFailed_lockNg"
     await testSpyIO(
       key,
@@ -371,7 +371,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     );
   });
 
-  it("Failed to delete an invalid lock file, but subsequently succeeded in acquiring the lock.", async () => {
+  it("Failed to delete an invalid `lock file`, but subsequently succeeded in acquiring the lock.", async () => {
     const key = "testKey_staleMeta_unlinkFailed_lockOK";
 
     await testSpyIO(
@@ -414,7 +414,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
         causes: [{
           code: 'EIO',
           key,
-          message: "Failed to add the lock request to lock sharers.",
+          message: "Failed to add the lock request to `lock sharer directory`.",
           causes: [{
             code: "EOMOON",
             path: path.join(getLockSharerDir(key), ".lock"),
@@ -451,7 +451,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
         causes: [{
           code: "EIO",
           key,
-          message: "Failed to add the lock request to lock sharers.",
+          message: "Failed to add the lock request to `lock sharer directory`.",
           causes: [{
             code: "ERMMOON",
             path: path.join(getLockSharerDir(key), '.lock'),
@@ -480,7 +480,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
           code: 'EIO',
           key,
           sharerDir: targetPath,
-          message: "Failed to get the list of lock sharers.",
+          message: "Failed to get the list of `lock sharer`s.",
           causes: [cause2]
     };
 
@@ -515,7 +515,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     const cause = {
           code: 'EIO',
           key,
-          message: "Failed to remove the lock request from the lock sharer.",
+          message: "Failed to remove the lock request from the `lock sharer`.",
           causes: [cause2]
     };
 
@@ -558,7 +558,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
         code: "EALREADYLOCKED",
         key,
         reason: "MetadataReadError",
-        message: "The lock file already exists, but its validity could not be determined due to an I/O error.",
+        message: "The `lock file` already exists, but its validity could not be determined due to an I/O error.",
         causes:["ENOENT"],
       },
       true, // sweep
@@ -583,7 +583,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
         code: "EALREADYLOCKED",
         key,
         reason: "MetadataReadError",
-        message: "The lock file already exists, but its validity could not be determined due to an I/O error.",
+        message: "The `lock file` already exists, but its validity could not be determined due to an I/O error.",
       },
       true,
       {ownerId: "hoge", expirationTime: Date.now(), heartbeatTtlMs:25000, lastHeartbeatAt: Date.now() - 3000},
@@ -632,7 +632,7 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
         code: "EALREADYLOCKED",
         key,
         reason: "InvalidMetadata",
-        message: "Lock file already exists, but its metadata is invalid."
+        message: "The `lock file` already exists, but its metadata is invalid."
       });
     }
     finally {

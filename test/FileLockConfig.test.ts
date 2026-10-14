@@ -96,7 +96,7 @@ describe('FileLock.Config', () => {
     expect(fs.statSync(dir).isDirectory()).toBeTruthy();
   });
 
-  it("If the user does not specify a lock directory, and an error occurs while attempting to create one based on `process.cwd()`," +
+  it("If the user does not specify a `lock directory`, and an error occurs while attempting to create one based on `process.cwd()`," +
     " a error is throwed.", () => {
     const dir = path.join(process.cwd(), '.lock');
     expect.assertions(2);
@@ -149,11 +149,11 @@ describe('FileLock.Config', () => {
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   }
 
-  it("An error occurs because the existence of the lock directory path cannot be verified (fs.statSync() error).", async () => {
+  it("An error occurs because the existence of the `lock directory` path cannot be verified (fs.statSync() error).", async () => {
     await testFsErrorBySpyOn('statSync', { lockDirectory: 'hogehoge' }, LockDirectoryStatFailed);
  });
 
-  it("The lock directory path does not exist, so an attempt is made to create it, but an error occurs.", async () => {
+  it("The `lock directory` path does not exist, so an attempt is made to create it, but an error occurs.", async () => {
     const lockDirectory = path.join(process.cwd(), '.lock1234');
     await testFsErrorBySpyOn('mkdirSync', { lockDirectory }, LockDirectoryCreationFailed);
     if (fs.existsSync(lockDirectory)) {

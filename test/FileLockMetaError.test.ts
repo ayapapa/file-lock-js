@@ -40,7 +40,7 @@ describe('FileLock', () => {
         code: "EALREADYLOCKED",
         key,
         reason: "InvalidMetadata",
-        message: "Lock file already exists, but its metadata is invalid.",
+        message: "The `lock file` already exists, but its metadata is invalid.",
         causes: [{
           code: "ECOMPROMISED",
           key,

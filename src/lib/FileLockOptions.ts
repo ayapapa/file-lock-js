@@ -21,7 +21,7 @@ export interface FileLockOptions extends LockBaseOptions {
 
   /**
    * Heartbeat interval in seconds while the locked process is running.  <br>
-   * The lock file is updated at this interval until the process completes. Internally converted to `heartbeatIntervalMs`. 
+   * The `lock file` is updated at this interval until the process completes. Internally converted to `heartbeatIntervalMs`. 
    * Cannot be used with `heartbeatIntervalMs`. <br>
    * The default and minimum values ​​are the same as those for `heartbeatIntervalMs`. 
    */
@@ -29,7 +29,7 @@ export interface FileLockOptions extends LockBaseOptions {
 
   /**
    * Heartbeat interval in milliseconds while the locked process is running.  <br>
-   * The lock file is updated at this interval until the process completes. Cannot be used with `heartbeatIntervalSec`.<br>
+   * The `lock file` is updated at this interval until the process completes. Cannot be used with `heartbeatIntervalSec`.<br>
    * Minimum is `1000`; if a value lower than this is specified, this minimum value is used.
    * Default is `1000`.
    */
@@ -52,21 +52,21 @@ export interface FileLockOptions extends LockBaseOptions {
   heartbeatTtlMs?: number;
 
   /**
-   * Number of retries for lock file operations in the event of an I/O error. <br>
+   * Number of retries for `lock file` operations in the event of an I/O error. <br>
    * Minimum is `0`; if a value lower than this is specified, this minimum value is used.
    * Default is `1`.
    */
   retriesOnIoErr?: number;
 
   /**
-   * Interval in seconds between lock file operation retries.  <br>
+   * Interval in seconds between `lock file` operation retries.  <br>
    * Internally converted to `retryIntervalMs`. Cannot be used together with `retryIntervalMs`. 
    * The default and minimum values ​​are the same as those for `retryIntervalMs`.
    */
   retryIoIntervalSec?: number;
 
   /**
-   * Interval in milliseconds between lock file operation retries.  <br>
+   * Interval in milliseconds between `lock file` operation retries.  <br>
    * Cannot be used together with `retryIntervalSec`. 
    * Minimum is `100`; if a value lower than this is specified, this minimum value is used.
    * Default is `100`.
@@ -74,16 +74,16 @@ export interface FileLockOptions extends LockBaseOptions {
   retryIoIntervalMs?: number;
 
   /**
-   * Validity period in seconds for the modification time of invalid lock files and related items. <br>
-   * If the specified amount of time has elapsed since the modification time of an invalid lock file or related item, it is deemed invalid and forcibly deleted. 
+   * Validity period in seconds for the modification time of invalid `lock file`s and related items. <br>
+   * If the specified amount of time has elapsed since the modification time of an invalid `lock file` or related item, it is deemed invalid and forcibly deleted. 
    * Internally converted to `invalidTtlMs`. Cannot be used with `invalidTtlMs`. 
    * The default and minimum values ​​are the same as those for `invalidTtlMs`.
    */
   invalidTtlSec?: number,
 
   /**
-   * Validity period in milliseconds for the modification time of invalid lock files and related items. <br>
-   * If the specified amount of time has elapsed since the modification time of an invalid lock file or related item, it is deemed invalid and forcibly deleted. 
+   * Validity period in milliseconds for the modification time of invalid `lock file`s and related items. <br>
+   * If the specified amount of time has elapsed since the modification time of an invalid `lock file` or related item, it is forcibly deleted. 
    * If not specified, forced deletion of invalid files will not be performed. 
    * Cannot be used together with `invalidTtlSec`. 
    * Minimum is `heartbeatTtlMs`; if a value lower than this is specified, this minimum value is used.

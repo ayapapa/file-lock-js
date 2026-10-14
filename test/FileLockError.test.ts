@@ -61,7 +61,7 @@ describe('FileLockError', () => {
         code: 'EALREADYLOCKED',
         key,
         reason: "ExistingLock",
-        message: `Lock file already exists.`,
+        message: "The `lock file` already exists.",
       });
       /*
       expect(err.code).toBe('EALREADYLOCKED');
@@ -99,7 +99,7 @@ describe('FileLockError', () => {
         code: 'EALREADYLOCKED',
         key,
         reason: "ExistingLock",
-        message: `Lock file already exists.`,
+        message: "The `lock file` already exists.",
       });
       /*
       expect(err.code).toBe('EALREADYLOCKED');
@@ -250,7 +250,7 @@ describe('FileLockError', () => {
             code: "ECOMPROMISED",
             key,
             path: getLockMetaPath(key),
-            reason: "[VERIFY] The lock file was overwritten by another lock.",
+            reason: "[VERIFY] The `lock file` was overwritten by another lock.",
             message: "The lock was compromised during the locking process.",
           }]
         });
@@ -260,7 +260,7 @@ describe('FileLockError', () => {
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
-  it("Intentionally overwriting the lock file within a reentrant lock callback results " +
+  it("Intentionally overwriting the `lock file` within a reentrant lock callback results " +
     "in `LockCompromised` error being thrown.", async () => {
 
     const key = "testKey_9989";
@@ -310,12 +310,12 @@ describe('FileLockError', () => {
           key,
           path: getLockMetaPath(key),
           //sharer: getLockSharerDir(key),
-          reason: "[VERIFY] The lock file was overwritten by another lock.",
+          reason: "[VERIFY] The `lock file` was overwritten by another lock.",
           /*causes: [{
             code: "ECOMPROMISED",
             key,
             path: getLockMetaPath(key),
-            reason: "[VERIFY] The lock file was overwritten by another lock.",
+            reason: "[VERIFY] The `lock file` was overwritten by another lock.",
             message: "The lock was compromised during the locking process.",
           }],
           */
@@ -385,11 +385,11 @@ describe('FileLockError', () => {
 
   //LockDirectoryAccessFailed 
   it("Instantiating an error class without parameters results in the default message.(LockDirectoryStatFailed).", () => {
-    testNoParamsError(LockDirectoryStatFailed  , "Failed to check the status of the lock directory.");
+    testNoParamsError(LockDirectoryStatFailed  , "Failed to check the status of the `lock directory`.");
   });
 
   it("Instantiating an error class without parameters results in the default message.(LockDirectoryCreationFailed).", () => {
-    testNoParamsError(LockDirectoryCreationFailed  , "Failed to create the lock directory.");
+    testNoParamsError(LockDirectoryCreationFailed  , "Failed to create the `lock directory`.");
   });
 
   //LockCompromised 
@@ -508,14 +508,14 @@ describe('FileLockError', () => {
         causes: [{
           code: "ERMOON",
           path: getLockMetaPath(key),
-          message: "Couldn't read the lock file.(readFileSync error!)",
+          message: "Couldn't read the `lock file`.(readFileSync error!)",
         }],
       });
     }
     finally {
       // @ts-expect-error : this is spy
       if (spy) spy.mockRestore();
-      // Since the read operation fails, the contents of the lock file cannot be verified, preventing it from being deleted normally—meaning other locks will perceive it as still locked.
+      // Since the read operation fails, the contents of the `lock file` cannot be verified, preventing it from being deleted normally—meaning other locks will perceive it as still locked.
       // Therefore, the file is forcibly deleted here.
       try {
         removeLockFiles(key);
@@ -548,11 +548,11 @@ describe('FileLockError', () => {
       expect(err).toMatchObject({
         code:     "EIO",
         key,
-        message:  "Failed to add the lock request to lock sharers.",
+        message:  "Failed to add the lock request to `lock sharer directory`.",
         causes: [{
           code: "EWMOON",
           //path: getLockSharerDir(key) + xxxxx,
-          message: "Couldn't write the lock file.(writeFileSync error!)",
+          message: "Couldn't write the `lock file`.(writeFileSync error!)",
         }],
       });
     }
