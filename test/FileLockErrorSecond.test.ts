@@ -290,7 +290,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
   // 不正ロックファイルを故意に作成し、ファイルIOエラーを故意に引き起こすテスト
   async function testSpyIO(
     key: string, 
-    targetFn: 'openSync' | 'readFileSync' | 'existsSync' | 'unlinkSync' | 'writeFileSync' |'readdirSync' | 'rmSync', 
+    targetFn: 'openSync' | 'readFileSync' | 'existsSync' | 'unlinkSync' | 'writeFileSync' |'readdirSync' | 'rmSync' | 'statSync', 
     spyCb: (counter: number, args: unknown[], orgFn: (...args: unknown[]) => unknown) => unknown, 
     sucsess: boolean, 
     ErrClass: unknown, 

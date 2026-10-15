@@ -930,11 +930,11 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Check the expiration time of the invalid `lock file`.
    * @param ttl     The elapsed time since the last update, used to determine the expiration.
    * @param options Lock options.
-   * @returns True if expired, false otherwise.
+   * @returns True if expired or not found, false otherwise.
    */
   #isStaleInvalidFile(ttl: number, options: AllOptions): boolean {
     const stat = this.#statSync(options._filePath, options);
-    return Date.now() >= stat.mtimeMs + ttl;
+    return stat === undefined ? true : Date.now() >= stat.mtimeMs + ttl;
   }
 
   /**
@@ -1264,10 +1264,10 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param path    File path.
    * @param options Lock options.
    * @param msg     Error message.
-   * @returns The information about the file.
+   * @returns The information about the file, or undefined if 'ENOENT'.
    */
-  #statSync(path: string, options: AllOptions, msg = "Couldn't get status of the file."): fs.Stats {
-    return this.#accessInfo(path, () => fs.statSync(path), options, msg) as fs.Stats;
+  #statSync(path: string, options: AllOptions, msg = "Couldn't get status of the file."): fs.Stats | undefined {
+    return this.#accessInfo(path, () => fs.statSync(path, { throwIfNoEntry: false }), options, msg) as fs.Stats;
   }
 
   /**
