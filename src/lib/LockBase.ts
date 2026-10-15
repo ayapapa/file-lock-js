@@ -184,7 +184,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @internal
    * Lock key
    */
-  protected _debug: boolean= false;
+  //protected _debug: boolean= false;
 
   /** 
    * @internal
@@ -226,11 +226,11 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param key     Lock key.
    * @param config  Configuration.
    */
-  protected constructor(key: string, config: LockBaseConfig = LockBase._config) {
+  protected constructor(key: string/*, config: LockBaseConfig = LockBase._config*/) {
     this._key     = key;
-    this._logger  = LockBase._resolveLogger(LockBase.#resolveConfig(config));
+    this._logger  = LockBase._logger;//LockBase._resolveLogger(LockBase.#resolveConfig(config));
     this._ownerId = crypto.randomUUID();
-    this._debug   = config._debug === true;
+    //this._debug   = LockBase._config._debug;//config._debug === true;
   }
 
   /**
@@ -252,7 +252,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param args The arguments passed to `logger.log()`.
    */
   protected _debugLog(...args: unknown[]): void {
-    this._debug && this._logger.log(...args);
+    this._isDebug() && this._logger.log(...args);
   }
 
   /**
@@ -289,6 +289,15 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
   // v8 ignore next 3
   protected _interruptPromise(): { promise: Promise<unknown>, resolve: (v: unknown) => void, reject: (r?: unknown) => void} | undefined {
     return;
+  }
+
+  /**
+   * @internal
+   * Get debug mode.
+   * @returns `true` if debug mode is on.
+   */
+  protected _isDebug() {
+    return LockBase._config._debug;
   }
 
   /**

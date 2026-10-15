@@ -168,8 +168,8 @@ describe('LockBase and Util', () => {
   });
 
   it("debugLog", () => {
-    FileLock.setConfig({ logger: console });
     const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    FileLock.setConfig({ logger: console });
     try {
       const lock = TestLock.getLock("debugLog");
       lock.debugLog("TEST!!!");

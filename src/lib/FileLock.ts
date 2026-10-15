@@ -382,7 +382,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param {string}  key Locking key.
    */
   private constructor(key: string) {
-    super(key, FileLock.#config);
+    super(key/*, FileLock.#config*/);
   }
 
   /**
@@ -908,9 +908,10 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @internal
    * Check if debug mode.
    */
+  /*
    #isDebug(): boolean {
     return this._debug;
-  }
+  }*/
 
   /**
    * @internal
@@ -1361,7 +1362,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #updateInfo(meta: FileLockMeta, options: AllOptions, tmpCreated: boolean = false): void {
     // For debug
-    if (this.#isDebug()) {
+    if (this._isDebug()) {
       Object.assign(
         meta, 
         { 
@@ -1405,7 +1406,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       throw err;
     }
 
-    if (FileLock.#config.history === true || this.#isDebug() === true) {
+    if (FileLock.#config.history === true || this._isDebug() === true) {
       this.#addHistory(meta, options);
     }
   }
