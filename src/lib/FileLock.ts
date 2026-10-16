@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 
-import { LRUCache } from 'lru-cache';
+import { Cache } from './Cache.ts';
 import { DateFormatter } from '@ayapapa-npm/date-formatter-js';
 import { ENSURE_DEBUG, REQUIRE, REQUIRE_DEBUG, VERIFY } from './Contracts.ts';
 import { LockBase, type CallbackOnLock } from "./LockBase.ts";
@@ -51,7 +51,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * FileLock instance cache associated with a key. 
    * Uses `LRUCache`, providing features to set a maximum cache size and prune (remove) infrequently accessed elements.
    */
-  static #cache: LRUCache<string, FileLock> | null;
+  static #cache: Cache<string, FileLock> | null;
 
   /** 
    * @internal
@@ -169,9 +169,9 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     if (FileLock.#config.cacheMaxNum === 0) FileLock.#config.cache = false;
     // If cache is enabled, (Re)create cache.
     if (FileLock.#config.cache) {
-      FileLock.#cache = new LRUCache<string, FileLock>({
+      FileLock.#cache = new Cache<string, FileLock>({
         max: FileLock.#config.cacheMaxNum,
-        ttl: FileLock.#config.cacheTtlMs,
+        ttlMs: FileLock.#config.cacheTtlMs,
       });
     }
     // or set null to chache.
@@ -223,7 +223,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Get `cache` instance. <br>
    * It is set to `private` for testing purposes.
    */
-  private static _getCache(): LRUCache<string, FileLock> | null {
+  private static _getCache(): Cache<string, FileLock> | null {
     return FileLock.#cache;
   }
 
@@ -348,7 +348,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   static #onExitFn(code: number | null | undefined, signal: NodeJS.Signals | null) {
     FileLock._logger.trace("Exited by", { code, signal });
-    FileLock.#cache?.forEach( lock => lock.#onExit(code, signal));
+    FileLock.#cache?.forEach( value => value.#onExit(code, signal));
   }
 
   /**

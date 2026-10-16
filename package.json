@@ -8,10 +8,13 @@
     "sdk",
     "api",
     "utility",
-    "key-based lock",
-    "file-based lock",
-    "inter-process lock",
-    "deadlock detection"
+    "lock",
+    "key-based",
+    "file-based",
+    "inter-process",
+    "deadlock",
+    "detection",
+    "backend"
   ],
   "description": "File-based mutual exclusion using mutex files for cross-process locking",
   "license": "MIT",
@@ -69,7 +72,6 @@
   "dependencies": {
     "@ayapapa-npm/contracts-js": "^0.7.1",
     "@ayapapa-npm/date-formatter-js": "^0.1.2",
-    "lru-cache": "^11.5.2",
     "signal-exit": "^4.1.0"
   }
 }
