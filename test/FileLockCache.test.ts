@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type FileLockConfig, FileLock } from '../src/index.ts';
+import { Cache } from '../src/lib/Cache.ts';
 import { logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
+
 
 let orgConfig: FileLockConfig;
 beforeEach(() => {
@@ -74,6 +76,29 @@ describe('FileLock', () => {
         expect(TestLock.getCacheSize()).toBe(1);
       }
     );
+  });
+
+  // Cache
+  it("Cache", () => {
+    expect(() => new Cache()).not.toBeUndefined();
+    expect(() => new Cache({ max: -1 })).toThrow(RangeError);
+    expect(() => new Cache({ ttlMs: -1 })).toThrow(RangeError);
+  });
+
+  it("Cache max === 1", () => {
+    const cache = new Cache({ max: 1 });
+    cache.set('CacheMax1_1', 'CacheMax1');
+    cache.set('CacheMax1_2', 'CacheMax1');
+    expect(cache.size).toBe(1);
+  });
+
+  it("Cache expired", async () => {
+    const key = 'Cache expired';
+    const cache = new Cache({ ttlMs: 1 });
+    cache.set(key, key);
+    await sleepAsync(100);
+    cache.set(key, key);
+    expect(cache.size).toBe(1);
   });
 
 });

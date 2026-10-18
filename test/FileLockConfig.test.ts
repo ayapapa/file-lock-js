@@ -350,13 +350,9 @@ describe('FileLock.Config', () => {
 
   it("Set the maximum number of history files to 0.", async () => {
     const key = "MaxHisFiles_0";
-
     FileLock.setConfig({ maxHistoryFiles: 0 });
-
     await FileLock.withLock(key, () => {});
-
     expect(fs.existsSync(getHistoryPath())).toBeFalsy();
-    
   });
 
 });

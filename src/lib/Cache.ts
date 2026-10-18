@@ -79,20 +79,22 @@ export class Cache<K, V> {
   public get(key: K): V | undefined {
     const entry = this.#cache.get(key);
 
-    if (entry === undefined) return undefined;
+//    if (entry === undefined) return undefined;
 
-    if (entry.expiresAt <= Date.now()) {
+    if (entry && entry.expiresAt <= Date.now()) {
       this.#cache.delete(key);
       return undefined;
     }
 
-    return entry.value;
+    return entry?.value;
   }
 
   /**
    * 
    * @param key Key.
-   * @returns 'true' if a value corresponding exists.
+   * @returns 'true' if a value corresponding exists. 
+   * Note that no validation of the value is performed; therefore, 
+   * the method will return `true` as long as the value exists, even if it has expired.
    */
   public has(key: K): boolean {
     return this.#cache.has(key);
@@ -108,9 +110,7 @@ export class Cache<K, V> {
 
     // Delete expired entries
     for (const [k, entry] of this.#cache) {
-      if (entry.expiresAt <= now) {
-        this.#cache.delete(k);
-      }
+      entry.expiresAt <= now && this.#cache.delete(k);
     }
 
     // Updates to existing keys are treated as new registrations.
@@ -119,10 +119,7 @@ export class Cache<K, V> {
     // If the limit is exceeded, the oldest entry is deleted.
     while (this.#cache.size >= this.#max) {
       const oldest = this.#cache.keys().next();
-
-      if (oldest.done) break;
-
-      this.#cache.delete(oldest.value);
+      oldest.value && this.#cache.delete(oldest.value);
     }
 
     // Set a key-value pair in the database.

@@ -165,7 +165,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     FileLock.#config = { ...FileLock.getConfig(), ...dConf };
 
     // chache
-    FileLock.#clearCache();
+    FileLock._getCache()?.clear();
     if (FileLock.#config.cacheMaxNum === 0) FileLock.#config.cache = false;
     // If cache is enabled, (Re)create cache.
     if (FileLock.#config.cache) {
@@ -234,12 +234,12 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param key Lock key. 
    */
   private static _getLock(key: string): FileLock {
-    if (FileLock.#hasCache(key)) {
+    if (FileLock._getCache()?.has(key)) {
       // Since its existence has been confirmed, I will type-cast it.
       return FileLock._getCache()?.get(key) as FileLock;
     }
     const lock = new FileLock(key);
-    FileLock.#setCache(key, lock);
+    FileLock._getCache()?.set(key, lock);
     return lock;
   }
   
@@ -322,25 +322,6 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   *  Clear `lock` instance cache. 
-   */
-  static #clearCache() {
-    const cache = FileLock._getCache();
-    if (cache) cache.clear();
-  }
-
-  /**
-   * @internal
-   * Whether the instance corresponding to `key` is cached. 
-   * @param key Lock key. 
-   */
-  static #hasCache(key: string): boolean {
-    const cache = FileLock._getCache();
-    return Boolean(cache && cache.has(key));
-  }
-
-  /**
-   * @internal
    * Termination processing. 
    * On Windows, this is not called upon forced termination (process.kill()), but the implementation is retained.
    * @param code    Exit code.
@@ -348,18 +329,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   static #onExitFn(code: number | null | undefined, signal: NodeJS.Signals | null) {
     FileLock._logger.trace("Exited by", { code, signal });
-    FileLock.#cache?.forEach( value => value.#onExit(code, signal));
-  }
-
-  /**
-   * @internal
-   * Whether the instance corresponding to `key` is cached. 
-   * @param key   Lock key. 
-   * @param lock  Lock instance. 
-   */
-  static #setCache(key: string, lock: FileLock): void  {
-    const cache = FileLock._getCache();
-    if (cache) cache.set(key, lock);
+    FileLock.#cache?.forEach(value => value.#onExit(code, signal));
   }
 
   /** 

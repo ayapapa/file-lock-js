@@ -6,7 +6,7 @@
 
 # Class: DeadlockDetected
 
-Defined in: [src/lib/LockBaseErrors.ts:31](https://github.com/ayapapa/file-lock-js/blob/13f803644002542109a9ded74c561eb18b7ee91c/src/lib/LockBaseErrors.ts#L31)
+Defined in: [src/lib/LockBaseErrors.ts:31](https://github.com/ayapapa/file-lock-js/blob/45baedf7bc62054644b1dae1d774843a09df1aad/src/lib/LockBaseErrors.ts#L31)
 
 Deadlock detection error.
 
@@ -20,7 +20,7 @@ Deadlock detection error.
 
 > **new DeadlockDetected**(`msg`, `params?`): `DeadlockDetected`
 
-Defined in: [src/lib/LockBaseErrors.ts:37](https://github.com/ayapapa/file-lock-js/blob/13f803644002542109a9ded74c561eb18b7ee91c/src/lib/LockBaseErrors.ts#L37)
+Defined in: [src/lib/LockBaseErrors.ts:37](https://github.com/ayapapa/file-lock-js/blob/45baedf7bc62054644b1dae1d774843a09df1aad/src/lib/LockBaseErrors.ts#L37)
 
 Constructor.
 
@@ -70,7 +70,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/13f803644002542109a9ded74c561eb18b7ee91c/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/45baedf7bc62054644b1dae1d774843a09df1aad/src/lib/LockBaseErrors.ts#L8)
 
 #### Inherited from
 
