@@ -15,7 +15,7 @@ afterEach(() => {
   FileLock.setConfig(orgConfig);
 });
 
-describe('FileLock', () => {
+describe('Cache', () => {
 
   it("After clearing the cache, the number of cache entries is 0.", async () => {
     const retVal = "test_005", key = retVal;
@@ -92,7 +92,16 @@ describe('FileLock', () => {
     expect(cache.size).toBe(1);
   });
 
-  it("Cache expired", async () => {
+  it("Cache expired(set&get)", async () => {
+    const key = 'Cache expired get';
+    const cache = new Cache({ ttlMs: 1 });
+    cache.set(key, key);
+    await sleepAsync(100);
+    cache.get(key);
+    expect(cache.size).toBe(0);
+  });
+
+  it("Cache expired(set&set)", async () => {
     const key = 'Cache expired';
     const cache = new Cache({ ttlMs: 1 });
     cache.set(key, key);
@@ -100,5 +109,4 @@ describe('FileLock', () => {
     cache.set(key, key);
     expect(cache.size).toBe(1);
   });
-
 });

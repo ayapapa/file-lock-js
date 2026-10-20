@@ -1,19 +1,19 @@
-[![CI](https://github.com/ayapapa/file-locking-js/actions/workflows/ci.yml/badge.svg)](https://github.com/ayapapa/file-locking-js/actions/workflows/ci.yml)
-![Coverage](https://raw.githubusercontent.com/ayapapa/file-locking-js/main/badges/coverage-total.svg)
-![Branches](https://raw.githubusercontent.com/ayapapa/file-locking-js/main/badges/coverage-branches.svg)
-![Functions](https://raw.githubusercontent.com/ayapapa/file-locking-js/main/badges/coverage-functions.svg)
-![Lines](https://raw.githubusercontent.com/ayapapa/file-locking-js/main/badges/coverage-lines.svg)
-![Statements](https://raw.githubusercontent.com/ayapapa/file-locking-js/main/badges/coverage-statements.svg)
+[![CI](https://github.com/ayapapa/file-lock-js/actions/workflows/ci.yml/badge.svg)](https://github.com/ayapapa/file-lock-js/actions/workflows/ci.yml)
+![Coverage](https://raw.githubusercontent.com/ayapapa/file-lock-js/main/badges/coverage-total.svg)
+![Branches](https://raw.githubusercontent.com/ayapapa/file-lock-js/main/badges/coverage-branches.svg)
+![Functions](https://raw.githubusercontent.com/ayapapa/file-lock-js/main/badges/coverage-functions.svg)
+![Lines](https://raw.githubusercontent.com/ayapapa/file-lock-js/main/badges/coverage-lines.svg)
+![Statements](https://raw.githubusercontent.com/ayapapa/file-lock-js/main/badges/coverage-statements.svg)
 
-# file-locking-js
+# file-lock-js
 
 ## Table of contents
-[Overview](#overview) | [Definitions of Terms](#definitions-of-terms) | [Features](#features) | [API Reference](#api-reference) | [Installation](#installation) | [Usage](#usage) | [Configurations](#configurations) | [Options](#options) | [Errors](#errors) | [Examples](#examples)
+[Overview](#overview) | [Definitions of Terms](#definitions-of-terms) | [Features](#features) | [Installation](#installation) | [API Reference](#api-reference) | [Usage](#usage) | [Configurations](#configurations) | [Options](#options) | [Errors](#errors) | [Examples](#examples)
 
 ## Overview
 A file-based locking utility designed to coordinate exclusive access across processes, threads, and asynchronous tasks within a thread. <br>
 
-Inspired by existing Node.js file-locking implementations and developed to explore a different API and locking model.<br>
+Inspired by existing Node.js file-lock implementations and developed to explore a different API and locking model.<br>
 
 It enables the exclusive execution of operations—such as "resource access"—that require serialization across multiple processes.<br>
 Examples include limiting access to a specific service to a single process or thread at a time, or updating a document without interference from other processes.
@@ -80,13 +80,13 @@ Examples include limiting access to a specific service to a single process or th
   Note1: It is not mandatory to interrupt the process when monitor.cancelled is true.<br>
   Note2: If `options.allowReentry` is true and a reentrant lock is acquired, the `monitor` passed to the initial lock operation (callback) is shared with the subsequent one.
 
-## API Reference
-[API document](https://github.com/ayapapa/file-locking-js/blob/main/docs/api.md)
-
 ## Installation
 ```bash
-npm install @ayapapa-npm/file-locking-js
+npm install @ayapapa-npm/file-lock-js
 ```
+
+## API Reference
+[API document](https://github.com/ayapapa/file-lock-js/blob/main/docs/api.md)
 
 ## Usage
   ```js

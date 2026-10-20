@@ -1,8 +1,8 @@
-**@ayapapa-npm/file-locking-js**
+**@ayapapa-npm/file-lock-js**
 
 ***
 
-# @ayapapa-npm/file-locking-js
+# @ayapapa-npm/file-lock-js
 
 ## Classes
 
