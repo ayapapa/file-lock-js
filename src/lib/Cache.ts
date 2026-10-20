@@ -12,7 +12,7 @@ type Entry<V> = {
  * @internal
  * Cache.
  */
-export class Cache<K, V> {
+export class Cache<K = string, V = unknown> {
   /**
    * Instans fields.
    */

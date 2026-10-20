@@ -5,10 +5,10 @@
 ![Lines](https://raw.githubusercontent.com/ayapapa/file-locking-js/main/badges/coverage-lines.svg)
 ![Statements](https://raw.githubusercontent.com/ayapapa/file-locking-js/main/badges/coverage-statements.svg)
 
-## Table of contents
-[Overview](#overview) | [API Reference](#api-reference) | [Installation](#installation) | [Usage](#usage) | [Configurations](#configurations) | [Options](#options) | [Errors](#errors) | [Examples](#examples)
-
 # file-locking-js
+
+## Table of contents
+[Overview](#overview) | [Definitions of Terms](#definitions-of-terms) | [Features](#features) | [API Reference](#api-reference) | [Installation](#installation) | [Usage](#usage) | [Configurations](#configurations) | [Options](#options) | [Errors](#errors) | [Examples](#examples)
 
 ## Overview
 A file-based locking utility designed to coordinate exclusive access across processes, threads, and asynchronous tasks within a thread. <br>
@@ -41,14 +41,6 @@ Examples include limiting access to a specific service to a single process or th
         ├── `(ID of allowed to share the second lock)`
         :
         :
-```
-
-## API Reference
-[API document](https://github.com/ayapapa/file-locking-js/blob/main/docs/api.md)
-
-## Installation
-```bash
-npm install @ayapapa-npm/file-locking-js
 ```
 
 ## Features
@@ -87,6 +79,14 @@ npm install @ayapapa-npm/file-locking-js
   ```
   Note1: It is not mandatory to interrupt the process when monitor.cancelled is true.<br>
   Note2: If `options.allowReentry` is true and a reentrant lock is acquired, the `monitor` passed to the initial lock operation (callback) is shared with the subsequent one.
+
+## API Reference
+[API document](https://github.com/ayapapa/file-locking-js/blob/main/docs/api.md)
+
+## Installation
+```bash
+npm install @ayapapa-npm/file-locking-js
+```
 
 ## Usage
   ```js
