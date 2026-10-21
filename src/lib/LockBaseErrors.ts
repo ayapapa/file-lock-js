@@ -110,6 +110,6 @@ export class ReleaseFailed extends LockError {
     const props = { ...params?.props };
     params?.key     && (props.key = params?.key);
     
-    super(msg, { code:'ERELEASE' , props });
+    super(msg, { code: 'ERELEASE' , props });
   }
 };

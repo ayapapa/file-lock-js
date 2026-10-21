@@ -98,12 +98,15 @@ describe('FileLock', () => {
       key,
       async () => {
         const meta1 = getLockMeta(key);
-        await sleepAsync(1200);
+        const interval = 200
+        for (let left = 1200; left > 0; left -= interval) {
+          await sleepAsync(interval);
+        }
         const meta2 = getLockMeta(key);
         expect(meta2.lastHeartbeatAt).toBeGreaterThan(meta1.lastHeartbeatAt);
         return retVal;
       },
-      {ttlMs: 2000}
+      {ttlMs: 3000}
     )).toBe(retVal);
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });

@@ -352,7 +352,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param {string}  key Locking key.
    */
   private constructor(key: string) {
-    super(key/*, FileLock.#config*/);
+    super(key);
   }
 
   /**
@@ -443,36 +443,28 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     await this.#addSharer(options);
   }
 
-  /** ★★★これ、本当に継承クラス？？？親クラスでも良くない？？？？　となると、割り込みかどうかだけ、判定するのが、継承クラスのやくめ？？
-   * でも、そのほかのえらーはどうすんの？IOエラーとかもあるんだけれど、、、、などなど
-   * @interna
+  /**
+   * @internal
    * @abstract
-   * Create a promise for interrupt detection.<br>
-   * This method is intended to be overridden in subclasses as needed.
-   * @returns A `promise` for detecting interrupt processing, along with its `resolve` and `reject` functions.
+   * A synchronous function that is called immediately 
+   * after a lock callback completes or is cancelled (due to an error).
+   * @returns 
    */
-  protected override _interruptPromise(): { promise: Promise<unknown>, resolve: (v: unknown) => void, reject: (r?: unknown) => void} | undefined {
-    let onResolve!: ((v: unknown) => void);
-    let onReject!: ((r?: unknown) => void);
-    return {
-      promise: new Promise((resolve, reject) => {
-        onResolve = resolve;
-        onReject  = reject;
-      }),
-      resolve: onResolve,
-      reject: onReject
-    };
+  protected _onDoneOrCancelled(_options: AllOptions): void {
+    this.#stopHeartbeat();
   }
 
   /**
    * @internal
-   * Determines whether an error that has occurred is an expected error (an interruption). 
-   * This method is intended to be overridden in conjunction with the `_interruptPromise` method. (See the `_interruptPromise` method.)
-   * @param _err Error occurred
-   * @returns Returns `true` if it is an expected error, otherwise `false`.
+   * Handle errors that occur while locked.
+   * @param err       Error instance.
+   * @param operation Operation description
+   * @param options   Lock options.
+   * @param codeIfNon Error code.
    */
-  protected override _isInterrupt(err: unknown): boolean {
-    return err instanceof LockCompromised;
+  protected override _onError(err: unknown, operation: string, options: AllOptions, codeIfNon: string = 'ELOCK') {
+    this.#stopHeartbeat();
+    return super._onError(err, operation, options, codeIfNon);
   }
 
   /**
@@ -532,8 +524,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options   Lock options.
    * @param errMsg    If error, a message to pass to `Error class`.
    */
-  #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: 'normal' | 'no-retry' | 'double' = 'normal'): unknown {
-    const retries = retryMode === 'no-retry' ? 0 : (retryMode === 'double' ? options.retriesOnIoErr * 2 : options.retriesOnIoErr);
+  #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: 'normal' | /*'no-retry' |*/ 'double' = 'normal'): unknown {
+    const retries = /*retryMode === 'no-retry' ? 0 :*/ (retryMode === 'double' ? options.retriesOnIoErr * 2 : options.retriesOnIoErr);
     const retryIntervalMs = options.retryIoIntervalMs;
     const causes = [] as unknown[];
     for (let i = 0; i <= retries; i++) {
@@ -557,7 +549,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         throw new FileLockError(`${errMsg}${detailMsg}`, {code, props: { path: name, causes: finalCauses } });
       }
     }
-    // v8 ignore next
+    // v8 ignore next  -- @preserve
     return; // Added for ESLint compatibility.
   }
 
@@ -978,13 +970,13 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param msg 
    * @param noRetry 
    */
-  #openSyncExclusively(path: string, options: AllOptions, msg = "Couldn't create the file.", noRetry: boolean = false): void {
+  #openSyncExclusively(path: string, options: AllOptions, msg = "Couldn't create the file."/* noRetry: boolean = false*/): void {
     this.#accessInfo(
       path,
       () => { const fd = fs.openSync(path, 'wx'); fs.closeSync(fd); },
       options, 
       msg,
-      noRetry ? 'no-retry' : 'normal'
+      //noRetry ? 'no-retry' : 'normal'
     )
   }
 
@@ -1147,7 +1139,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param retryMode 
    * @param msg 
    */
-  #rmSync(path: string, options: AllOptions, fsOpts: object = {}, retryMode: 'normal' | 'no-retry' | 'double' = 'normal', msg = `Couldn't remove the file or directory.`): void {
+  #rmSync(path: string, options: AllOptions, fsOpts: object = {}, retryMode: 'normal' | /*'no-retry' |*/ 'double' = 'normal', msg = `Couldn't remove the file or directory.`): void {
     this.#accessInfo(
       path,
       () => fs.rmSync(path, fsOpts),
@@ -1214,15 +1206,27 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     this._heartbeatTimer = setInterval(
       () => {
         try {
+          const shouldContinue = () => this._acquired && this._isAlreadyCancelled(options) === false;
           // Avoid `if` statements to ensure code coverage.
-          this._acquired && this.#updateHeartbeat(options);
+          // v8 ignore next 2  -- @preserve
+          if (shouldContinue() === false) {
+            this.#stopHeartbeat();
+          }
+          else {
+            this.#updateHeartbeat(options);
+            // Double-checking, just to be sure.
+            // v8 ignore next  -- @preserve
+            if (shouldContinue() == false) this.#stopHeartbeat();
+          }
         }
         catch (err) {
           this._logger.trace(`Heartbeat update error at ${DateFormatter.format(new Date())}: ${err}`);
           this.#stopHeartbeat();
-          this._onError(err, 'updateHeartbeat', options);
-          // To maintain the lock, the heartbeat is not stopped here. 
-          // ★★★　と書きながらも、上記で止めているけれど？？おそらく、テストの何かに合わせたか！！
+          this._onError(
+            err,
+            'updateHeartbeat',
+            options
+          );
         }
       },
       options.heartbeatIntervalMs
@@ -1303,7 +1307,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Remove the file.
    * @param options Lock options.
    */
-  #unlinkSync(path: string, options: AllOptions, retryMode: 'normal' | 'no-retry' | 'double' = 'normal', msg = `Couldn't remove the file.`): void {
+  #unlinkSync(path: string, options: AllOptions, retryMode: 'normal' | /*'no-retry' |*/ 'double' = 'normal', msg = `Couldn't remove the file.`): void {
     this.#accessInfo(
       path,
       () => fs.unlinkSync(path),
@@ -1318,10 +1322,13 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Update heartbeat.
    */
   #updateHeartbeat(options: AllOptions): void {
-    const meta = this.#getInfo(options);
-    meta.lastHeartbeatAt = Date.now();
-    this.#updateInfo(meta, options);
-    this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date(meta.lastHeartbeatAt))}`);
+    // v8 ignore else -- @preserve
+    if (this._heartbeatTimer) {
+      const meta = this.#getInfo(options);
+      meta.lastHeartbeatAt = Date.now();
+      this.#updateInfo(meta, options);
+      this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date(meta.lastHeartbeatAt))}`);
+    }
   }
 
   /**
@@ -1347,7 +1354,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Open the .tmp file (if it hasn't been created yet).
     const tmpPath = options._filePath + '.tmp';
     if (tmpCreated === false) {
-      this.#openSyncExclusively(tmpPath, options, "Failed to create the temporary `lock file`.", true)
+      this.#openSyncExclusively(tmpPath, options, "Failed to create the temporary `lock file`."/*, true*/)
     }
 
     try {

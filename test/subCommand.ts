@@ -21,8 +21,10 @@ const instruction = {
     let sleepTime = Number(args[2]);
     const timeoutMs = args[3] ? Number(args[3]) : 5000;
     const ttlMs = args[4] ? Number(args[4]) : 2000;
-    const heartbeatTtlMs = args[4] ? Number(args[4]) : 5000;
+    const heartbeatTtlMs = args[5] ? Number(args[5]) : 5000;
     let monitor: LockMonitor;
+    const options = { timeoutMs, ttlMs, heartbeatTtlMs };
+    //console.log("## Chile lock options =", options);
     await FileLock.withLock(
       key, async (mon) => {
         console.info("Child acquired lock");
@@ -35,7 +37,7 @@ const instruction = {
           }
         }
       },
-      { timeoutMs, ttlMs, heartbeatTtlMs }
+      options
     );
     console.log('lock completed.')
   },

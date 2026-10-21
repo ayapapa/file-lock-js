@@ -127,7 +127,6 @@ export class Cache<K = string, V = unknown> {
       value,
       expiresAt: now + this.#ttlMs,
     });
-
   }
 
 }

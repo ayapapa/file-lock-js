@@ -267,28 +267,24 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
   }
 
  /**
-   * @internal
-   * @abstract
-   * Increment the re-entry lock counter.
-   * @param options Lock options.
-   */
+  * @internal
+  * @abstract
+  * Increment the re-entry lock counter.
+  * @param options Lock options.
+  */
   // eslint-disable-next-line @typescript-eslint/require-await
   protected async _incReantryCount(options: AllOptions<O, I>): Promise<void> {
     throw new LockError(`Implement this in the subclass.`, { code: 'ENOIMPL', props: { options } });
   }
 
   /**
-   * @interna
-   * @abstract
-   * Create a promise for interrupt detection.<br>
-   * This method is intended to be overridden in subclasses as needed.
-   * If you override this, you must also override the `_isInterrupt` method to determine 
-   * whether the interrupt is the one expected. (See the `_isInterrupt` method.) 
-   * @returns A `promise` for detecting interrupt processing, along with its `resolve` and `reject` functions.
+   * @internal
+   * Check whether it has been cancelled.
+   * @param options Lock options.
+   * @returns 
    */
-  // v8 ignore next 3
-  protected _interruptPromise(): { promise: Promise<unknown>, resolve: (v: unknown) => void, reject: (r?: unknown) => void} | undefined {
-    return;
+  protected _isAlreadyCancelled(options: AllOptions<O, I>) {
+    return options._monitor?.cancelled as boolean;
   }
 
   /**
@@ -303,16 +299,14 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
   /**
    * @internal
    * @abstract
-   * Determines whether an error that has occurred is an expected error (an interruption). 
-   * This method is intended to be overridden in conjunction with the `_interruptPromise` method. (See the `_interruptPromise` method.)
-   * @param _err Error occurred
-   * @returns Returns `true` if it is an expected error, otherwise `false`.
+   * ロックコールバックの完了またはキャンセル（エラー発生による）直後にコールされる同期関数。
+   * @returns 
    */
-  // v8 ignore next 3
-  protected _isInterrupt(_err: unknown): boolean {
-    return false;
+  // v8 ignore next -- @preserve 
+  protected _onDoneOrCancelled(_options: AllOptions<O, I>): void {
+    return;
   }
-  
+
   /**
    * @internal
    * @abstract
@@ -323,10 +317,11 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param codeIfNon Error code.
    */
   protected _onError(err: unknown, operation: string, options: AllOptions<O, I>, codeIfNon: string = 'ELOCK') {
-    if (this.#isAlreadyCancelled(options)) return;
+    if (this._isAlreadyCancelled(options)) return;
     const code: string = (err instanceof Error && 'code' in err && err.code ? String(err.code) : codeIfNon);
-    this.#setMonitor({ cancelled: true, reason: code, cause: err, operation}, options)
-    if (this._isInterrupt(err) && this.#onInterruptRejects[options._sharerId]) {
+    this.#setMonitor({ cancelled: true, reason: code, cause: err, operation}, options);
+    // If it is anything other than `TTLExceeded`, reject the interrupt promise.
+    if (err instanceof TTLExceeded === false && this.#onInterruptRejects[options._sharerId]) {
       this.#onInterruptRejects[options._sharerId](err);
       delete this.#onInterruptRejects[options._sharerId];
     };
@@ -496,7 +491,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
     // If there is an interrupt promise in the inheriting class, 
     // have it participate in the promise race described below.
-    const interruptPromise = this._interruptPromise();
+    const interruptPromise = this.#interruptPromise();
+    // v8 ignore else  -- @preserve
     if (interruptPromise) {
       racePrs.push(interruptPromise.promise);
       this.#onInterruptRejects[options._sharerId] = interruptPromise.reject;
@@ -506,10 +502,13 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     try {
       return await Promise.race(racePrs)
         .finally(() => { // In any case, turn off the timer.
+          // Call the following to clean up timers or other mechanisms set up outside of this scope
+          this._onDoneOrCancelled(options);
           // Avoid if statements as a measure against coverage issue
           ttlTimer.id && clearTimeout(ttlTimer.id);
           onExitPromise.resolve('No forced termination');
           delete this.#onExitRejects[options._sharerId];
+          // v8 ignore else  -- @preserve
           if (interruptPromise) {
             interruptPromise.resolve('Ok');
             delete this.#onInterruptRejects[options._sharerId];
@@ -559,14 +558,24 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     );
   }
 
-   /**
-   * @internal
-   * Check whether it has been cancelled.
-   * @param options Lock options.
-   * @returns 
+  /** 
+   * @interna
+   * @abstract
+   * Create a promise for interrupt detection.<br>
+   * This method is intended to be overridden in subclasses as needed.
+   * @returns A `promise` for detecting interrupt processing, along with its `resolve` and `reject` functions.
    */
-  #isAlreadyCancelled(options: AllOptions<O, I>): boolean {
-    return options._monitor?.cancelled as boolean;
+  #interruptPromise(): { promise: Promise<unknown>, resolve: (v: unknown) => void, reject: (r?: unknown) => void} | undefined {
+    let onResolve!: ((v: unknown) => void);
+    let onReject!: ((r?: unknown) => void);
+    return {
+      promise: new Promise((resolve, reject) => {
+        onResolve = resolve;
+        onReject  = reject;
+      }),
+      resolve: onResolve,
+      reject: onReject
+    };
   }
 
   /**
