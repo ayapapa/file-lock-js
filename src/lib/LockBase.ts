@@ -303,9 +303,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @returns 
    */
   // v8 ignore next -- @preserve 
-  protected _onDoneOrCancelled(_options: AllOptions<O, I>): void {
-    return;
-  }
+  protected _onDoneOrCancelled(_options: AllOptions<O, I>): void {}
 
   /**
    * @internal
@@ -322,11 +320,20 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     this.#setMonitor({ cancelled: true, reason: code, cause: err, operation}, options);
     // If it is anything other than `TTLExceeded`, reject the interrupt promise.
     if (err instanceof TTLExceeded === false && this.#onInterruptRejects[options._sharerId]) {
-      this.#onInterruptRejects[options._sharerId](err);
+      this.#rejectPromise(this.#onInterruptRejects, options._sharerId, err);
+      /*
+      const reject = this.#onInterruptRejects[options._sharerId];
       delete this.#onInterruptRejects[options._sharerId];
+      reject(err);
+      */
     };
   }
 
+  #rejectPromise(rejects: Record<string, (reason?: unknown) => void>, key: string, reason: unknown) {
+    const reject = rejects[key];
+    delete rejects[key];
+    reject(reason);
+  }
   /**
    * @internal
    * @abstract
@@ -336,15 +343,20 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param signal  Recieved signal.
    */
   protected _onExit(code: number | null | undefined, signal: NodeJS.Signals | null) {
-    // If `onExitReject` (the Promise's reject function) is non-null, 
-    // the lock has not been released, so an interruption error is set.
-    // Incidentally, I am avoiding the use of `if` statements to ensure adequate test coverage.
+    // If there is an unresolved promise, set an interruption error and abort the lock process.
     Object.keys(this.#onExitRejects).forEach(key => {
-      this.#onExitRejects[key](new LockError("Forced termination.", {
+      this.#rejectPromise(this.#onExitRejects, key, new LockError("Forced termination.", {
         code: 'ETERM',
         props: { reason: { code, signal } }
       }));
+      /*
+      const reject = this.#onExitRejects[key];
       delete this.#onExitRejects[key];
+      reject(new LockError("Forced termination.", {
+        code: 'ETERM',
+        props: { reason: { code, signal } }
+      }));
+      */
     });
   }
 

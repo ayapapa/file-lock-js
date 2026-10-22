@@ -246,7 +246,7 @@ export class TestLock extends FileLock {
   }
 
   static getCache() {
-    return super["_getCache"]();
+    return super["_cache"];
   }
 
   static clearCache() {
