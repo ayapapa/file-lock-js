@@ -19,22 +19,10 @@ export const isCI = process.env.CI === 'true';
 
 const config = { level: 'debug', compact: true } as PrettyCOnfig;
 
-// CIの時は、ファイルログは出力しない（CIエラー対策）
+// Do not output file logs during CI (to prevent CI errors)
 if (isCI === false) {
   const logDir = path.resolve('./logs')
   fs.mkdirSync(logDir, { recursive: true })
-
-  /*
-  const stream = Pino.transport({
-    target: 'pino/file',
-    options: {
-      destination: './logs/file-lock.log',
-      frequency: 'daily',
-      size: '5m',
-      mkdir: true,
-    },
-  });
-  */
 
   const stream = createStream((time: Date | number) => {
     if (!time) return 'file-lock.log'
@@ -82,12 +70,10 @@ export const logger = new PrettyConsole(config);
 
 export function getLockMetaPath(key: string): string {
   return path.join(TestLock.getLockDirPath(), key + '.json');
-  //return path.join(TestLock.getLockDirPath(), key, 'meta.json');
 }
 
 export function getLockSharerDir(key: string): string {
   return path.join(TestLock.getLockDirPath(), key + '.sharer');
-  //return path.join(TestLock.getLockDirPath(), key, 'meta.json');
 }
 
 export const getLockMeta = (key: string) => {
@@ -109,15 +95,10 @@ export function removeLockFiles(key: string) {
   if (fs.existsSync(lockMetaTmpPath)) fs.unlinkSync(lockMetaTmpPath);
   const sharer = getLockSharerDir(key);
   if (fs.existsSync(sharer)) fs.rmSync(sharer, { force: true, recursive:true });
-  /*
-  const lockMetaPath = path.dirname(getLockMetaPath(key));
-  if (fs.existsSync(lockMetaPath)) fs.rmSync(lockMetaPath, { recursive: true, force: true });
-  */
 }
 
 export function getHistoryPath() {
   return TestLock.getHistoryPath();
-  //return FileLock.getHistoryInfo().historyPath;
 }
 
 export interface Options {
@@ -152,7 +133,7 @@ export function resetExecResources() {
   childExecCount = 0;
 }
 
-// 別プロセスを非同期で実行する関数を用意する。
+// A function that executes a child process asynchronously.
 export async function execChild(command: 'lock' | 'sleep', options: Options) {
   const cmodPath = path.isAbsolute(commandPath) ? commandPath : path.resolve(__dirname, commandPath);
   const args: string[] = [
@@ -165,8 +146,10 @@ export async function execChild(command: 'lock' | 'sleep', options: Options) {
     String(options.heartbeatTtlMs ?? 5000),
   ];
   
-  // tnode 20.xのバグで、パスに空白が入っていると、spawnそのものが失敗し、子プロセス起動ができない。
-  // このため、process.execPathの代わりに、'node'とする =>　結局、'node'としても、ciシステム内で絶対パスに変換され、スペースありのパスになってしまうようなので、解決しなかった、、このため、20.xはciの対象から外した
+  // Due to a bug in Node.js 20.x, if a file path contains spaces, the `spawn` operation itself fails, preventing the launch of a child process.
+  // I attempted to use 'node' instead of `process.execPath`, 
+  // but it turns out that even when 'node' is specified, it gets resolved to an absolute path 
+  // within the CI system—which still includes spaces—so this did not solve the issue. Consequently, I have excluded Node.js 20.x from the CI process.
   //const child = spawn(process.execPath, args);
   const child = spawn('node', args);
   childExecCount++;
@@ -178,8 +161,6 @@ export async function execChild(command: 'lock' | 'sleep', options: Options) {
     const str: string = data.toString();
     process.stdout.write(str);
     stdOut.push(str);
-    // ★★ロック獲得条件をトレースログを見ていることに注意★★
-    // つまり、デバッグ時（かつ、トレースレベルログ時）にのみ有効である。
     if (str.includes('Child acquired lock')) {
       locked = true;
     }
@@ -209,8 +190,9 @@ export async function execChild(command: 'lock' | 'sleep', options: Options) {
 
   if (options.waitAquired && command === 'lock') {
     const cStart = Date.now();
-    // 子プロセスのロック処理突入を確認
-    while(locked === false && (Date.now() - cStart) <= options.sleep + 110/** マージンが必要なようだ、、そうでないと先をこされる*/) {
+    // Confirm that the child process has entered the locking phase
+    // Looks like a margin is needed... otherwise, someone else might beat us to it.
+    while(locked === false && (Date.now() - cStart) <= options.sleep + 110) {
       await sleepAsync(100);
     }
   }
@@ -256,23 +238,17 @@ export function report() {
 
 /**
  * 
- * @param n       同時実行するプロセス数(うち、1個は親(本)プロセス、n-1個は子プロセス)
- * @param oneKey  全て同じキーにする場合に利用するキー
+ * @param n       Number of concurrently executing processes (consisting of one parent (main) process and n-1 child processes)
+ * @param oneKey  A key used when setting all items to the same key
  */
 export async function testMultiProcess(n: number, oneKey?: string) {
   const options: FileLockOptions = { timeoutMs: 5000, ttlMs: 5000, heartbeatTtlMs: 5000 };
   const parentKey = oneKey ? oneKey : "testMultiProcess"
   const parentPr = FileLock.withLock(parentKey, async () => { await sleepAsync(100); return 'completed'; }, options);
-  //const children = {} as Record<string, { cid: ChildProcessWithoutNullStreams, promise: Promise<unknown> }>;
   const childrenPr = [] as Promise<unknown>[];
   const childrenKey = [] as string[];
   for( let i = 0; i < n - 1; i++) {
-    /*
-    const nDigits = Math.floor(Math.log10(99));
-    const zero = nDigits > 0 ? '0000'.slice(0, -nDigits) : '0000';
-    */
     const key = oneKey ? oneKey : `childKey_${String(i).padStart(4, '0')}`;
-    //children[key] = await execChild('lock', { key, sleep: 500, waitAquired: false, ...options });
     childrenPr.push((await execChild('lock', { key, sleep: 500, waitAquired: false, ...options })).promise);
     if (oneKey === undefined) childrenKey.push(key);
   }
@@ -286,18 +262,19 @@ export async function testMultiProcess(n: number, oneKey?: string) {
     expect(state.lockfile_tmp_removed).toBe('ok');
   };
 
-  //const results = await Promise.allSettled([parentPr, ...Object.values(children).map(async ({ promise }) => promise)]);
   const results = await Promise.allSettled([parentPr, ...childrenPr]);
+  const pResult = results[0];
+  const cResults = results.slice(1);
 
-  // 親の結果をチェックする。
-  if (results[0].status === 'fulfilled') {
-    expect(results[0]).toMatchObject({
+  // Check the parent's result.
+  if (pResult.status === 'fulfilled') {
+    expect(pResult).toMatchObject({
       status: 'fulfilled',
       value: 'completed'
     });
   }
   else {
-    const reason = ('reason' in results[0]) ? results[0].reason : ''; 
+    const reason = ('reason' in pResult) ? pResult.reason : ''; 
     // 破損ファイルの発見が無ければOK。
     const foundBroken: boolean = reason instanceof AlreadyLocked && reason.message.includes('InvalidMetadata');
     if (BROKEN_ERROR_WATCH_MODE === false) expect(foundBroken).toBeFalsy();
@@ -312,16 +289,9 @@ export async function testMultiProcess(n: number, oneKey?: string) {
     if (oneKey == null) {
       checkState(childrenKey[i]);
     } 
-    const result = results[i+1];
+    const result = cResults[i];
     if (result.status === 'rejected') {
-      // 破損系エラーではないことを確認する
       const reason = ('reason' in result) ? result.reason as string : ''; 
-      //expect(reason.includes('AlreadyLocked') || reason.includes('TTLExceeded')).toBeTruthy();
-      // 想定以上の負荷により、TTL内に処理が完了しない、また、ハートビートが想定通りに刻まれないこともあり、
-      // その場合には、待機しているロック取得待ちプロセスがロックファイル賞味期限切れ判断し、
-      // ロック取得することになる、その場合に、自身のハートビート更新やリリース処理において、
-      // `LockCompromised`エラーとなるため、下記条件から、'LockCompromised'のチェックは外す。
-      // 破損ファイルの発見が無ければOK。
       const foundBroken: boolean = reason.includes('InvalidMetadata');
       if (BROKEN_ERROR_WATCH_MODE === false) expect(foundBroken).toBeFalsy();
       if (foundBroken) {
@@ -332,19 +302,18 @@ export async function testMultiProcess(n: number, oneKey?: string) {
       
     }
     else {
-      expect(results[i+1]).toMatchObject({
+      expect(cResults[i]).toMatchObject({
         status: 'fulfilled',
         value: { code: 0, signal: null, }
       });
     }
   });
 
-  // 親のロックファイルが削除されていることを確認
   checkState(parentKey);
 }
 
 /**
- * テスト用ロック。
+ * Lock for testing
  */
 // @ts-expect-error constructor of `FileLock` is private.
 export class TestLock extends FileLock {
@@ -420,6 +389,5 @@ export class TestLock extends FileLock {
   }
 
 }
-
 
 FileLock.setConfig({ logger, history: true, _debug: true });
