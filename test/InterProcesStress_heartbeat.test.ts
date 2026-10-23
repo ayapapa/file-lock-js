@@ -25,23 +25,23 @@ afterAll(() => {
   report();
 });
 
-describe('同キーを使った複数プロセスによるハートビートも考慮した同時ロックテスト', () => {
+describe('Concurrent locking test that also accounts for heartbeats from multiple processes using the same key.', () => {
 
-  it("2プロセス", async () => {
+  it("2 processes.", async () => {
   });
 
   if (isCI) return;
 
-  it("5プロセス", async () => {
+  it("5 processes.", async () => {
   });
 
-  it("10プロセス", async () => {
+  it("10 processes.", async () => {
   });
 
-  it("25プロセス", async () => {
+  it("25 processes.", async () => {
   });
 
-  it("50プロセス", async () => {
+  it("50 processes.", async () => {
   });
 
 });
