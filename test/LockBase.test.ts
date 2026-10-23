@@ -112,17 +112,20 @@ describe('LockBase and Util', () => {
     });
   });
 
+/*
   it("Failure to implement `LockBase._acquire()` results in an `not implemented` error.", async () => {
     await testNotImpleMethod(async () => {
       await (new TestLockBase().test_acquire());
     });
   });
-
+*/
+/*
   it("Failure to implement `LockBase._release()` results in an `not implemented` error.", async () => {
     await testNotImpleMethod(async () => {
       await (new TestLockBase().test_release());
     });
   });
+*/
 
   it("When you specify an error that does not have a code in `LockBase._onError()`.", () => {
     const tl = new TestLockBase();

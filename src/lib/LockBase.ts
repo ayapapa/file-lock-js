@@ -178,14 +178,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @internal
    * Whether or not a lock is acquired.
    */
-  protected _acquired: boolean = false;
-
-  /** 
-   * @internal
-   * Lock key
-   */
-  //protected _debug: boolean= false;
-
+  protected get _acquired() { return this.#acquired };
+  
   /** 
    * @internal
    * Lock key
@@ -203,6 +197,11 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * Lock owner ID to be stored in the lock file.
    */
   protected _ownerId: string;
+
+  /**
+   * @internal 
+   */
+  #acquired: boolean = false;
 
   /**
    * @internal
@@ -240,8 +239,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param options Lock options.
    */
   // eslint-disable-next-line @typescript-eslint/require-await
-  protected async _acquire(options: AllOptions<O, I>): Promise<void> {
-    throw new LockError(`Implement this in the subclass.`, { code: 'ENOIMPL', props: { options } });
+  protected async _acquire(_: AllOptions<O, I>): Promise<void> {
+    this.#acquired = true;
   }
 
   /**
@@ -381,8 +380,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param options Lock options.
    */
   // eslint-disable-next-line @typescript-eslint/require-await
-  protected async _release(options: AllOptions<O, I>): Promise<void> {
-    throw new LockError(`Implement this in the subclass.`, { code: 'ENOIMPL', props: { options } });
+  protected _release(_: AllOptions<O, I>): Promise<void> | void {
+    this.#acquired = false;
   }
 
   /**

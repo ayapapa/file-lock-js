@@ -1097,7 +1097,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #releaseActually(options: AllOptions, throwErr = true) {
-    this._acquired = false;
+    super._release(options);
 
     try {
       // Stop the heartbeat (must be stopped before deletion)
@@ -1369,7 +1369,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Start the heartbeat.
     this.#startHeartbeat(options);
 
-    this._acquired = true;
+    super._acquire(options);
 
     return { locked: true, reason: 'ACQUIRED' };
   }
@@ -1415,7 +1415,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       // eslint-disable-next-line no-constant-condition
       while (true);
 
-      // メタデータ入手および更新（エラーは、致命的エラー（浸食またはIOエラー）のため、そのまま伝える）
+      // Metadata retrieval and update (errors—specifically fatal errors such as corruption or I/O errors—are reported as-is)
       let updateTime;
       try {
         const meta = this.#getInfo(options);
@@ -1437,7 +1437,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param meta    Lock information.
    * @param options Lock options.
    */
-  #updateInfo(meta: FileLockMeta, options: AllOptions, ticket?: Ticket): void {
+  #updateInfo(meta: FileLockMeta, options: AllOptions, ticket: Ticket): void {
     // For debug
     if (this._isDebug()) {
       Object.assign(
@@ -1451,33 +1451,12 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       );
     }
 
-    // Open the .tmp file (if it hasn't been created yet).
-    //const tmpPath = options._filePath + '.tmp';
-    if (ticket === undefined) {
-      //this.#openSyncExclusively(tmpPath, options, "Failed to create the temporary `lock file`."/*, true*/)
-      ticket = Ticket.get(this, options, 'double');
-    }
-
     try {
-      /*VERIFY_DEBUG(() => Boolean(ticket?.verify()), 
-        "Failed to create the `temporary lock file`.",
-        FileLockError, { code: 'ENOENT', props: { key: this._key } }
-      );*/
-      ticket?.confirm(meta);
-      /*
-      // Write to a temporary file first.
-      this._writeFileSync(tmpPath, meta, options, "Failed to write the temporary `lock file`.");
-      // Replace the target file path with the temporary file (if the file already exists, it is overwritten atomically).
-      this._renameSync(tmpPath, options._filePath, options, "Failed to rename the temporary `lock file`.");
-      */
+      ticket.confirm(meta);
     }
     catch (err) {
       try {
-        ticket?.release();
-        /*
-        this._existsSync(tmpPath, options) && 
-        this._unlinkSync(tmpPath, options, 'double', "Failed to remove the temporary `lock file`.");
-        */
+        ticket.release();
       }
       catch (err2) {
         // Preserve the original cleanup failure; the caller will wrap it as a generic I/O lock acquisition error.
