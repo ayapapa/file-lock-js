@@ -45,7 +45,7 @@ describe('FileLockError', () => {
 
   it("Forge lock for the same `key` to trigger a timeout.", async () => {
     const key = "testKey";
-    const meta = {ownerId: "hoge", expiresAt: Date.now() + 5*60*1000, heartbeatTtlMs:10000, lastHeartbeatAt: Date.now()};
+    const meta = {ownerId: "hoge", expiresAt: Date.now() + 5*60*1000, heartbeatTtlMs:10000, heartbeatExpiresAt: Date.now()};
     setLockMeta(key, meta);
     expect.assertions(3);
     try {

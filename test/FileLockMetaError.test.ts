@@ -17,7 +17,7 @@ describe('FileLock', () => {
 
   async function testInvalidLockInformationFile(target: string, v?: unknown ) {
     const key = "testKey";
-    const meta = {ownerId: "hoge", counter: 1, expiresAt: Date.now() + 10*1000, heartbeatTtlMs:5000, lastHeartbeatAt: Date.now()};
+    const meta = {ownerId: "hoge", counter: 1, expiresAt: Date.now() + 10*1000/*, heartbeatTtlMs:5000*/, heartbeatExpiresAt: Date.now()};
     const mt = {...meta} as Record<string, unknown>;
     if (v) {
       mt[target] = v;
@@ -72,10 +72,11 @@ describe('FileLock', () => {
     await testInvalidLockInformationFile("expiresAt");
   });
 
+/*
   it("Spoof the invalid lock information storage file and verify that an error occurs.(No heartbeatTtlMs)", async () => {
     await testInvalidLockInformationFile("heartbeatTtlMs");
   });
-
+*/
   it("Spoof the invalid lock information storage file and verify that an error occurs.(Invalid ownerId)", async () => {
     await testInvalidLockInformationFile("ownerId", 12345);
   });
@@ -84,14 +85,14 @@ describe('FileLock', () => {
     await testInvalidLockInformationFile("counter", 'hogehogehoge');
   });
 */
-  it("Spoof the invalid lock information storage file and verify that an error occurs.(No expiresAt)", async () => {
+  it("Spoof the invalid lock information storage file and verify that an error occurs.(Invalid expiresAt)", async () => {
     await testInvalidLockInformationFile("expiresAt", "nyannnyann");
   });
-
-  it("Spoof the invalid lock information storage file and verify that an error occurs.(No heartbeatTtlMs)", async () => {
+/*
+  it("Spoof the invalid lock information storage file and verify that an error occurs.(Invalid heartbeatTtlMs)", async () => {
     await testInvalidLockInformationFile("heartbeatTtlMs", "miimii");
   });
-
+*/
   it("Verify that the heartbeat is functioning correctly.", async () => {
     const key = "testKey", retVal = key;
     expect(await FileLock.withLock(
@@ -103,7 +104,7 @@ describe('FileLock', () => {
           await sleepAsync(interval);
         }
         const meta2 = getLockMeta(key);
-        expect(meta2.lastHeartbeatAt).toBeGreaterThan(meta1.lastHeartbeatAt);
+        expect(meta2.heartbeatExpiresAt).toBeGreaterThan(meta1.heartbeatExpiresAt);
         return retVal;
       },
       {ttlMs: 3000}

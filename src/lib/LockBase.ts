@@ -239,7 +239,11 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param options Lock options.
    */
   // eslint-disable-next-line @typescript-eslint/require-await
-  protected async _acquire(_: AllOptions<O, I>): Promise<void> {
+  protected async _acquire(options: AllOptions<O, I>): Promise<void> {
+    this._acquireSync(options);
+  }
+ 
+  protected _acquireSync(_: AllOptions<O, I>): void {
     this.#acquired = true;
   }
 
@@ -380,10 +384,14 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param options Lock options.
    */
   // eslint-disable-next-line @typescript-eslint/require-await
-  protected _release(_: AllOptions<O, I>): Promise<void> | void {
-    this.#acquired = false;
+  protected async _release(options: AllOptions<O, I>): Promise<void> {
+    this._releaseSync(options);
   }
 
+  protected _releaseSync(_: AllOptions<O, I>): void {
+    this.#acquired = false;
+  }
+  
   /**
    * @internal
    * @abstract

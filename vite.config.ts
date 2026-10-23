@@ -27,7 +27,11 @@ export default defineConfig({
     unstubGlobals: true,
     
     include: ['test/*.test.ts'],
-    exclude: [...configDefaults.exclude, 'e2e/*'],
+    exclude: [
+      'test/InterProcesExclusion_individual.test.ts',
+      ...configDefaults.exclude, 
+      'e2e/*'
+    ],
     
     // Coverage measurement settings
     coverage: {

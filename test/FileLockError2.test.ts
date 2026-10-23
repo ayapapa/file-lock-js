@@ -296,7 +296,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     ErrClass: unknown, 
     matchObj: object,
     sweep = false,
-    meta: Record<string, unknown> | null = {ownerId: "hoge", expiresAt: Date.now() - 100, heartbeatTtlMs: 50, lastHeartbeatAt: Date.now() - 100},
+    meta: Record<string, unknown> | null = {ownerId: "hoge", expiresAt: Date.now() - 100, /*heartbeatTtlMs: 50, */heartbeatExpiresAt: Date.now() - 100},
     ) {
 
     if (meta) setLockMeta(key, meta);
@@ -586,7 +586,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
         message: "The `lock file` already exists, but its validity could not be determined due to an I/O error.",
       },
       true,
-      {ownerId: "hoge", expiresAt: Date.now(), heartbeatTtlMs:25000, lastHeartbeatAt: Date.now() - 3000},
+      {ownerId: "hoge", expiresAt: Date.now(), /*heartbeatTtlMs:25000, */heartbeatExpiresAt: Date.now() - 3000},
     );
   });
 
@@ -624,7 +624,7 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
     setLockMeta(key, meta);
     expect.assertions(3);
     try {
-      await FileLock.withLock(key, () => {}, { heartbeatTtlMs: 200, timeoutMs: 300 });
+      await FileLock.withLock(key, () => {}, { /*heartbeatTtlMs: 200, */timeoutMs: 300 });
     }
     catch (err) {
       expect(err).instanceOf(AlreadyLocked);
@@ -675,7 +675,7 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
         causes: [{
           code: "ENOENT",
           key,
-          message: "[VERIFY] Not found the `temporary lock file`."
+          message: "[REQUIRE] Not found the `temporary lock file`."
         }],
       });
     }

@@ -226,7 +226,7 @@ describe('別プロセスとの競合テスト', () => {
       const meta = getLockMeta(key);
       const t = Date.now() - 5500;
       meta["expiresAt"] = t;
-      meta["lastHeartbeatAt"] = t;
+      meta["heartbeatExpiresAt"] = t;
       setLockMeta(key, meta);
 
       await sleepAsync(4000);

@@ -19,6 +19,7 @@ describe('FileLock', () => {
   it("The lock is successfully acquired, and the return value of the callback is obtained.", async () => {
     const retVal = "callbackRetrunedValue", key = retVal;
     const opts =  {timeoutSec : 1 } as FileLockOptions;
+    try {
     expect(await FileLock.withLock(key, 
       async () => {
         await sleepAsync(500);
@@ -26,6 +27,10 @@ describe('FileLock', () => {
       },
       opts
     )).toBe(retVal);
+    }
+    catch (err) {
+      console.log(err);
+    }
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 

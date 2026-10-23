@@ -18,13 +18,7 @@ export interface FileLockMeta {
   /** Lock expiration time. */
   expiresAt: number,
 
-  /** 
-   * The valid duration since the last heartbeat.
-   * Exceeding this limit is one of the factors used to determine that the lock is invalid.
-   */
-  heartbeatTtlMs: number,
-
   /** The last heartbeat time. */
-  lastHeartbeatAt: number,
+  heartbeatExpiresAt: number,
 
 }

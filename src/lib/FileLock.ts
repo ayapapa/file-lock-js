@@ -69,7 +69,7 @@ class Ticket {
 
 
   confirm(meta: FileLockMeta) {
-    VERIFY(() => Boolean(this.verify()), 
+    REQUIRE(() => Boolean(this.verify()), 
         "Not found the `temporary lock file`.",
         FileLockError, { code: 'ENOENT', props: { key: this.#owner['_key'] } }
     );    // Write to a temporary file first.
@@ -397,7 +397,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @internal
    * Latest heartbeat update time.
    */
-  #lastHeartbeatAt: number | undefined;
+  #heartbeatExpiresAt: number = 0;
 
   /** 
    * Instance methods.
@@ -828,15 +828,15 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #createLockFile(options: AllOptions, ticket: Ticket): void {
-      // Create the `lock file`.
+    // Create the `lock file`.
+    const now = Date.now();
     this.#updateInfo(
       {
         // When this lock request becomes the lock owner, 
         // the optional `lock sharer` ID and optional owner ID are set to match `this._ownerId`.
         ownerId: options._ownerId = options._sharerId = this._ownerId, 
-        expiresAt: Date.now() + options.ttlMs,
-        heartbeatTtlMs: options.heartbeatTtlMs,
-        lastHeartbeatAt: Date.now(),
+        expiresAt: now + options.ttlMs,
+        heartbeatExpiresAt: now + options.heartbeatTtlMs,
       },
       options,
       ticket
@@ -918,8 +918,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         optional: true
        }, 
       { key: "expiresAt",    type: "number" },
-      { key: "heartbeatTtlMs",    type: "number" },
-      { key: "lastHeartbeatAt",   type: "number" },
+      //{ key: "heartbeatTtlMs",    type: "number" },
+      { key: "heartbeatExpiresAt",   type: "number" },
       //{ key: "counter",           type: "number" },
     ] as { key: keyof FileLockMeta, type: string | ((v: unknown) => boolean), optional?: boolean }[];
 
@@ -972,8 +972,9 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #isLockExpired(meta: FileLockMeta): boolean {
     this._logger.trace("The `lock file` contents in isLockExpired():", meta);
-    const expired = meta.expiresAt <= Date.now();
-    const dead = meta.lastHeartbeatAt + meta.heartbeatTtlMs <= Date.now();
+    const now = Date.now();
+    const expired = meta.expiresAt <= now;
+    const dead = meta.heartbeatExpiresAt <= now;
     this._logger.trace("expired:", expired, "dead:", dead);
     return expired && dead;
   }
@@ -1097,7 +1098,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #releaseActually(options: AllOptions, throwErr = true) {
-    super._release(options);
+    super._releaseSync(options);
 
     try {
       // Stop the heartbeat (must be stopped before deletion)
@@ -1369,7 +1370,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Start the heartbeat.
     this.#startHeartbeat(options);
 
-    super._acquire(options);
+    super._acquireSync(options);
 
     return { locked: true, reason: 'ACQUIRED' };
   }
@@ -1398,8 +1399,10 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     if (this.#heartbeatTimer && this.#heatbeatUpdating === false) {
       this.#heatbeatUpdating = true;
       let ticket;//: Ticket | undefined;
-      const timout = Math.floor(this.#lastHeartbeatAt ?? Date.now() 
-        + Math.max(options.heartbeatTtlMs / 2, options.heartbeatIntervalMs - options.pollIntervalMs * 2));
+      // 約１回分のハートビット間隔分＋αを残して、リトライする
+      // つまり、ここでupdateできなかったら、最後の１回のハートビートに任せる。
+      // それでもupdateできないなら、、もう、高負荷過ぎて、、、結局手が出ないのだから、しょん職されても
+      const timout = Math.ceil(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.pollIntervalMs * 2));
       // 更新チケット入手
       do {
         try {
@@ -1416,16 +1419,14 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       while (true);
 
       // Metadata retrieval and update (errors—specifically fatal errors such as corruption or I/O errors—are reported as-is)
-      let updateTime;
       try {
         const meta = this.#getInfo(options);
-        updateTime = meta.lastHeartbeatAt = Date.now();
+        this.#heartbeatExpiresAt = meta.heartbeatExpiresAt = Date.now() + options.heartbeatTtlMs;
         this.#updateInfo(meta, options, ticket);
-        this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date(meta.lastHeartbeatAt))}`);
+        this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date(meta.heartbeatExpiresAt))}`);
       }
       finally {
         ticket.release();
-        this.#lastHeartbeatAt = updateTime;
         this.#heatbeatUpdating = false;
       }
     }
