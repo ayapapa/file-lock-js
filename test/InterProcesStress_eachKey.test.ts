@@ -27,31 +27,31 @@ afterAll(() => {
 });
 
 
-describe('すべて別同キーの複数のプロセス同時ロックテスト', () => {
+describe('Simultaneous locking test for multiple processes using distinct keys.', () => {
 
-  it("2プロセス", async () => {
+  it("2 processes.", async () => {
     await testMultiProcess(2);
   });
 
   if (isCI) return;
 
-  it("5プロセス", async () => {
+  it("5 processes.", async () => {
     await testMultiProcess(5);
   });
 
-  it("10プロセス", async () => {
+  it("10 processes.", async () => {
     await testMultiProcess(10);
   });
 
-  it("25プロセス", async () => {
+  it("25 processes.", async () => {
     await testMultiProcess(25);
   });
 
-  it("50プロセス", async () => {
+  it("50 processes.", async () => {
     await testMultiProcess(50);
   });
 
-  it("100プロセス", async () => {
+  it("100 processes.", async () => {
     await testMultiProcess(100);
   });
 
