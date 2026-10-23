@@ -54,7 +54,7 @@ describe('FileLock.Config', () => {
       ttlMs:                1000,
       pollIntervalMs:       100,
       heartbeatIntervalMs:  1000,
-      heartbeatTtlMs:       2000,
+      heartbeatTtlMs:       5000,
       retriesOnIoErr:       0,
       retryIoIntervalMs:    100,
     };

@@ -27,29 +27,31 @@ type AllOptions = AllOptionsT<FileLockAllOptions, FileLockInternalState>;
  */
 type FileLockAllOptions = FileLockRequiredOptions & Pick<FileLockOptions, 'invalidTtlMs'>
 
+type RetryMode = 'normal' | 'no-retry' | 'double';
+
 /**
  * @internal
- * ロックファイルの生成・更新のためのチケット 
+ * A ticket for creating or updating a lock file. <br>
+ * Handles the creation of a `temporary lock file` and its subsequent application (via rename) to the actual lock file, ensuring an atomic update. 
  */
 class Ticket {
 
-  static get(owner: FileLock, options: AllOptions) {
+  static get(owner: FileLock, options: AllOptions, retryMode: RetryMode = 'normal') {
     const tmpLockFile = options._filePath + '.tmp';
-    if (owner['_openLockFileExclusively'](options, tmpLockFile )) {
+    if (owner['_openLockFileExclusively'](options, tmpLockFile, retryMode)) {
       return new Ticket(owner, tmpLockFile, options);
     }
     else {
-      console.log(`###### COULDN'T GET TICKET ######(${DateFormatter.format()})`)
       return undefined;
     }
   }
   
-  #path: string;
+  #path: string; // The path to the `temporary lock file`.
   #owner: FileLock;
   #options: AllOptions;
   #released = false;
 
-  constructor(owner: FileLock, path: string, options: AllOptions) {
+  private constructor(owner: FileLock, path: string, options: AllOptions) {
     this.#owner = owner;
     this.#path = path;
     this.#options = options;
@@ -59,7 +61,7 @@ class Ticket {
     if (this.#released) return;
     this.#released = true;
     if (this.#owner['_existsSync'](this.#path, this.#options)) {
-      this.#owner['_unlinkSync'](this.#path, this.#options, 'double', "Failed to remove the temporary `lock file`.");
+      this.#owner['_unlinkSync'](this.#path, this.#options, 'double', "Failed to remove the `temporary lock file`.");
     }
   }
 
@@ -67,10 +69,13 @@ class Ticket {
 
 
   confirm(meta: FileLockMeta) {
-    // Write to a temporary file first.
-    this.#owner['_writeFileSync'](this.#path , meta, this.#options, "Failed to write the temporary `lock file`.");
+    VERIFY(() => Boolean(this.verify()), 
+        "Not found the `temporary lock file`.",
+        FileLockError, { code: 'ENOENT', props: { key: this.#owner['_key'] } }
+    );    // Write to a temporary file first.
+    this.#owner['_writeFileSync'](this.#path , meta, this.#options, "Failed to write the `temporary lock file`.");
     // Replace the target file path with the temporary file (if the file already exists, it is overwritten atomically).
-    this.#owner['_renameSync'](this.#path , this.#options._filePath, this.#options, "Failed to rename the temporary `lock file`.");
+    this.#owner['_renameSync'](this.#path , this.#options._filePath, this.#options, "Failed to rename the `temporary lock file`.");
   }
 
 }
@@ -380,13 +385,19 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @internal
    * Heartbeat timer id 
    */
-  private _heartbeatTimer: NodeJS.Timeout | null = null;
+  #heartbeatTimer: NodeJS.Timeout | null = null;
 
   /**
    * @internal
    * Whether or not a heartbeat update is in progress.
    */
   #heatbeatUpdating = false;
+
+  /**
+   * @internal
+   * Latest heartbeat update time.
+   */
+  #lastHeartbeatAt: number | undefined;
 
   /** 
    * Instance methods.
@@ -401,6 +412,14 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     super(key);
   }
 
+
+  /**
+   * @internal
+   */
+  protected get _isALiveHeartbeatTimer() {
+    return this.#heartbeatTimer != null;
+  }
+
   /**
    * @internal
    * Acquire the lock. 
@@ -411,7 +430,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   protected override async _acquire(options: AllOptions): Promise<void> {
     const start = Date.now();
     const timeoutTime = start + options.timeoutMs;
-    const pollIntervalMs = options.pollIntervalMs;
+    let   pollIntervalMs = options.pollIntervalMs;
     const tryResults = [] as { locked: boolean, reason: string, cause?: unknown }[];
     do {
       const tryRes = await this.#tryLock(options);
@@ -421,7 +440,9 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       }
       tryResults.push(tryRes)
       if (Date.now() >= timeoutTime) break;
-      await sleepAsync(pollIntervalMs);
+      await sleepAsync(this.#jittered(pollIntervalMs));
+      // next poll interval
+      pollIntervalMs = Math.min(1000, pollIntervalMs * 2);
       // ignore the eslint warning about the infinite loop, as it is controlled by the timeout condition.
       // eslint-disable-next-line no-constant-condition
     } while (true);
@@ -515,6 +536,25 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
+   * Open the `lock file` exclusively.
+   * @param options Lock options.
+   */
+  private _openLockFileExclusively(options: AllOptions, path?: string, retryMode: RetryMode = 'normal'): boolean {
+    try {
+      this.#openSyncExclusively(path || options._filePath, options, undefined, retryMode);
+      return true;
+    }
+    catch (err) {
+      let code = "EUNKNOWN";
+      // Avoided `if` statements to address code coverage requirements.
+      err instanceof Error && 'code' in err && (code = String(err.code));
+      if (code  === 'EEXIST') return false;
+      throw err;
+    }
+  }
+
+  /**
+   * @internal
    * Make advance preparations.
    * @param options Options
    */
@@ -570,8 +610,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options   Lock options.
    * @param errMsg    If error, a message to pass to `Error class`.
    */
-  #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: 'normal' | /*'no-retry' |*/ 'double' = 'normal'): unknown {
-    const retries = /*retryMode === 'no-retry' ? 0 :*/ (retryMode === 'double' ? options.retriesOnIoErr * 2 : options.retriesOnIoErr);
+  #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: RetryMode = 'normal'): unknown {
+    const retries = retryMode === 'no-retry' ? 0 : (retryMode === 'double' ? options.retriesOnIoErr * 2 : options.retriesOnIoErr);
     const retryIntervalMs = options.retryIoIntervalMs;
     const causes = [] as unknown[];
     for (let i = 0; i <= retries; i++) {
@@ -582,7 +622,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         causes.push(err);
         this._logger.trace('IO error occuered.', err);
         if (i < retries) {
-          sleepSync(retryIntervalMs);
+          sleepSync(this.#jittered(retryIntervalMs));
           continue;
         }
         let detailMsg: string = '', code: string = 'EFILELOCK';
@@ -706,7 +746,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       // Since the temporary file could not be opened exclusively, it is determined that the lock is currently being updated.
       if (ticket === undefined/*tmpCreated === false*/) {
         return { ticket, reason: 'EUPDATING', 
-          cause: 'Found a temporary `lock file` was found, so the `lock file` may still be updating.' };
+          cause: 'Found a `temporary lock file`, so the `lock file` may still be updating.' };
       }
     }
     catch (err) {
@@ -734,7 +774,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
           // and return an indication that locking is not possible.
           ticket.release();
           //tmpCreated && this._unlinkSync(tmpLockFile, options, 'double', "Failed to remove the temporary `lock file`.");
-          return { ticket: undefined, reason: 'EALREADYLOCKED', cause: '`lock file` already exists.' }; 
+          return { ticket: undefined, reason: 'EALREADYLOCKED', cause: 'The `lock file` already exists.' }; 
         } 
       }
       else {
@@ -952,6 +992,15 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
+   */
+  #jittered(interval: number) {
+    const rate = 0.2; // ±20%
+    const jitter = (1 - rate) + Math.random() * rate * 2;
+    return Math.round(jitter * interval);
+  }
+
+  /**
+   * @internal
    * Get the list of `lock sharer`s.
    * @param options 
    * @param msg 
@@ -961,7 +1010,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     try {
       return this.#readdirSync(options._sharerDir, options).
           filter(item => item.isFile() && item.name !== '.lock').
-          map(item => item.name);
+          map(item => path.join(options._sharerDir, item.name));
     }
     catch (err) {
       throw new FileLockError(msg, {
@@ -995,38 +1044,19 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Open the `lock file` exclusively.
-   * @param options Lock options.
-   */
-  _openLockFileExclusively(options: AllOptions, path?: string): boolean {
-    try {
-      this.#openSyncExclusively(path || options._filePath, options);
-      return true;
-    }
-    catch (err) {
-      let code = "EUNKNOWN";
-      // Avoided `if` statements to address code coverage requirements.
-      err instanceof Error && 'code' in err && (code = String(err.code));
-      if (code  === 'EEXIST') return false;
-      throw err;
-    }
-  }
-
-  /**
-   * @internal
    * Open the file for exclusive writing.
    * @param path 
    * @param options 
    * @param msg 
    * @param noRetry 
    */
-  #openSyncExclusively(path: string, options: AllOptions, msg = "Couldn't create the file."/* noRetry: boolean = false*/): void {
+  #openSyncExclusively(path: string, options: AllOptions, msg = "Couldn't create the file.", retryMode: RetryMode = 'normal'): void {
     this.#accessInfo(
       path,
       () => { const fd = fs.openSync(path, 'wx'); fs.closeSync(fd); },
       options, 
       msg,
-      //noRetry ? 'no-retry' : 'normal'
+      retryMode
     )
   }
 
@@ -1184,7 +1214,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param retryMode 
    * @param msg 
    */
-  #rmSync(path: string, options: AllOptions, fsOpts: object = {}, retryMode: 'normal' | /*'no-retry' |*/ 'double' = 'normal', msg = `Couldn't remove the file or directory.`): void {
+  #rmSync(path: string, options: AllOptions, fsOpts: object = {}, retryMode: RetryMode = 'normal', msg = `Couldn't remove the file or directory.`): void {
     this.#accessInfo(
       path,
       () => fs.rmSync(path, fsOpts),
@@ -1240,14 +1270,14 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #startHeartbeat(options: AllOptions): void {
-    REQUIRE_DEBUG(this._heartbeatTimer == null, 
+    REQUIRE_DEBUG(this.#heartbeatTimer == null, 
       'Heartbeat multiple startup error. Possible bug.', 
       FileLockError, { code: 'EFILELOCK', props: { options } });
 
     this._logger.trace(`Start heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date())}`);
 
-    this._heartbeatTimer = setInterval(
-      () => {
+    this.#heartbeatTimer = setInterval(() => {
+      void (async () => {
         try {
           const shouldContinue = () => this._acquired && this._isAlreadyCancelled(options) === false;
           // Avoid `if` statements to ensure code coverage.
@@ -1256,7 +1286,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
             this.#stopHeartbeat();
           }
           else {
-            this.#updateHeartbeat(options);
+            await this.#updateHeartbeat(options);
             // Double-checking, just to be sure.
             // v8 ignore next  -- @preserve
             if (shouldContinue() == false) this.#stopHeartbeat();
@@ -1271,9 +1301,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
             options
           );
         }
-      },
-      options.heartbeatIntervalMs
-    );
+      })();
+    }, options.heartbeatIntervalMs);
   }
 
   /**
@@ -1293,9 +1322,9 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Stop heartbeat.
    */
   #stopHeartbeat(): void {
-    if (this._heartbeatTimer) {
-      clearInterval(this._heartbeatTimer);
-      this._heartbeatTimer = null;
+    if (this.#heartbeatTimer) {
+      clearInterval(this.#heartbeatTimer);
+      this.#heartbeatTimer = null;
       this._logger.trace(`Stop heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date())}`);
     }
   }
@@ -1350,7 +1379,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Remove the file.
    * @param options Lock options.
    */
-  private _unlinkSync(path: string, options: AllOptions, retryMode: 'normal' | /*'no-retry' |*/ 'double' = 'normal', msg = `Couldn't remove the file.`): void {
+  private _unlinkSync(path: string, options: AllOptions, retryMode: RetryMode = 'normal', msg = `Couldn't remove the file.`): void {
     this.#accessInfo(
       path,
       () => fs.unlinkSync(path),
@@ -1364,35 +1393,39 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @internal
    * Update heartbeat.
    */
-  #updateHeartbeat(options: AllOptions): void {
+  async #updateHeartbeat(options: AllOptions) {
     // v8 ignore else -- @preserve
-    if (this._heartbeatTimer && this.#heatbeatUpdating === false) {
+    if (this.#heartbeatTimer && this.#heatbeatUpdating === false) {
       this.#heatbeatUpdating = true;
+      let ticket;//: Ticket | undefined;
+      const timout = Math.floor(this.#lastHeartbeatAt ?? Date.now() 
+        + Math.max(options.heartbeatTtlMs / 2, options.heartbeatIntervalMs - options.pollIntervalMs * 2));
+      // 更新チケット入手
+      do {
+        try {
+          if ((ticket = Ticket.get(this, options, 'no-retry')) !== undefined) break;
+        }
+        catch (_err) {
+          // リトライする
+        }
+        if (timout <= Date.now() || this.#heartbeatTimer === null) return;
+        await sleepAsync(this.#jittered(options.pollIntervalMs));
+      }
+      // ignore the eslint warning about the infinite loop, as it is controlled by the timeout condition.
+      // eslint-disable-next-line no-constant-condition
+      while (true);
+
+      // メタデータ入手および更新（エラーは、致命的エラー（浸食またはIOエラー）のため、そのまま伝える）
+      let updateTime;
       try {
-        const meta = this.#getInfo(options); // IOエラーはあきらめる、浸食エラーもあきらめる（エラーを伝える）
-        meta.lastHeartbeatAt = Date.now();
-        //try {
-          this.#updateInfo(meta, options); // tmp 発見は、リトライ対象であり、getInfoからやり直し。。。
-          // ★★#assertLockのtmp生成失敗ロジックを確認せよ！これを、#updateInfoにしこむ？　ではなくて、、、
-          // というよりは、、「アップデート権獲得」（これ、ロック取得時といっしょやね、、共通関数だろうねぇ、、
-          // 、、現状の排他ロックファイルオープンみたな名前（_openLockFileExclusively）ではなく、共通的な名前にしましょう！！！
-          // を宣言する関数を作ろう！　そして、ハートビート更新間隔までは、リトライしてもいいじゃないかな？　被ったら、、、更新しないようにしたし！！！！こんだらどうかな？？
-        //}
-        //catch (err) { /// ★★★、、、、こんなんでいいの？？　あとから主張するロックしたいやからに、割り込まれて、、、１リトライであきらめるなんて、、、せめて、、ここでも、IOリトライだけではなく、、ちゃんとリトライすべきでないの？？
-          // しかも、、ロックリトライよりも、短時間のリトライってどうよ、、、倍速でも良いくらいだよ、、そして、ハートビート間隔の４分の１～半分くらいは使ってもよいかもよ。。。。。
-          // じゃぁ、、、IO noretry　で、　本チャンリトライを、、、75ms毎に、、500msec（鼓動の半分程度）までとか、、（つまり、６～７回繰り返すか、、、、？）それとも、このハートビート更新はあきらめるか？　あきらめても、、次のハートビート更新があるじゃん？
-          /*const code = err instanceof Error && 'code' in err ? err.code : 'EFILELOCK';
-          if (code === 'EEXIST') { // The presence of a .tmp file indicates that the system has been compromised.
-            // いやぁ、、、tmp存在だけで、浸食判定はだめだよね。。。だって、仮ロック中の可能性がものすごく大きいからね。。
-            throw new LockCompromised("Failed to update `heartbeet`.", { key: this._key, props: { causes: [err] } });
-          }
-          else {*/
-          //  throw err;
-          //}
-        //}
+        const meta = this.#getInfo(options);
+        updateTime = meta.lastHeartbeatAt = Date.now();
+        this.#updateInfo(meta, options, ticket);
         this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date(meta.lastHeartbeatAt))}`);
       }
       finally {
+        ticket.release();
+        this.#lastHeartbeatAt = updateTime;
         this.#heatbeatUpdating = false;
       }
     }
@@ -1422,14 +1455,14 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     //const tmpPath = options._filePath + '.tmp';
     if (ticket === undefined) {
       //this.#openSyncExclusively(tmpPath, options, "Failed to create the temporary `lock file`."/*, true*/)
-      ticket = Ticket.get(this, options);
+      ticket = Ticket.get(this, options, 'double');
     }
 
     try {
-      VERIFY(() => Boolean(ticket?.verify()), 
-        "The temporary `lock file` must exist, but it's not found.",
+      /*VERIFY_DEBUG(() => Boolean(ticket?.verify()), 
+        "Failed to create the `temporary lock file`.",
         FileLockError, { code: 'ENOENT', props: { key: this._key } }
-      );
+      );*/
       ticket?.confirm(meta);
       /*
       // Write to a temporary file first.
@@ -1448,7 +1481,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       }
       catch (err2) {
         // Preserve the original cleanup failure; the caller will wrap it as a generic I/O lock acquisition error.
-        this._logger.trace("Failed to remove the temporary file for the `lock file`.", err2);
+        this._logger.trace("Failed to remove the `temporary lock file`.", err2);
         let causes: unknown[];
         err2 instanceof FileLockError && 
           (causes = ('causes' in err2 ? err2.causes : []) as unknown[]).unshift(err) &&

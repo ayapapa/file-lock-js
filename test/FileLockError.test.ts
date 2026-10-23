@@ -585,7 +585,7 @@ describe('FileLockError', () => {
       const cause = {
         code: "EWMOON",
         path: getLockMetaPath(key) + '.tmp',
-        message: "Failed to write the temporary `lock file`.(writeFileSync error!)",
+        message: "Failed to write the `temporary lock file`.(writeFileSync error!)",
         causes: [cause2]
       };
       expect(err).toMatchObject({

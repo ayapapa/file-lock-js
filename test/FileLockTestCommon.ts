@@ -226,7 +226,7 @@ export class TestLock extends FileLock {
     const lock = this.getLock(key);
     return {
       lock_acquired: lock["_acquired"] === false ? 'ok' : 'ng',
-      lock_heartbeatTimer: lock["_heartbeatTimer"] === null ? 'ok' : 'ng', 
+      lock_heartbeatTimer: lock["_isALiveHeartbeatTimer"] === false ? 'ok' : 'ng', 
       lockfile_removed: fs.existsSync(getLockMetaPath(key)) === false ? 'ok' : 'ng',
       lockSharersDir_removed: fs.existsSync(getLockSharerDir(key)) === false ? 'ok' : 'ng',
       lockfile_tmp_removed: fs.existsSync(getLockMetaPath(key) + '.tmp') === false? 'ok' : 'ng',

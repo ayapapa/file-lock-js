@@ -26,7 +26,7 @@ export default defineConfig({
     restoreMocks: true,
     unstubGlobals: true,
     
-    // File patterns to exclude
+    include: ['test/*.test.ts'],
     exclude: [...configDefaults.exclude, 'e2e/*'],
     
     // Coverage measurement settings

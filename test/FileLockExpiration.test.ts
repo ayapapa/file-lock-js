@@ -96,9 +96,11 @@ describe('FileLock', () => {
     const key = "invald_loclfile_error";
     const meta = {};
     setLockMeta(key, meta);
+    const d = new Date(Date.now() - 5000); // 過去に設定
+    fs.utimesSync(getLockMetaPath(key), d, d);
     expect.assertions(2);
     try {
-      expect(await FileLock.withLock(key, () => "completed", { heartbeatTtlMs: 2000, timeoutMs: 2500, invalidTtlMs: 2100 })).toBe("completed")
+      expect(await FileLock.withLock(key, () => "completed", { heartbeatTtlMs: 5000/*min*/, timeoutMs: 5500, invalidTtlMs: 5100/*min+100*/ })).toBe("completed")
     }
     finally {
       try { removeLockFiles(key); } catch (_e) {;};

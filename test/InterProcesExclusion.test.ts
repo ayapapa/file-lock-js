@@ -191,7 +191,7 @@ describe('別プロセスとの競合テスト', () => {
 
   it("子プロセスを先に起動したが、実行中に、強制的にプロセスをキルする。親プロセスは、ロック情報の無効化を確認後ロック処理が進む.", async () => {
     const key = 'subKey0031';
-    const child = await execChild('lock', { key, sleep: 1000, ttlMs: 1100, heartbeatTtlMs: 2000, waitAquired: true });
+    const child = await execChild('lock', { key, sleep: 1000, ttlMs: 1100, heartbeatTtlMs: 5000, waitAquired: true });
 
     //await sleepAsync(500);
     child.cid.kill();
@@ -200,7 +200,7 @@ describe('別プロセスとの競合テスト', () => {
         await sleepAsync(500);
         return 'completed'
       },
-      { timeoutMs: 5000, heartbeatTtlMs: 2000}
+      { timeoutMs: 5500, heartbeatTtlMs: 5000}
     );
 
     const results = await Promise.allSettled([child.promise, pp]);
@@ -220,24 +220,27 @@ describe('別プロセスとの競合テスト', () => {
   });
 
   it("同じキーを使い、親プロセスを先に起動したが、親のロックファイルが賞味期限となり、子プロセスがロックファイルを上書きしてロックを取得し完了する", async () => {
+    
     const key = 'keyParentStale001';
-
     const parentPr = FileLock.withLock(key, async () => {
-      const lock = TestLock.getLock(key);
+      //const lock = TestLock.getLock(key);
 
       // ハートビートを強制的に止める
-      clearInterval(lock["_heartbeatTimer"] as NodeJS.Timeout);
+      //clearInterval(lock["_heartbeatTimer"] as NodeJS.Timeout);
 
-      lock["_heartbeatTimer"] = null;
-      // ロックファイルのttlMsを2000に書き換える
+      //lock["_heartbeatTimer"] = null;
+      //// ロックファイルのttlMsを2000に書き換える
       const meta = getLockMeta(key);
-      meta["expirationTime"] = Date.now() + 1950; // 遅延考慮
+      const t = Date.now() - 5500;
+      //meta["expirationTime"] = Date.now() + 1950; // 遅延考慮
+      meta["expirationTime"] = t;
+      meta["lastHeartbeatAt"] = t;
       setLockMeta(key, meta);
 
       await sleepAsync(4000);
       return 'completed'
     }, {
-      timeoutMs: 1000, ttlMs: 5000, heartbeatTtlMs: 2000
+      timeoutMs: 1000, ttlMs: 5000, heartbeatTtlMs: 5000
     });
 
     const child = await execChild('lock', { key, sleep: 450, ttlMs: 1500, timeOutMs: 5000, waitAquired: true });

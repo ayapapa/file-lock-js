@@ -457,10 +457,10 @@ describe('FileLockOptions test.', () => {
       ttlMs:                1000,
       pollIntervalMs:       100,
       heartbeatIntervalMs:  1000,
-      heartbeatTtlMs:       2000,
+      heartbeatTtlMs:       5000,
       retriesOnIoErr:       0,
-      retryIoIntervalMs:      100,
-      invalidTtlMs:         2000,
+      retryIoIntervalMs:    100,
+      invalidTtlMs:         5000,
     };
 
     await FileLock.withLock('testKey8989', () => {}, opts);

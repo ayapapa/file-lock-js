@@ -46,7 +46,7 @@ export interface FileLockOptions extends LockBaseOptions {
   /**
    * Validity period in milliseconds for the last heartbeat update.  <br>
    * If this amount of time has not elapsed since the last update, the process is considered to be still running. This cannot be used in conjunction with `heartbeatTtlSec`.
-   * Minimum is `2000`; if a value lower than this is specified, this minimum value is used.
+   * Minimum is `5000`; if a value lower than this is specified, this minimum value is used.
    * Default is `5000`.
    */
   heartbeatTtlMs?: number;
@@ -125,7 +125,7 @@ export const minimumFileLockOptions: Readonly<FileLockRequiredNumericOptions> = 
   ...minimumLockBaseOptions,
   pollIntervalMs:       100,
   heartbeatIntervalMs:  1000,
-  heartbeatTtlMs:       2000,
+  heartbeatTtlMs:       5000,
   retriesOnIoErr:       0,
   retryIoIntervalMs:      100,
 }

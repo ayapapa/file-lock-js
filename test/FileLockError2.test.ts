@@ -675,7 +675,7 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
         causes: [{
           code: "ENOENT",
           key,
-          message: "[VERIFY] The temporary `lock file` must exist, but it's not found."
+          message: "[VERIFY] Not found the `temporary lock file`."
         }],
       });
     }
@@ -736,9 +736,7 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
       closeSpy.mockRestore();
       rmSpy.mockRestore();
 
-      try {
-        if (fs.existsSync(path)) fs.unlinkSync(path);
-      } catch (_e) {;}
+      try { removeLockFiles(key); } catch (_e) {;}
     }
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
