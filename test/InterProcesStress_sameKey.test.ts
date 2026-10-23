@@ -26,31 +26,31 @@ afterAll(() => {
 });
 
 
-describe('同キーを使った複数プロセス同時ロックテスト', () => {
+describe('Simultaneous lock test for multiple processes using the same key.', () => {
 
-  it("2プロセス", async () => {
+  it("2 processes.", async () => {
     await testMultiProcess(2, "multiProcessLockWithSameKey2");
   });
 
   if (isCI) return;
 
-  it("5プロセス", async () => {
+  it("5 processes.", async () => {
     await testMultiProcess(5, "multiProcessLockWithSameKey5");
   });
 
-  it("10プロセス", async () => {
+  it("10 processes.", async () => {
     await testMultiProcess(10, "multiProcessLockWithSameKey10");
   });
 
-  it("25プロセス", async () => {
+  it("25 processes.", async () => {
     await testMultiProcess(25, "multiProcessLockWithSameKey25");
   });
 
-  it("50プロセス", async () => {
+  it("50 processes.", async () => {
     await testMultiProcess(50, "multiProcessLockWithSameKey50");
   });
 
-  it("100プロセス", async () => {
+  it("100 processes.", async () => {
     await testMultiProcess(100, "multiProcessLockWithSameKey100");
   });
 
