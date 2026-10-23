@@ -223,17 +223,9 @@ describe('別プロセスとの競合テスト', () => {
     
     const key = 'keyParentStale001';
     const parentPr = FileLock.withLock(key, async () => {
-      //const lock = TestLock.getLock(key);
-
-      // ハートビートを強制的に止める
-      //clearInterval(lock["_heartbeatTimer"] as NodeJS.Timeout);
-
-      //lock["_heartbeatTimer"] = null;
-      //// ロックファイルのttlMsを2000に書き換える
       const meta = getLockMeta(key);
       const t = Date.now() - 5500;
-      //meta["expirationTime"] = Date.now() + 1950; // 遅延考慮
-      meta["expirationTime"] = t;
+      meta["expiresAt"] = t;
       meta["lastHeartbeatAt"] = t;
       setLockMeta(key, meta);
 
@@ -265,7 +257,7 @@ describe('別プロセスとの競合テスト', () => {
   it("同じキーを使い、子プロセスを先に起動⇒親のロック（タイムアウト0、リエントリー）→タイムアウトエラー", async () => {
     const key = 'rentryAlreadyLocked';
 
-    const child = await execChild('lock', { key, sleep: 450, ttlMs: 1000, timeOutMs: 0, waitAquired: true });
+    const child = await execChild('lock', { key, sleep: 1000, ttlMs: 2000, timeOutMs: 0, waitAquired: true });
 
     const parentPr = FileLock.withLock(key, () => {
       return 'completed'

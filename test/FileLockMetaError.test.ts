@@ -17,7 +17,7 @@ describe('FileLock', () => {
 
   async function testInvalidLockInformationFile(target: string, v?: unknown ) {
     const key = "testKey";
-    const meta = {ownerId: "hoge", counter: 1, expirationTime: Date.now() + 10*1000, heartbeatTtlMs:5000, lastHeartbeatAt: Date.now()};
+    const meta = {ownerId: "hoge", counter: 1, expiresAt: Date.now() + 10*1000, heartbeatTtlMs:5000, lastHeartbeatAt: Date.now()};
     const mt = {...meta} as Record<string, unknown>;
     if (v) {
       mt[target] = v;
@@ -68,8 +68,8 @@ describe('FileLock', () => {
     await testInvalidLockInformationFile("counter");
   });
 */
-  it("Spoof the invalid lock information storage file and verify that an error occurs.(No expirationTime)", async () => {
-    await testInvalidLockInformationFile("expirationTime");
+  it("Spoof the invalid lock information storage file and verify that an error occurs.(No expiresAt)", async () => {
+    await testInvalidLockInformationFile("expiresAt");
   });
 
   it("Spoof the invalid lock information storage file and verify that an error occurs.(No heartbeatTtlMs)", async () => {
@@ -84,8 +84,8 @@ describe('FileLock', () => {
     await testInvalidLockInformationFile("counter", 'hogehogehoge');
   });
 */
-  it("Spoof the invalid lock information storage file and verify that an error occurs.(No expirationTime)", async () => {
-    await testInvalidLockInformationFile("expirationTime", "nyannnyann");
+  it("Spoof the invalid lock information storage file and verify that an error occurs.(No expiresAt)", async () => {
+    await testInvalidLockInformationFile("expiresAt", "nyannnyann");
   });
 
   it("Spoof the invalid lock information storage file and verify that an error occurs.(No heartbeatTtlMs)", async () => {

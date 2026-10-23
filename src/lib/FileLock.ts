@@ -834,7 +834,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         // When this lock request becomes the lock owner, 
         // the optional `lock sharer` ID and optional owner ID are set to match `this._ownerId`.
         ownerId: options._ownerId = options._sharerId = this._ownerId, 
-        expirationTime: Date.now() + options.ttlMs,
+        expiresAt: Date.now() + options.ttlMs,
         heartbeatTtlMs: options.heartbeatTtlMs,
         lastHeartbeatAt: Date.now(),
       },
@@ -917,7 +917,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         type: (v) => Array.isArray(v) && v.every(val => typeof val === 'string'),
         optional: true
        }, 
-      { key: "expirationTime",    type: "number" },
+      { key: "expiresAt",    type: "number" },
       { key: "heartbeatTtlMs",    type: "number" },
       { key: "lastHeartbeatAt",   type: "number" },
       //{ key: "counter",           type: "number" },
@@ -972,7 +972,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #isLockExpired(meta: FileLockMeta): boolean {
     this._logger.trace("The `lock file` contents in isLockExpired():", meta);
-    const expired = meta.expirationTime <= Date.now();
+    const expired = meta.expiresAt <= Date.now();
     const dead = meta.lastHeartbeatAt + meta.heartbeatTtlMs <= Date.now();
     this._logger.trace("expired:", expired, "dead:", dead);
     return expired && dead;

@@ -18,9 +18,9 @@ afterEach(() => {
 
 describe('FileLock', () => {
 
-  it("If `expirationTime` is a past value and heartbeat is enabled, the lock cannot be acquired.", async () => {
+  it("If `expiresAt` is a past value and heartbeat is enabled, the lock cannot be acquired.", async () => {
     const key = String(randomUUID());
-    const meta = {ownerId: "hoge", counter: 1, expirationTime: Date.now() - 1000, heartbeatTtlMs:5000, lastHeartbeatAt: Date.now()};
+    const meta = {ownerId: "hoge", counter: 1, expiresAt: Date.now() - 1000, heartbeatTtlMs:5000, lastHeartbeatAt: Date.now()};
     setLockMeta(key, meta);
 
     expect.assertions(2);
@@ -42,9 +42,9 @@ describe('FileLock', () => {
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
-  it("If `expirationTime` is valid but heartbeat is disabled, the lock cannot be acquired.", async () => {
+  it("If `expiresAt` is valid but heartbeat is disabled, the lock cannot be acquired.", async () => {
     const key = String(randomUUID());
-    const meta = {ownerId: "hoge", counter: 1, expirationTime: Date.now() + 5000, heartbeatTtlMs:1000, lastHeartbeatAt: Date.now() - 2000};
+    const meta = {ownerId: "hoge", counter: 1, expiresAt: Date.now() + 5000, heartbeatTtlMs:1000, lastHeartbeatAt: Date.now() - 2000};
     setLockMeta(key, meta);
 
     expect.assertions(2);
@@ -66,9 +66,9 @@ describe('FileLock', () => {
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
-  it("If both `expirationTime` and the heartbeat are disabled, the lock can be acquired.", async () => {
+  it("If both `expiresAt` and the heartbeat are disabled, the lock can be acquired.", async () => {
     const key = String(randomUUID());
-    const meta = {ownerId: "hoge", counter: 1, expirationTime: Date.now() - 2000, heartbeatTtlMs:1000, lastHeartbeatAt: Date.now() - 2000};
+    const meta = {ownerId: "hoge", counter: 1, expiresAt: Date.now() - 2000, heartbeatTtlMs:1000, lastHeartbeatAt: Date.now() - 2000};
     setLockMeta(key, meta);
 
     expect.assertions(2);

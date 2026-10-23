@@ -296,7 +296,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     ErrClass: unknown, 
     matchObj: object,
     sweep = false,
-    meta: Record<string, unknown> | null = {ownerId: "hoge", expirationTime: Date.now() - 100, heartbeatTtlMs: 50, lastHeartbeatAt: Date.now() - 100},
+    meta: Record<string, unknown> | null = {ownerId: "hoge", expiresAt: Date.now() - 100, heartbeatTtlMs: 50, lastHeartbeatAt: Date.now() - 100},
     ) {
 
     if (meta) setLockMeta(key, meta);
@@ -586,7 +586,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
         message: "The `lock file` already exists, but its validity could not be determined due to an I/O error.",
       },
       true,
-      {ownerId: "hoge", expirationTime: Date.now(), heartbeatTtlMs:25000, lastHeartbeatAt: Date.now() - 3000},
+      {ownerId: "hoge", expiresAt: Date.now(), heartbeatTtlMs:25000, lastHeartbeatAt: Date.now() - 3000},
     );
   });
 

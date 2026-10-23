@@ -16,7 +16,7 @@ export interface FileLockMeta {
   processArgv?: string[],
 
   /** Lock expiration time. */
-  expirationTime: number,
+  expiresAt: number,
 
   /** 
    * The valid duration since the last heartbeat.
