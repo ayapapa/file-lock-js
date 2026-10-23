@@ -194,14 +194,16 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
   /**
    * @internal
-   * Lock owner ID to be stored in the lock file.
+   * Lock instance ID. When a lock is acquired, 
+   * this ID is stored within the "lock file" as the "owner ID" of the lock.
    */
-  protected _ownerId: string;
+  protected get _id() { return this.#id; }
 
-  /**
-   * @internal 
-   */
+  /** @internal */
   #acquired: boolean = false;
+
+  /** @internal */
+  #id: string;
 
   /**
    * @internal
@@ -228,8 +230,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
   protected constructor(key: string/*, config: LockBaseConfig = LockBase._config*/) {
     this._key     = key;
     this._logger  = LockBase._logger;//LockBase._resolveLogger(LockBase.#resolveConfig(config));
-    this._ownerId = crypto.randomUUID();
-    //this._debug   = LockBase._config._debug;//config._debug === true;
+    this.#id = crypto.randomUUID();
   }
 
   /**
@@ -374,7 +375,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     options._sharerId = crypto.randomUUID();
     // Note: This ID is a unique identifier assigned to each lock request.
     // If the lock is successfully acquired via the request (i.e., the key is not currently locked),
-    // `_sharerId` is set to match this instance's owner ID (`this._ownerId`) upon acquisition.
+    // `_sharerId` is set to match this instance's ID (`this.#id`) upon acquisition.
   }
 
   /**

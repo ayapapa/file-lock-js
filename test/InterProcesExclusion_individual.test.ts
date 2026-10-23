@@ -29,7 +29,7 @@ describe('別プロセスとの競合テスト', () => {
       },
       { timeoutMs: pPara.timeout }
     );
-    const createChild = () => {
+    const createChild = async () => {
       const cOpts = { key, sleep: cPara.sleep, timeOutMs: cPara.timeOutMs ?? 0, waitAquired: cPara.waitAquired ?? true } as Options;
       if (cPara.ttl) cOpts.ttlMs = cPara.ttl;
       return execChild('lock', cOpts);

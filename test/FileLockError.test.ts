@@ -163,10 +163,12 @@ describe('FileLockError', () => {
 
     const key = "testKey";
     expect.assertions(4);
+    // Disabling caching results in a new instance being created each time.
+    FileLock.setConfig({ cache: false });
     try {
       await FileLock.withLock(key, async () => {
         // Clear the cache to create a new lock instance.
-        TestLock.clearCache();
+        //TestLock.clearCache();
 
         await FileLock.withLock(key, async () => {
           await sleepAsync(500);

@@ -322,8 +322,14 @@ export class TestLock extends FileLock {
     return super["_onExitFns"];
   }
 
+  // Get a `TestLock` instance.
   static getLock(key: string): TestLock {
     return new TestLock(super["_getLock"](key));
+  }
+
+  // Get a `FileLock` instance.
+  static getFileLock(key: string): FileLock {
+    return super["_getLock"](key);
   }
 
   static isReleasedStateDetail(key: string) {
@@ -347,20 +353,6 @@ export class TestLock extends FileLock {
 
   static getLockDirPath() {
     return super["_getLockDirPath"]();
-  }
-
-  static getCache() {
-    return super["_cache"];
-  }
-
-  static clearCache() {
-    const cache = this.getCache();
-    if (cache) cache.clear();
-  }
-
-  static getCacheSize() {
-    const size = (this.getCache()?.size) ?? 0;
-    return size;
   }
 
   static getHistoryPath(): string {

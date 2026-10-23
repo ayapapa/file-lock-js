@@ -112,11 +112,13 @@ describe('FileLock', () => {
   it("When reentrant locking is enabled, if `withLock` is called from within " +
     "a callback function using a different lock instance but the same key while the lock " + 
     "is already held, the call completes successfully.", async () => {
-
-    const key = "testKey", retVal = "Reentrant-lock is enabled.";
-    expect (await FileLock.withLock(key, async () => {
+      // Disabling caching results in a new instance being created each time.
+      FileLock.setConfig({ cache: false });
+      const key = "testKey", retVal = "Reentrant-lock is enabled.";
+      expect (await FileLock.withLock(key, async () => {
       // Clear the cache to create a new lock instance.
-      TestLock.clearCache();
+      //TestLock.clearCache();
+
 
       return await FileLock.withLock(
         key, 

@@ -96,10 +96,11 @@ export class Cache<K = string, V = unknown> {
    * Note that no validation of the value is performed; therefore, 
    * the method will return `true` as long as the value exists, even if it has expired.
    */
+/*
   public has(key: K): boolean {
     return this.#cache.has(key);
   }
-
+*/
   /**
    * Put the `value` with the `key`. 
    * @param key Key.

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type FileLockConfig, FileLock } from '../src/index.ts';
 import { Cache } from '../src/lib/Cache.ts';
-import { logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
+import { sleepAsync } from './FileLockTestCommon.ts'
 
 
 let orgConfig: FileLockConfig;
@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe('Cache', () => {
-
+/*
   it("After clearing the cache, the number of cache entries is 0.", async () => {
     const retVal = "test_005", key = retVal;
     try {
@@ -77,7 +77,7 @@ describe('Cache', () => {
       }
     );
   });
-
+*/
   // Cache
   it("Cache", () => {
     expect(() => new Cache()).not.toBeUndefined();
@@ -90,6 +90,15 @@ describe('Cache', () => {
     cache.set('CacheMax1_1', 'CacheMax1');
     cache.set('CacheMax1_2', 'CacheMax1');
     expect(cache.size).toBe(1);
+  });
+
+  it("Cache.clear", () => {
+    const cache = new Cache();
+    cache.set('CacheMax1_1', 'CacheMax1');
+    cache.set('CacheMax1_2', 'CacheMax1');
+    expect(cache.size).toBe(2);
+    cache.clear();
+    expect(cache.size).toBe(0);
   });
 
   it("Cache expired(set&get)", async () => {

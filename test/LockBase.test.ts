@@ -84,6 +84,10 @@ describe('LockBase and Util', () => {
       this._onError(err, op, opts as any);
       return '_monitor' in opts ? opts._monitor as LockMonitor : { cancelled: false };
     }
+
+    get acquired() {
+      return this._acquired;
+    }
   }
 
   async function testNotImpleMethod(cb: () => Promise<void>) {
@@ -112,20 +116,19 @@ describe('LockBase and Util', () => {
     });
   });
 
-/*
-  it("Failure to implement `LockBase._acquire()` results in an `not implemented` error.", async () => {
-    await testNotImpleMethod(async () => {
-      await (new TestLockBase().test_acquire());
-    });
+  it("`LockBase._acquire()`.", async () => {
+      const tlb = new TestLockBase();
+      await tlb.test_acquire();
+      expect(tlb.acquired).toBeTruthy();
   });
-*/
-/*
-  it("Failure to implement `LockBase._release()` results in an `not implemented` error.", async () => {
-    await testNotImpleMethod(async () => {
-      await (new TestLockBase().test_release());
-    });
+
+  it("`LockBase._release()`.", async () => {
+      const tlb = new TestLockBase();
+      await tlb.test_acquire();
+      expect(tlb.acquired).toBeTruthy();
+      await tlb.test_release();
+      expect(tlb.acquired).toBeFalsy();
   });
-*/
 
   it("When you specify an error that does not have a code in `LockBase._onError()`.", () => {
     const tl = new TestLockBase();

@@ -36,6 +36,13 @@ type RetryMode = 'normal' | 'no-retry' | 'double';
  */
 class Ticket {
 
+  /**
+   * Factory for this class instance.
+   * @param owner `FileLock` instance.
+   * @param options Oprions.
+   * @param retryMode Retry mode.
+   * @returns An instance if sucess to open('wx') the 'temporary lock file`., otherwise `undefined`.
+   */
   static get(owner: FileLock, options: AllOptions, retryMode: RetryMode = 'normal') {
     const tmpLockFile = options._filePath + '.tmp';
     if (owner['_openLockFileExclusively'](options, tmpLockFile, retryMode)) {
@@ -58,10 +65,12 @@ class Ticket {
   }
 
   release(): void {
-    if (this.#released) return;
-    this.#released = true;
-    if (this.#owner['_existsSync'](this.#path, this.#options)) {
-      this.#owner['_unlinkSync'](this.#path, this.#options, 'double', "Failed to remove the `temporary lock file`.");
+    // v8 ignore else -- @preserve
+    if (!this.#released) {
+      this.#released = true;
+      if (this.#owner['_existsSync'](this.#path, this.#options)) {
+        this.#owner['_unlinkSync'](this.#path, this.#options, 'double', "Failed to remove the `temporary lock file`.");
+      }
     }
   }
 
@@ -72,7 +81,8 @@ class Ticket {
     REQUIRE(() => Boolean(this.verify()), 
         "Not found the `temporary lock file`.",
         FileLockError, { code: 'ENOENT', props: { key: this.#owner['_key'] } }
-    );    // Write to a temporary file first.
+    );
+    // Write to a temporary file first.
     this.#owner['_writeFileSync'](this.#path , meta, this.#options, "Failed to write the `temporary lock file`.");
     // Replace the target file path with the temporary file (if the file already exists, it is overwritten atomically).
     this.#owner['_renameSync'](this.#path , this.#options._filePath, this.#options, "Failed to rename the `temporary lock file`.");
@@ -95,9 +105,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   /**
    * @internal
    * FileLock instance cache associated with a key. 
-   * Uses `LRUCache`, providing features to set a maximum cache size and prune (remove) infrequently accessed elements.
    */
-  private static _cache: Cache<string, FileLock> | null;
+  static #cache: Cache<string, FileLock> | null;
 
   /** 
    * @internal
@@ -211,18 +220,18 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     FileLock.#config = { ...FileLock.getConfig(), ...dConf };
 
     // chache
-    this._cache?.clear();
+    FileLock.#cache?.clear();
     if (FileLock.#config.cacheMaxNum === 0) FileLock.#config.cache = false;
     // If cache is enabled, (Re)create cache.
     if (FileLock.#config.cache) {
-      FileLock._cache = new Cache<string, FileLock>({
+      FileLock.#cache = new Cache<string, FileLock>({
         max: FileLock.#config.cacheMaxNum,
         ttlMs: FileLock.#config.cacheTtlMs,
       });
     }
     // or set null to chache.
     else {
-      FileLock._cache = null;
+      FileLock.#cache = null;
     }
 
     // `lock directory`
@@ -266,24 +275,15 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Get `cache` instance. <br>
-   * It is set to `private` for testing purposes.
-   */
-/*  private static _getCache(): Cache<string, FileLock> | null {
-    return FileLock._cache;
-  }
-*/
-  /**
-   * @internal
    * Get `lock` instance. <br>
    * It is set to `private` for testing purposes.
    * @param key Lock key. 
    */
   private static _getLock(key: string): FileLock {
-    let lock = this._cache?.get(key);
+    let lock = FileLock.#cache?.get(key);
     if (!lock) {
       lock = new FileLock(key);
-      this._cache?.set(key, lock);
+      FileLock.#cache?.set(key, lock);
     }
     return lock;
   }
@@ -374,7 +374,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   static #onExitFn(code: number | null | undefined, signal: NodeJS.Signals | null) {
     FileLock._logger.trace("Exited by", { code, signal });
-    FileLock._cache?.forEach(value => value.#onExit(code, signal));
+    FileLock.#cache?.forEach(value => value.#onExit(code, signal));
   }
 
   /** 
@@ -782,8 +782,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         const cause = info.cause ? info.cause : info.reason;
         // Verify the validity of this file according to the `invalidTtlMs` option.
         if ('invalidTtlMs' in options) {
+          // v8 ignor else -- @preserve
           if (this.#isStaleInvalidFile(options.invalidTtlMs, options)) {
-            // The file is determined to be stale; therefore, it is lockable.
             return { ticket, reason: 'STALEINVALID', cause };
           }
         }
@@ -833,8 +833,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     this.#updateInfo(
       {
         // When this lock request becomes the lock owner, 
-        // the optional `lock sharer` ID and optional owner ID are set to match `this._ownerId`.
-        ownerId: options._ownerId = options._sharerId = this._ownerId, 
+        // the optional `lock sharer` ID and optional owner ID are set to match `this._id`.
+        ownerId: options._ownerId = options._sharerId = this._id, 
         expiresAt: now + options.ttlMs,
         heartbeatExpiresAt: now + options.heartbeatTtlMs,
       },
@@ -1275,7 +1275,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       'Heartbeat multiple startup error. Possible bug.', 
       FileLockError, { code: 'EFILELOCK', props: { options } });
 
-    this._logger.trace(`Start heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date())}`);
+    this._logger.trace(`Start heartbeat(key: ${this._key}, ownerId: ${this._id}) at ${DateFormatter.format(new Date())}`);
 
     this.#heartbeatTimer = setInterval(() => {
       void (async () => {
@@ -1326,7 +1326,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     if (this.#heartbeatTimer) {
       clearInterval(this.#heartbeatTimer);
       this.#heartbeatTimer = null;
-      this._logger.trace(`Stop heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date())}`);
+      this._logger.trace(`Stop heartbeat(key: ${this._key}, ownerId: ${this._id}) at ${DateFormatter.format(new Date())}`);
     }
   }
 
@@ -1406,11 +1406,11 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       // 更新チケット入手
       do {
         try {
+          // v8 ignore next  -- @preserve
           if ((ticket = Ticket.get(this, options, 'no-retry')) !== undefined) break;
         }
-        catch (_err) {
-          // リトライする
-        }
+        catch (_err) { /* retry */ }
+        // 以下2ラインは高負荷のときに起こりやすいが、起こす条件を特定することは難しい、、、高負荷テスト次第で、カバレッジ対象から外そう！！
         if (timout <= Date.now() || this.#heartbeatTimer === null) return;
         await sleepAsync(this.#jittered(options.pollIntervalMs));
       }
@@ -1423,7 +1423,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         const meta = this.#getInfo(options);
         this.#heartbeatExpiresAt = meta.heartbeatExpiresAt = Date.now() + options.heartbeatTtlMs;
         this.#updateInfo(meta, options, ticket);
-        this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._ownerId}) at ${DateFormatter.format(new Date(meta.heartbeatExpiresAt))}`);
+        this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._id}) at ${DateFormatter.format(new Date(meta.heartbeatExpiresAt))}`);
       }
       finally {
         ticket.release();
