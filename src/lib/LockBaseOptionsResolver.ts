@@ -139,7 +139,7 @@ export class LockBaseOptionsResolver <
       Object.values(min).every(value => typeof value === 'number'),
       'The minimum options set (minimumOptions) contains properties that are not numbers.',
       InvalidOptions,
-      { name: 'this->minimumOptions', props: { minimumOptions: min } }
+      { props: { minimumOptions: min } }
     );
 
     const keys = Object.keys(this.minimumOptions);
@@ -152,7 +152,7 @@ export class LockBaseOptionsResolver <
           typeof opt[key] === 'number',
           `The value of the option property (${key}) must be a number.`,
           InvalidOptions,
-          { name: 'this->options', props: { key, value: opt[key] } }
+          { name: key, props: { value: opt[key] } }
         );
 
         opt[key] = Math.max(opt[key], min[key]);

@@ -15,7 +15,7 @@ export interface FileLockOptions extends LockBaseOptions {
    * Polling interval (checking if locked) in milliseconds until timeout.  <br>
    * Cannot be used with `pollIntervalSec`. <br>
    * Minimum is `100`; if a value lower than this is specified, this minimum value is used.
-   * Default is `100`. Specifying `0` also results in the default value.
+   * Default is `100`.
    */
   pollIntervalMs?: number;
 
@@ -127,5 +127,5 @@ export const minimumFileLockOptions: Readonly<FileLockRequiredNumericOptions> = 
   heartbeatIntervalMs:  1000,
   heartbeatTtlMs:       5000,
   retriesOnIoErr:       0,
-  retryIoIntervalMs:      100,
+  retryIoIntervalMs:    100,
 }

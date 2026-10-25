@@ -372,10 +372,11 @@ export class TestLock extends FileLock {
     Object.assign(this, lock);
   }
 
+  /*
   getReentrantContext() {
     return super["_getReentrantContext"]();
   }
-
+*/
   async testWithLockEmptyOptions(cb: () => unknown): Promise<unknown> {
     return super["withLock"](cb, {} as FileLockRequiredOptions);
   }

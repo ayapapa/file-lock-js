@@ -28,73 +28,15 @@ type AllOptions = AllOptionsT<FileLockAllOptions, FileLockInternalState>;
  */
 type FileLockAllOptions = FileLockRequiredOptions & Pick<FileLockOptions, 'invalidTtlMs'>
 
+/**
+ * @internal
+ */
 type RetryMode = 'normal' | 'no-retry' | 'double';
 
 /**
  * @internal
- * A ticket for creating or updating a lock file. <br>
- * Handles the creation of a `temporary lock file` and its subsequent application (via rename) to the actual lock file, ensuring an atomic update. 
  */
-class Ticket {
-
-  /**
-   * Factory for this class instance.
-   * @param owner `FileLock` instance.
-   * @param options Oprions.
-   * @param retryMode Retry mode.
-   * @param noThrow If `true`, no error is thrown.
-   * @returns An instance if sucess to open('wx') the 'temporary lock file`., otherwise `undefined`.
-   */
-  static get(owner: FileLock, options: AllOptions, retryMode: RetryMode = 'normal', noThrow = false) {
-    const tmpLockFile = options._filePath + '.tmp';
-    try {
-      if (owner['_openLockFileExclusively'](options, tmpLockFile, retryMode)) {
-        return new Ticket(owner, tmpLockFile, options);
-      }
-    }
-    catch (err) {
-      // v8 ignore else
-      if (!noThrow) throw err;
-    }
-    return undefined;
-  }
-  
-  #path: string; // The path to the `temporary lock file`.
-  #owner: FileLock;
-  #options: AllOptions;
-  #released = false;
-
-  private constructor(owner: FileLock, path: string, options: AllOptions) {
-    this.#owner = owner;
-    this.#path = path;
-    this.#options = options;
-  }
-
-  release(): void {
-    // v8 ignore else -- @preserve
-    if (!this.#released) {
-      this.#released = true;
-      if (this.#owner['_existsSync'](this.#path, this.#options)) {
-        this.#owner['_unlinkSync'](this.#path, this.#options, 'double', "Failed to remove the `temporary lock file`.");
-      }
-    }
-  }
-
-  verify = () => this.#owner[`_existsSync`](this.#path, this.#options);
-
-
-  confirm(meta: FileLockMeta) {
-    REQUIRE(() => Boolean(this.verify()), 
-        "Not found the `temporary lock file`.",
-        FileLockError, { code: 'ENOENT', props: { key: this.#owner['_key'] } }
-    );
-    // Write to a temporary file first.
-    this.#owner['_writeFileSync'](this.#path , meta, this.#options, "Failed to write the `temporary lock file`.");
-    // Replace the target file path with the temporary file (if the file already exists, it is overwritten atomically).
-    this.#owner['_renameSync'](this.#path , this.#options._filePath, this.#options, "Failed to rename the `temporary lock file`.");
-  }
-
-}
+type Ticket = { confirm: (meta: FileLockMeta) => void, release: () => void }; 
 
 /**
 * File locking. 
@@ -103,7 +45,7 @@ class Ticket {
 * Settings such as `timeoutMs` allow for waiting until an unreleased lock is freed. 
 */
 export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState> {
- 
+
   /** 
    * Static fields 
    */
@@ -124,7 +66,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @internal
    * The `lock directory`
    */
-  static #lockDir = FileLock._getLockDirPath();
+  static #lockDir = FileLock.#getLockDirPath();
 
   /**
    * @internal
@@ -244,7 +186,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     }
 
     // `lock directory`
-    FileLock.#lockDir = FileLock._getLockDirPath();
+    FileLock.#lockDir = FileLock.#getLockDirPath();
 
     // history
     FileLock.#historyDir =  path.join(FileLock.#lockDir, 'history');
@@ -275,9 +217,6 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
     // Resolve options.
     const rOpt = new FileLockOptionsResolver(options, minimumFileLockOptions, defaultOpts).getRequiredOptions();
-
-    // For testing
-    //FileLock._lastOptions = rOpt;
     
     return FileLock._getLock(key).withLock(onLockFn, rOpt);
   }
@@ -308,7 +247,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * It is set to `private` for testing purposes.
    * @returns A directory path for storing files containing lock information.
    */
-  private static _getLockDirPath() {
+  static #getLockDirPath() {
     const existsDir = (name: string): boolean => {
       let stat;
       try {
@@ -543,25 +482,6 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
-   * Open the `lock file` exclusively.
-   * @param options Lock options.
-   */
-  private _openLockFileExclusively(options: AllOptions, path?: string, retryMode: RetryMode = 'normal'): boolean {
-    try {
-      this.#openSyncExclusively(path || options._filePath, options, undefined, retryMode);
-      return true;
-    }
-    catch (err) {
-      let code = "EUNKNOWN";
-      // Avoided `if` statements to address code coverage requirements.
-      err instanceof Error && 'code' in err && (code = String(err.code));
-      if (code  === 'EEXIST') return false;
-      throw err;
-    }
-  }
-
-  /**
-   * @internal
    * Make advance preparations.
    * @param options Options
    */
@@ -658,7 +578,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     const _add = () => {
       const historyFile = FileLock.#historyPath;
       let contents = null;
-      if (this._existsSync(historyFile, options, `Couldn't check the existence of the history file.`)) {
+      if (this.#existsSync(historyFile, options, `Couldn't check the existence of the history file.`)) {
         try {
           contents = this.#readFileSync(historyFile, options, "Couldn't read the history file.");
         }
@@ -684,7 +604,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       }
 
       //  Update history.
-      this._writeFileSync(historyFile, history, options, "Couldn't update the history file.");
+      this.#writeFileSync(historyFile, history, options, "Couldn't update the history file.");
 
       // Adjusting the number of history files
       const list = fs.readdirSync(FileLock.#historyDir, { withFileTypes: true });
@@ -692,7 +612,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       if (names.length >= FileLock.#config.maxHistoryFiles) {
         names.sort();
         for( let i = 0; i < names.length - FileLock.#config.maxHistoryFiles; i++) {
-          this._unlinkSync(path.join(FileLock.#historyDir, names[i]), options, 'normal', `Couldn't remove the history file.`);
+          this.#unlinkSync(path.join(FileLock.#historyDir, names[i]), options, 'normal', `Couldn't remove the history file.`);
         }
       };
     };
@@ -725,7 +645,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   async #addSharer(options: AllOptions, msg: string = "Failed to add the lock request to `lock sharer directory`.") {
     const sharerPath = path.join(options._sharerDir, options._sharerId);
     try {
-      await this.#share(() => this._writeFileSync(sharerPath, '', options), options);
+      await this.#share(() => this.#writeFileSync(sharerPath, '', options), options);
     }
     catch (err) {
       throw new FileLockError(msg, {
@@ -744,7 +664,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Get ticket to create `lock file`.
     let ticket;
     try {
-      ticket = Ticket.get(this, options);
+      ticket = this.#getTicket(options);
       // Since the temporary file could not be opened exclusively, it is determined that the lock is currently being updated.
       if (ticket === undefined) {
         return { ticket, reason: 'EUPDATING', 
@@ -758,7 +678,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Create `lock file` or verify existing one lock information.
     try {
       // Open the `lock file` exclusively to check whether it can be locked.
-      const opened = this._openLockFileExclusively(options);
+      const opened = this.#openLockFileExclusively(options);
       if (opened) {
         return { ticket, reason: 'LOCKFILEOPENED' };
       }
@@ -850,7 +770,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Check if the file exists.
    * @param options Lock options.
    */
-  private _existsSync(path: string, options: AllOptions, msg = `check the existence of the file or directory.`): boolean {
+  #existsSync(path: string, options: AllOptions, msg = `check the existence of the file or directory.`): boolean {
     return this.#accessInfo(
       path,
       () => fs.existsSync(path), 
@@ -870,7 +790,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #getInfo(options: AllOptions, checkOwner: boolean = true): FileLockMeta {
     // `lock file` should exist.
-    REQUIRE(this._existsSync(options._filePath, options), 'The `lock file` does not exist.', 
+    REQUIRE(this.#existsSync(options._filePath, options), 'The `lock file` does not exist.', 
       LockCompromised, {key: this._key, props: { path: options._filePath } });
 
     const contents = this.#readFileSync(options._filePath, options);
@@ -955,18 +875,61 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #getInfoIfExists(options: AllOptions/*, throwErr: boolean = false*/): { meta: FileLockMeta | null, reason: string, exists?: boolean, cause?: unknown } {
     try {
-      if (!this._existsSync(options._filePath, options)) return { meta: null, exists: false, reason: 'ENOENT' };
+      if (!this.#existsSync(options._filePath, options)) return { meta: null, exists: false, reason: 'ENOENT' };
       return { meta: this.#getInfo(options, false), reason: 'OK' };
     }
     catch (err) {
       // ここで、あるはずのロックファイルが無いケースを観測したため、改めて存在を確認
-      const exists = this._existsSync(options._filePath, options);
+      const exists = this.#existsSync(options._filePath, options);
       const ret = { meta: null, reason: 'EUNKNOWN', exists, cause: err };
       err instanceof Error && 'code' in err && (Object.assign(ret, { reason: String(err.code) }));
       return ret;
     }
   }
 
+  /**
+   * @internal
+   * Factory for ticket object to create or update a `lock file`.
+   * @param options User options.
+   * @param retryMode Retry mode.
+   * @param noThrow If `true`, no error is thrown.
+   * @returns A ticket object if success to open('wx') the 'temporary lock file`., otherwise `undefined`.
+   */
+  #getTicket(options: AllOptions, retryMode: RetryMode = 'normal', noThrow = false): Ticket | undefined {
+    const tmpLockFile = options._filePath + '.tmp';
+    let released = false;
+    try {
+      if (this.#openLockFileExclusively(options, tmpLockFile, retryMode)) {
+        return {
+          confirm: (meta: FileLockMeta): void => {
+            REQUIRE(() => this.#existsSync(tmpLockFile, options), 
+                "Not found the `temporary lock file`.",
+                FileLockError, { code: 'ENOENT', props: { key: this._key } }
+            );
+            // Write to a temporary file first.
+            this.#writeFileSync(tmpLockFile , meta, options, "Failed to write the `temporary lock file`.");
+            // Replace the target file path with the temporary file (if the file already exists, it is overwritten atomically).
+            this.#renameSync(tmpLockFile , options._filePath, options, "Failed to rename the `temporary lock file`.");
+          },
+          release: (): void => {
+            // v8 ignore else -- @preserve
+            if (!released) {
+              released = true;
+              if (this.#existsSync(tmpLockFile, options)) {
+                this.#unlinkSync(tmpLockFile, options, 'double', "Failed to remove the `temporary lock file`.");
+              }
+            }
+          },
+        }
+      }
+    }
+    catch (err) {
+      // v8 ignore else
+      if (!noThrow) throw err;
+    }
+    return undefined;
+  }
+ 
   /**
    * @internal
    * Whether the lock has expired.
@@ -1034,6 +997,25 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #onExit(code: number | null | undefined, signal: NodeJS.Signals | null): void {
     this._onExit(code, signal);
+  }
+
+  /**
+   * @internal
+   * Open the `lock file` exclusively.
+   * @param options Lock options.
+   */
+  #openLockFileExclusively(options: AllOptions, path?: string, retryMode: RetryMode = 'normal'): boolean {
+    try {
+      this.#openSyncExclusively(path || options._filePath, options, undefined, retryMode);
+      return true;
+    }
+    catch (err) {
+      let code = "EUNKNOWN";
+      // Avoided `if` statements to address code coverage requirements.
+      err instanceof Error && 'code' in err && (code = String(err.code));
+      if (code  === 'EEXIST') return false;
+      throw err;
+    }
   }
 
   /**
@@ -1149,7 +1131,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     if (sharers.length === 0) return;
     try {
       return await this.#share(() => {
-        sharers.forEach(path => this._unlinkSync(path, options));
+        sharers.forEach(path => this.#unlinkSync(path, options));
       }, options/*, false*/);
     }
     catch (err) {
@@ -1174,7 +1156,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Rename file.
    * @param options Lock options.
    */
-  private _renameSync(oldPath: string, newPath: string, options: AllOptions, msg: string): void {
+  #renameSync(oldPath: string, newPath: string, options: AllOptions, msg: string): void {
     this.#accessInfo(
       oldPath,
       () => fs.renameSync(oldPath, newPath),
@@ -1372,7 +1354,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Remove the file.
    * @param options Lock options.
    */
-  private _unlinkSync(path: string, options: AllOptions, retryMode: RetryMode = 'normal', msg = `Couldn't remove the file.`): void {
+  #unlinkSync(path: string, options: AllOptions, retryMode: RetryMode = 'normal', msg = `Couldn't remove the file.`): void {
     this.#accessInfo(
       path,
       () => fs.unlinkSync(path),
@@ -1390,22 +1372,20 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // v8 ignore else -- @preserve
     if (this.#heartbeatTimer && !this.#heatbeatUpdating) {
       this.#heatbeatUpdating = true;
-
-      const timout = Math.ceil(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.pollIntervalMs * 2));
-      const delay = new FixedDelay({ base: options.retryIoIntervalMs, jitterRate: 0.2 })
       let ticket;
-
-      while (this._isALiveHeartbeatTimer && Date.now() < timout &&
-             (ticket = Ticket.get(this, options, 'no-retry', true)) === undefined) {
-        await sleepAsync(delay.next());
-      }
-
-      // Check _isALiveHeartbeatTimer just in case.
-      // v8 ignore else  -- @preserve
-      if (!this._isALiveHeartbeatTimer || ticket === undefined) return;
-
-      // Metadata retrieval and update (errors—specifically fatal errors such as corruption or I/O errors—are reported as-is)
       try {
+        const timout = Math.ceil(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.pollIntervalMs * 2));
+        const delay = new FixedDelay({ base: options.retryIoIntervalMs, jitterRate: 0.2 })
+        while (this._isALiveHeartbeatTimer && Date.now() < timout &&
+              (ticket = this.#getTicket(options, 'no-retry', true)) === undefined) {
+          await sleepAsync(delay.next());
+        }
+
+        // Check _isALiveHeartbeatTimer just in case.
+        // v8 ignore else  -- @preserve
+        if (!this._isALiveHeartbeatTimer || ticket === undefined) return;
+
+        // Metadata retrieval and update (errors—specifically fatal errors such as corruption or I/O errors—are reported as-is)
         const meta = this.#getInfo(options);
         this.#heartbeatExpiresAt = meta.heartbeatExpiresAt = Date.now() + options.heartbeatTtlMs;
         // Check _isALiveHeartbeatTimer just in case.
@@ -1415,7 +1395,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._id}) at ${DateFormatter.format(new Date(meta.heartbeatExpiresAt))}`);
       }
       finally {
-        ticket.release();
+        ticket?.release();
         this.#heatbeatUpdating = false;
       }
     }
@@ -1429,7 +1409,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #updateInfo(meta: FileLockMeta, options: AllOptions, ticket: Ticket): void {
     // For debug
-    if (this._isDebug()) {
+    if (this._isDebug) {
       Object.assign(
         meta, 
         { 
@@ -1460,7 +1440,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       throw err;
     }
 
-    if (FileLock.#config.history === true || this._isDebug() === true) {
+    if (FileLock.#config.history || this._isDebug) {
       this.#addHistory(meta, options);
     }
   }
@@ -1470,7 +1450,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Write the file.
    * @param options Lock options.
    */
-  private _writeFileSync(path: string, data: unknown, options: AllOptions, msg: string = "Couldn't write the `lock file`."): void {
+  #writeFileSync(path: string, data: unknown, options: AllOptions, msg: string = "Couldn't write the `lock file`."): void {
     const str = JSON.stringify(data, null , "  ");
     this.#accessInfo(
       path,
@@ -1486,4 +1466,3 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
 // Initialize
 FileLock._initialize();
-

@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FileLock, type FileLockConfig, LockError, type LockMonitor } from '../src/index.ts';
-import { LockBase, type ReentrantContext } from '../src/lib/LockBase.ts';
-import { AsyncLocalStorage } from 'node:async_hooks';
+import { LockBase } from '../src/lib/LockBase.ts';
 import { TestLock } from './FileLockTestCommon.ts'
 import { getCallStack, isEqualObjectType, sleepAsync, sleepSync } from '../src/lib/Util.ts'
 
@@ -19,6 +18,7 @@ afterEach(() => {
 
 describe('LockBase and Util', () => {
 
+  /* AsyncLocalStorageのテストになってしまっているので、不要。
   it("The reentrancy context is shared even when the lock instances are different.", () => {
     const als = LockBase["_als"] as AsyncLocalStorage<ReentrantContext>;
     const rc: ReentrantContext | undefined = als.getStore();
@@ -34,7 +34,7 @@ describe('LockBase and Util', () => {
       expect(ins2.getReentrantContext()?.heldLocks.has(contextId)).toBe(true);
     });
   });
-
+*/
   it("`sleepAsync()` sleeps for the specified duration.", async () => {
     const start = Date.now();
     await sleepAsync(100);

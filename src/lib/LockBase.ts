@@ -45,19 +45,19 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @internal
    * Current basic configurations.
    */
-  protected static _config: Required<LockBaseConfig> = { ...defaultLockBaseConfig };
+  protected static get _config() { return { ...LockBase.#config } };
 
   /** 
    * @internal
    * Logger.
    */
-  protected static _logger =  LockBase._resolveLogger(LockBase._config);
+  protected static get _logger() { return LockBase.#logger; }
   
   /** 
    * @internal
    * Array of termination handler functions.
    */
-  private static _onExitFns = [] as ((code: number | null | undefined, signal: NodeJS.Signals | null) => void)[];
+  protected static get _onExitFns() { return [...LockBase.#onExitFns]; }
 
   /**
    * @internal
@@ -66,7 +66,25 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * Since the goal is to share reentrancy context information (via `getStore()`) regardless of the specific instance, 
    * it is implemented as a static property to enable sharing across instances.  
    */
-  private static _als: AsyncLocalStorage<ReentrantContext> = new AsyncLocalStorage<ReentrantContext>();
+  static #als: AsyncLocalStorage<ReentrantContext> = new AsyncLocalStorage<ReentrantContext>();
+
+  /** 
+   * @internal
+   * Current basic configurations.
+   */
+  static #config: Required<LockBaseConfig> = { ...defaultLockBaseConfig };
+
+  /** 
+   * @internal
+   * Logger.
+   */
+  static #logger = LockBase.#resolveLogger(LockBase.#config);
+
+  /** 
+   * @internal
+   * Array of termination handler functions.
+   */
+  static #onExitFns = [] as ((code: number | null | undefined, signal: NodeJS.Signals | null) => void)[];
 
   /**
    * Static methods.
@@ -80,7 +98,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param signal 
    */
   public static onExit(code: number | null | undefined, signal: NodeJS.Signals | null) {
-    LockBase._onExitFns.forEach(fn => fn(code, signal));
+    LockBase.#onExitFns.forEach(fn => fn(code, signal));
   }
 
   /**
@@ -90,8 +108,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @returns 
    */
   protected static _addOnExit(fn: (code: number | null | undefined, signal: NodeJS.Signals | null) => void): void {
-    if (LockBase._onExitFns.find(f => f === fn)) return;
-    LockBase._onExitFns.push(fn);
+    if (LockBase.#onExitFns.find(f => f === fn)) return;
+    LockBase.#onExitFns.push(fn);
   }
 
   /**
@@ -100,36 +118,16 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param config Configurations.
    */
   protected static _copyConfig<T extends LockBaseConfig>(config: T): T {
-    const withourLogger  = { ...config };
+    const withoutLogger  = { ...config };
     // Since function objects cannot be copied via `structuredClone`, they are excluded for the time being.
-    const logger = withourLogger.logger;
-    delete withourLogger.logger;
+    const logger = withoutLogger.logger;
+    delete withoutLogger.logger;
     // Properties with `undefined` values ​​are removed for design reasons.
-    for (const key in withourLogger) {
-      if (withourLogger[key] === undefined) delete withourLogger[key];
+    for (const key in withoutLogger) {
+      if (withoutLogger[key] === undefined) delete withoutLogger[key];
     }
     // Adds `logger` to the copied object and returns it.
-    return Object.assign(structuredClone(withourLogger), { logger });
-  }
-
-  /**
-   * @internal
-   * Get a logger where all methods are mandatory.
-   * @param config 
-   * @returns A logger where all methods are mandatory.
-   */
-  protected static _resolveLogger(config: Required<LockBaseConfig>): Required<LogProvider> {
-    let logger: LogProvider = config.logger;
-    if (logger === console) {
-      logger = {...console as LogProvider};
-      const orgDebug = logger.debug;
-      logger.debug = (...args:unknown[]) => { if (LockBase._config._debug) orgDebug(...args); }
-      logger.trace = logger.debug;
-    }
-    // There are cases where 'fatal' is not present; in such instances, use 'error'.
-    if (!logger.fatal) logger.fatal = logger.error;
-    // Make `fatal` mandatory.
-    return logger as Required<LogProvider>;
+    return Object.assign(structuredClone(withoutLogger), { logger });
   }
 
   /**
@@ -138,11 +136,11 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param config  Configurations. 
    */
   protected static setConfig(config: LockBaseConfig): void {
-    LockBase._config = LockBase.#resolveConfig(config);
-    LockBase._logger = LockBase._resolveLogger(LockBase._config);
+    LockBase.#config = LockBase.#resolveConfig(config);
+    LockBase.#logger = LockBase.#resolveLogger(LockBase.#config);
 
     // Set configurations of `Contrats`.
-    Contracts.setConfig({ debug: LockBase._config._debug, logger: LockBase._logger });
+    Contracts.setConfig({ debug: LockBase.#config._debug, logger: LockBase._logger });
   }
   
   /**
@@ -151,10 +149,10 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @returns A required object for configuration properties.
    */
   static #resolveConfig(config: LockBaseConfig): Required<LockBaseConfig> {
-    REQUIRE_DEBUG(() => isEqualObjectType(LockBase._config, defaultLockBaseConfig),
+    REQUIRE_DEBUG(() => isEqualObjectType(LockBase.#config, defaultLockBaseConfig),
       'The current configuration is invalid.', LockError, { code: 'EINVAL' });
 
-    const curConf = LockBase._config as Record<string, unknown>;
+    const curConf = LockBase.#config as Record<string, unknown>;
     const newConf = config as Record<string, unknown>;
     const rConf = { ...curConf } as Record<string, unknown>;
     Object.keys(curConf).forEach(key => {
@@ -168,6 +166,27 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     }, "Some required keys are missing.", LockError, { code: 'EINVAL' });
     // Cast the value, as it has already been verified above.
     return rConf as Required<LockBaseConfig>;
+  }
+
+  /**
+   * @internal
+   * Get a logger where all methods are mandatory.
+   * @param config 
+   * @returns A logger where all methods are mandatory.
+   */
+  //protected static _resolveLogger(config: Required<LockBaseConfig>): Required<LogProvider> {
+  static #resolveLogger(config: Required<LockBaseConfig>): Required<LogProvider> {
+    let logger: LogProvider = config.logger;
+    if (logger === console) {
+      logger = {...console as LogProvider};
+      const orgDebug = logger.debug;
+      logger.debug = (...args:unknown[]) => { if (LockBase.#config._debug) orgDebug(...args); }
+      logger.trace = logger.debug;
+    }
+    // There are cases where 'fatal' is not present; in such instances, use 'error'.
+    if (!logger.fatal) logger.fatal = logger.error;
+    // Make `fatal` mandatory.
+    return logger as Required<LogProvider>;
   }
 
   /** 
@@ -184,13 +203,13 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @internal
    * Lock key
    */
-  protected _key: string;
+  protected get _key() { return this.#key; };
 
   /**
    * @internal
    *  Logger.
    */
-  protected _logger: Required<LogProvider>;
+  protected get _logger() { return LockBase._logger; }
 
   /**
    * @internal
@@ -204,6 +223,12 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
   /** @internal */
   #id: string;
+
+  /** 
+   * @internal
+   * Lock key
+   */
+  #key: string;
 
   /**
    * @internal
@@ -227,10 +252,9 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param key     Lock key.
    * @param config  Configuration.
    */
-  protected constructor(key: string/*, config: LockBaseConfig = LockBase._config*/) {
-    this._key     = key;
-    this._logger  = LockBase._logger;//LockBase._resolveLogger(LockBase.#resolveConfig(config));
-    this.#id = crypto.randomUUID();
+  protected constructor(key: string/*, config: LockBaseConfig = LockBase.#config*/) {
+    this.#key = key;
+    this.#id  = crypto.randomUUID();
   }
 
   /**
@@ -256,7 +280,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param args The arguments passed to `logger.log()`.
    */
   protected _debugLog(...args: unknown[]): void {
-    this._isDebug() && this._logger.log(...args);
+    this._isDebug && this._logger.log(...args);
   }
 
   /**
@@ -296,8 +320,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * Get debug mode.
    * @returns `true` if debug mode is on.
    */
-  protected _isDebug() {
-    return LockBase._config._debug;
+  protected get _isDebug() {
+    return LockBase.#config._debug;
   }
 
   /**
@@ -323,21 +347,11 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     const code: string = (err instanceof Error && 'code' in err && err.code ? String(err.code) : codeIfNon);
     this.#setMonitor({ cancelled: true, reason: code, cause: err, operation}, options);
     // If it is anything other than `TTLExceeded`, reject the interrupt promise.
-    if (err instanceof TTLExceeded === false && this.#onInterruptRejects[options._sharerId]) {
+    if (err instanceof TTLExceeded === false) {
       this.#rejectPromise(this.#onInterruptRejects, options._sharerId, err);
-      /*
-      const reject = this.#onInterruptRejects[options._sharerId];
-      delete this.#onInterruptRejects[options._sharerId];
-      reject(err);
-      */
     };
   }
 
-  #rejectPromise(rejects: Record<string, (reason?: unknown) => void>, key: string, reason: unknown) {
-    const reject = rejects[key];
-    delete rejects[key];
-    reject(reason);
-  }
   /**
    * @internal
    * @abstract
@@ -353,14 +367,6 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
         code: 'ETERM',
         props: { reason: { code, signal } }
       }));
-      /*
-      const reject = this.#onExitRejects[key];
-      delete this.#onExitRejects[key];
-      reject(new LockError("Forced termination.", {
-        code: 'ETERM',
-        props: { reason: { code, signal } }
-      }));
-      */
     });
   }
 
@@ -409,7 +415,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
     const whithLockInContext = async (): Promise<unknown> => {
       // Preparing for recursive lock checks.
-      const rc = this._getReentrantContext();
+      const rc = this.#getReentrantContext();
       if (!rc) {
         // Since there is no context for reentrancy lock detection yet, I will create a new context and call `withLock` again within it.
         return this.#runInNewContext(async () => whithLockInContext());
@@ -418,10 +424,10 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
       // Re-entry lock check.
       if (this.#isReentry(options)) {
         // Error if reentrant locks are not permitted.
-        if (!options.allowReentry) throw new DeadlockDetected(null, { key: this._key });
+        if (!options.allowReentry) throw new DeadlockDetected(null, { key: this.#key });
 
         // Since re-entry is permitted, increment the lock count and then execute the callback.
-        this._logger.trace(`Allow re-entry lock(key=${this._key}) ` + "in accordance with `options.allowReentry`.");
+        this._logger.trace(`Allow re-entry lock(key=${this.#key}) ` + "in accordance with `options.allowReentry`.");
         return this.#execWithoutLock(onLockFn, options)
       }
 
@@ -432,16 +438,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     return whithLockInContext();
   }
 
-  /** 
-   * @internal
-   * Retrieve the current context. <br>
-   * It is set to `private` for testing purposes.
-   */
-  private _getReentrantContext() : ReentrantContext | undefined {
-    return LockBase._als.getStore();
-  }
-
-  /**
+    /**
    * @internal
    * Create a timer for TTL.
    * @param options Lock options.
@@ -451,7 +448,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     const ttlMs = options.ttlMs;
     const promise = new Promise((_, reject) => {
       id = setTimeout(() => {
-        reject(new TTLExceeded(null, { ttlMs, key: this._key }));
+        reject(new TTLExceeded(null, { ttlMs, key: this.#key }));
       },
       ttlMs);
     });
@@ -467,7 +464,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    */
   async #execCallback(onLockFn: CallbackOnLock, options: AllOptions<O, I>): Promise<unknown> {
     REQUIRE_DEBUG(options._monitor !== undefined, 'options._monitor is undefined!', LockError, { code: 'EINVAL' });
-    const parent = this._getReentrantContext();
+    const parent = this.#getReentrantContext();
     REQUIRE_DEBUG(parent !== undefined, 're-entrant context is undefined!', LockError, { code: 'EINVAL' });
     let child: ReentrantContext;
     let monitor: Monitor = options._monitor as Monitor; // Type-cast it, as it has already been checked via a precondition.
@@ -484,7 +481,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
     // 'async' is intentional to treat synchronous exceptions as Promise rejections. 
     // eslint-disable-next-line @typescript-eslint/require-await
-    return LockBase._als.run(child, async () => onLockFn(monitor));
+    return LockBase.#als.run(child, async () => onLockFn(monitor));
   }
 
   /**
@@ -579,6 +576,15 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
   }
 
   /** 
+   * @internal
+   * Retrieve the current context. <br>
+   * It is set to `private` for testing purposes.
+   */
+  #getReentrantContext() : ReentrantContext | undefined {
+    return LockBase.#als.getStore();
+  }
+
+  /** 
    * @interna
    * @abstract
    * Create a promise for interrupt detection.<br>
@@ -604,7 +610,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param options   Lock options.
    */
   #isReentry(options: AllOptions<O, I>): boolean {
-    return Boolean(this._getReentrantContext()?.heldLocks.has(options._contextId));
+    return Boolean(this.#getReentrantContext()?.heldLocks.has(options._contextId));
   }
 
   /**
@@ -640,13 +646,27 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
   /**
    * @internal
+   * @param rejects 
+   * @param key 
+   * @param reason 
+   */
+  #rejectPromise(rejects: Record<string, (reason?: unknown) => void>, id: string, reason: unknown) {
+    if (rejects[id]) {
+      const reject = rejects[id];
+      delete rejects[id];
+      reject(reason);
+    }
+  }
+
+  /**
+   * @internal
    * Create a new context and execute the function `fn` within the context.
    * @param {function} fn Callback function to be called within the context.
    * @returns 
    */
   #runInNewContext(fn: () => unknown) {
     const initialContext: ReentrantContext = { heldLocks: new Map() };
-    return LockBase._als.run(initialContext, () => fn());
+    return LockBase.#als.run(initialContext, () => fn());
   }
 
   /**

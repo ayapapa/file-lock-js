@@ -16,68 +16,6 @@ afterEach(() => {
 });
 
 describe('Cache', () => {
-/*
-  it("After clearing the cache, the number of cache entries is 0.", async () => {
-    const retVal = "test_005", key = retVal;
-    try {
-      await FileLock.withLock(key, async () => {
-        await sleepAsync(500);
-        return retVal;
-      });
-    }
-    catch (err) {
-      logger.error(err);
-    }
-    expect(TestLock.getCacheSize() > 0).toBe(true);  
-    TestLock.clearCache();
-    expect(TestLock.getCacheSize()).toBe(0);  
-  });
-
-  let count = 0;
-  async function testCacheStatus(config: FileLockConfig, checkStatus: () => Promise<void> | void): Promise<void> {
-    TestLock.clearCache();
-    const orgConf = FileLock.getConfig();
-    FileLock.setConfig({ ...config, logger });
-    const retVal = "testCacheStatus_" + String(count++).padStart(2, '0'), key = retVal;
-    expect(
-      await FileLock.withLock(key, 
-      async () => {
-        await sleepAsync(500);
-        return retVal;
-      }
-    )).toBe(retVal);
-    await checkStatus();
-    //expect(TestLock.getCacheSize()).toBe(1);
-    FileLock.setConfig(orgConf);
-  }
-
-  it("When the cache is cleared and locked, the number of cache entries becomes 1.", async () => {
-    await testCacheStatus({ cache: true }, () => expect(TestLock.getCacheSize()).toBe(1));
-   });
-
-  it("If the cache is reset, then disabled, and subsequently locked, the cache does not exist.", async () => {
-    await testCacheStatus({ cache: false }, () => expect(TestLock.getCache()).toBeNull());
-  });
-
-  it("When the maximum cache size is set to 1, even after locking twice with different keys, " +
-    "the number of cache entries remains 1, and the cache for the second key persists.", async () => {
-    const retVal = "maxCache_1";
-    await testCacheStatus(
-      { cache: true, cacheMaxNum: 1  }, 
-      async () => {
-        const key2 = 'test_002';
-        expect(
-          await FileLock.withLock(key2, 
-          async () => {
-            await sleepAsync(500);
-            return retVal;
-          }
-        )).toBe(retVal);
-        expect(TestLock.getCacheSize()).toBe(1);
-      }
-    );
-  });
-*/
   // Cache
   it("Cache", () => {
     expect(() => new Cache()).not.toBeUndefined();
