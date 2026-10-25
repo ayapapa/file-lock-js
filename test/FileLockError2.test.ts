@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getHistoryPath,  getLockMetaPath, getLockSharerDir, removeLockFiles, setLockMeta, sleepAsync, TestLock  } from './FileLockTestCommon.ts';
-import { AlreadyLocked, type FileLockConfig,  FileLock, FileLockError, ReleaseFailed, type LockMonitor } from '../src/index.ts';
-//import { FileLockOptionsResolver } from '../src/lib/FileLockOptionsResolver.ts';
+import { AlreadyLocked, type FileLockConfig,  FileLock, FileLockError, ReleaseFailed, type LockMonitor, type FileLockOptions } from '../src/index.ts';
 
 
 
@@ -18,7 +17,7 @@ afterEach(() => {
   FileLock.setConfig(orgConfig);
 });
 
-describe('なぜかテストが通らない、、、困ったちゃんですな。', () => {
+describe('FileLockError2', () => {
 
   it("JSONエラーになるロックファイル残存", async () => {
     const key = "BadJsonLockFile";
@@ -297,6 +296,8 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
     matchObj: object,
     sweep = false,
     meta: Record<string, unknown> | null = {ownerId: "hoge", expiresAt: Date.now() - 100, /*heartbeatTtlMs: 50, */heartbeatExpiresAt: Date.now() - 100},
+    options?: FileLockOptions,
+    sleep: number = 100
     ) {
 
     if (meta) setLockMeta(key, meta);
@@ -319,10 +320,10 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
       expect(await FileLock.withLock(
         key, 
         async () => {
-          await sleepAsync(100);
+          await sleepAsync(sleep);
           return ret;
         },
-        { timeoutMs: 0 } // ロック取得リトライ回数を0にするため、0msとする
+        Object.assign({ timeoutMs: 0 }, options), // ロック取得リトライ回数を0にするため、0msとする
       )).toBe(ret);
     }
     catch (err) {
@@ -428,7 +429,7 @@ describe('なぜかテストが通らない、、、困ったちゃんですな�
 
   });
 
-  it("ロック共有者の削除失敗", async () => {
+  it("ロック共有者の削除失敗(.lock削除失敗)", async () => {
     const key = 'lock_sharer_remove_fail';
     await testSpyIO(
       key,
@@ -741,7 +742,7 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
-  it("一時ロックファイル作成失敗", async () => {
+  it("一時ロックファイル作成失敗(ロック時)", async () => {
     const key = "createTmpFailed";
     await testSpyIO(
       key,
@@ -768,7 +769,68 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
       false, // sweep
       null,
     );
+  });
 
+  it("一時ロックファイル作成失敗(ハートビート更新時)", async () => {
+    const key = "createTmpFailedHeatbeat";
+    await testSpyIO(
+      key,
+      'openSync',
+      (count, args, orgFn) => {
+        if (count >= 4) { // 4回目が最初のハートビート更新
+          const err = new Error("openSync error!");
+          if (err.stack?.includes('#updateHeartbeat'))
+            throw Object.assign(err, { code: 'EOMOON' });
+          else
+            return orgFn(...args);
+        }
+        else {
+          return orgFn(...args);
+        }
+      },
+      true, // success
+      null,
+      {},
+      false, // sweep
+      null,
+      { timeoutMs: 0 },
+      2750 // sleep
+    );
+  });
+
+  it("不正ファイルstatSyncError", async () => {
+    const key = "invalidLockFileStatSyncError";
+    await testSpyIO(
+      key,
+      'statSync',
+      (_, args: unknown[], org) => {
+        const p = args[0];
+        if (p === getLockMetaPath(key)) {
+          throw Object.assign(new Error("statiSync error!"), { code: 'ESMOON' });
+        }
+        else {
+          return org(...args);
+        }
+      },
+      false, // error
+      FileLockError,
+      {
+        code: 'EIO',
+        message: "Failed to acquire the lock due to a file I/O error.",
+        key,
+        causes: [{
+          code: "ESMOON",
+          path: getLockMetaPath(key),
+          message: "Couldn't get status of the file.(statiSync error!)",
+          causes: [{
+            code: "ESMOON",
+            message: "statiSync error!",
+          }]
+        }],
+      },
+      true, // sweep
+      {}, { invalidTtlMs: 0 }
+    );
   });
 
   /**

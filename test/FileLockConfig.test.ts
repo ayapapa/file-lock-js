@@ -355,13 +355,13 @@ describe('FileLock.Config', () => {
     expect(fs.existsSync(getHistoryPath())).toBeFalsy();
   });
 
-  it ("Setting { cache: false } results in a new instance being created each time.", async () => {
+  it ("Setting { cache: false } results in a new instance being created each time.", () => {
     FileLock.setConfig({ cache: false });
     const key = 'CacheFalseKey';
     expect(TestLock.getFileLock(key)).not.toBe(TestLock.getFileLock(key));
   });
 
-  it ("Setting { cache: true } results in the reuse of instances.", async () => {
+  it ("Setting { cache: true } results in the reuse of instances.", () => {
     const key = 'CacheTrueKey';
     FileLock.setConfig({ cache: true });
     expect(TestLock.getFileLock(key)).toBe(TestLock.getFileLock(key));

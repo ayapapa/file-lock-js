@@ -186,7 +186,7 @@ describe('別プロセスとの競合テスト', () => {
 
   it("同じキーを使い、子プロセスを先に起動したがttlエラーになり、処理はキャンセル状態となったところで、親プロセスはロック処理が進む.", async () => {
     // 処理時間(sleep時間)：1000, 鼓動間隔最小値: 1000, ttl最小値1000 -> タイミングにより、TTLエラーの前に、鼓動更新が走るが、正常終了になった後でリリースタイミングと重なることがある。
-    await testChildError('childTtlError', { sleep: 100, timeout: 5000 }, { sleep: 3000, ttl: 1500/*min is '1000'*/ }, true, 'TTLExceeded');
+    await testChildError('childTtlError', { sleep: 100, timeout: 5000 }, { sleep: 2000, ttl: 1000/*min is '1000'*/ }, true, 'TTLExceeded');
   });
 
   it("子プロセスを先に起動したが、実行中に、強制的にプロセスをキルする。親プロセスは、ロック情報の無効化を確認後ロック処理が進む.", async () => {

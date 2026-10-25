@@ -28,7 +28,7 @@ export default defineConfig({
     
     include: ['test/*.test.ts'],
     exclude: [
-      'test/InterProcesExclusion_individual.test.ts',
+      //'test/InterProcesExclusion_individual.test.ts',
       ...configDefaults.exclude, 
       'e2e/*'
     ],

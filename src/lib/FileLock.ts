@@ -14,6 +14,7 @@ import { defaultFileLockConfig, type FileLockConfig } from './FileLockConfig.ts'
 import { getCallStack, includesAllKeysOf, sleepAsync, sleepSync, typedKeys } from './Util.ts'
 import { type FileLockMeta } from './FileLockMeta.ts'
 import { AlreadyLocked, InvalidOptions, ReleaseFailed } from './LockBaseErrors.ts';
+import { ExponentialDelay, FixedDelay  } from './RetryDelay.ts';
 
 /** 
  * @ internal
@@ -41,16 +42,21 @@ class Ticket {
    * @param owner `FileLock` instance.
    * @param options Oprions.
    * @param retryMode Retry mode.
+   * @param noThrow If `true`, no error is thrown.
    * @returns An instance if sucess to open('wx') the 'temporary lock file`., otherwise `undefined`.
    */
-  static get(owner: FileLock, options: AllOptions, retryMode: RetryMode = 'normal') {
+  static get(owner: FileLock, options: AllOptions, retryMode: RetryMode = 'normal', noThrow = false) {
     const tmpLockFile = options._filePath + '.tmp';
-    if (owner['_openLockFileExclusively'](options, tmpLockFile, retryMode)) {
-      return new Ticket(owner, tmpLockFile, options);
+    try {
+      if (owner['_openLockFileExclusively'](options, tmpLockFile, retryMode)) {
+        return new Ticket(owner, tmpLockFile, options);
+      }
     }
-    else {
-      return undefined;
+    catch (err) {
+      // v8 ignore else
+      if (!noThrow) throw err;
     }
+    return undefined;
   }
   
   #path: string; // The path to the `temporary lock file`.
@@ -116,9 +122,15 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /**
    * @internal
+   * The `lock directory`
+   */
+  static #lockDir = FileLock._getLockDirPath();
+
+  /**
+   * @internal
    * The history directory path.
    */
-  static #historyDir = path.join(FileLock._getLockDirPath(), 'history');
+  static #historyDir = path.join(FileLock.#lockDir, 'history');
 
   /**
    * @internal
@@ -137,12 +149,6 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * The history file path.
    */
   static #historyPath = path.join(FileLock.#historyDir, FileLock.#historyName);
-
-  /**
-   * @internal
-   * The `lock directory`
-   */
-  static #lockDir = FileLock._getLockDirPath();
 
   /** 
    * Static methods
@@ -192,6 +198,9 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       processId: process.pid,
     }
   }
+
+  /** Get `lock directory` */
+  public static get lockDir() { return FileLock.#lockDir; }
 
   /** Resets the current settings to their default values. */
   public static resetConfig(): void {
@@ -430,8 +439,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   protected override async _acquire(options: AllOptions): Promise<void> {
     const start = Date.now();
     const timeoutTime = start + options.timeoutMs;
-    let   pollIntervalMs = options.pollIntervalMs;
     const tryResults = [] as { locked: boolean, reason: string, cause?: unknown }[];
+    const delay = new ExponentialDelay({ base: options.pollIntervalMs, max: 1000, factor: 1.2, jitterRate: 0.2 });
     do {
       const tryRes = await this.#tryLock(options);
       if (tryRes.locked) {
@@ -440,9 +449,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       }
       tryResults.push(tryRes)
       if (Date.now() >= timeoutTime) break;
-      await sleepAsync(this.#jittered(pollIntervalMs));
-      // next poll interval
-      pollIntervalMs = Math.min(1000, pollIntervalMs * 2);
+      await sleepAsync(delay.next());
       // ignore the eslint warning about the infinite loop, as it is controlled by the timeout condition.
       // eslint-disable-next-line no-constant-condition
     } while (true);
@@ -612,7 +619,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: RetryMode = 'normal'): unknown {
     const retries = retryMode === 'no-retry' ? 0 : (retryMode === 'double' ? options.retriesOnIoErr * 2 : options.retriesOnIoErr);
-    const retryIntervalMs = options.retryIoIntervalMs;
+    const delay = new FixedDelay({ base: options.retryIoIntervalMs, jitterRate: 0.2 })
     const causes = [] as unknown[];
     for (let i = 0; i <= retries; i++) {
       try {
@@ -622,7 +629,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         causes.push(err);
         this._logger.trace('IO error occuered.', err);
         if (i < retries) {
-          sleepSync(this.#jittered(retryIntervalMs));
+          sleepSync(delay.next());
           continue;
         }
         let detailMsg: string = '', code: string = 'EFILELOCK';
@@ -738,13 +745,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     let ticket;
     try {
       ticket = Ticket.get(this, options);
-      /*
-      //Open the temporary `lock file` exclusively to check whether locking is possible.
-      const tmpLockFile = options._filePath + '.tmp';
-      const tmpCreated = this._openLockFileExclusively(options, tmpLockFile);
-      */
       // Since the temporary file could not be opened exclusively, it is determined that the lock is currently being updated.
-      if (ticket === undefined/*tmpCreated === false*/) {
+      if (ticket === undefined) {
         return { ticket, reason: 'EUPDATING', 
           cause: 'Found a `temporary lock file`, so the `lock file` may still be updating.' };
       }
@@ -782,7 +784,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         const cause = info.cause ? info.cause : info.reason;
         // Verify the validity of this file according to the `invalidTtlMs` option.
         if ('invalidTtlMs' in options) {
-          // v8 ignor else -- @preserve
+          // v8 ignore else -- @preserve
           if (this.#isStaleInvalidFile(options.invalidTtlMs, options)) {
             return { ticket, reason: 'STALEINVALID', cause };
           }
@@ -836,7 +838,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         // the optional `lock sharer` ID and optional owner ID are set to match `this._id`.
         ownerId: options._ownerId = options._sharerId = this._id, 
         expiresAt: now + options.ttlMs,
-        heartbeatExpiresAt: now + options.heartbeatTtlMs,
+        heartbeatExpiresAt: this.#heartbeatExpiresAt = now + options.heartbeatTtlMs,
       },
       options,
       ticket
@@ -989,15 +991,6 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   #isStaleInvalidFile(ttl: number, options: AllOptions): boolean {
     const stat = this.#statSync(options._filePath, options);
     return stat === undefined ? true : Date.now() >= stat.mtimeMs + ttl;
-  }
-
-  /**
-   * @internal
-   */
-  #jittered(interval: number) {
-    const rate = 0.2; // ±20%
-    const jitter = (1 - rate) + Math.random() * rate * 2;
-    return Math.round(jitter * interval);
   }
 
   /**
@@ -1281,7 +1274,6 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       void (async () => {
         try {
           const shouldContinue = () => this._acquired && this._isAlreadyCancelled(options) === false;
-          // Avoid `if` statements to ensure code coverage.
           // v8 ignore next 2  -- @preserve
           if (shouldContinue() === false) {
             this.#stopHeartbeat();
@@ -1396,32 +1388,29 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   async #updateHeartbeat(options: AllOptions) {
     // v8 ignore else -- @preserve
-    if (this.#heartbeatTimer && this.#heatbeatUpdating === false) {
+    if (this.#heartbeatTimer && !this.#heatbeatUpdating) {
       this.#heatbeatUpdating = true;
-      let ticket;//: Ticket | undefined;
-      // 約１回分のハートビット間隔分＋αを残して、リトライする
-      // つまり、ここでupdateできなかったら、最後の１回のハートビートに任せる。
-      // それでもupdateできないなら、、もう、高負荷過ぎて、、、結局手が出ないのだから、しょん職されても
+
       const timout = Math.ceil(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.pollIntervalMs * 2));
-      // 更新チケット入手
-      do {
-        try {
-          // v8 ignore next  -- @preserve
-          if ((ticket = Ticket.get(this, options, 'no-retry')) !== undefined) break;
-        }
-        catch (_err) { /* retry */ }
-        // 以下2ラインは高負荷のときに起こりやすいが、起こす条件を特定することは難しい、、、高負荷テスト次第で、カバレッジ対象から外そう！！
-        if (timout <= Date.now() || this.#heartbeatTimer === null) return;
-        await sleepAsync(this.#jittered(options.pollIntervalMs));
+      const delay = new FixedDelay({ base: options.retryIoIntervalMs, jitterRate: 0.2 })
+      let ticket;
+
+      while (this._isALiveHeartbeatTimer && Date.now() < timout &&
+             (ticket = Ticket.get(this, options, 'no-retry', true)) === undefined) {
+        await sleepAsync(delay.next());
       }
-      // ignore the eslint warning about the infinite loop, as it is controlled by the timeout condition.
-      // eslint-disable-next-line no-constant-condition
-      while (true);
+
+      // Check _isALiveHeartbeatTimer just in case.
+      // v8 ignore else  -- @preserve
+      if (!this._isALiveHeartbeatTimer || ticket === undefined) return;
 
       // Metadata retrieval and update (errors—specifically fatal errors such as corruption or I/O errors—are reported as-is)
       try {
         const meta = this.#getInfo(options);
         this.#heartbeatExpiresAt = meta.heartbeatExpiresAt = Date.now() + options.heartbeatTtlMs;
+        // Check _isALiveHeartbeatTimer just in case.
+        // v8 ignore next  -- @preserve
+        if (!this._isALiveHeartbeatTimer) return;
         this.#updateInfo(meta, options, ticket);
         this._logger.trace(`Update heartbeat(key: ${this._key}, ownerId: ${this._id}) at ${DateFormatter.format(new Date(meta.heartbeatExpiresAt))}`);
       }

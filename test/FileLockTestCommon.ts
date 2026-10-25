@@ -241,15 +241,18 @@ export function report() {
  * @param n       Number of concurrently executing processes (consisting of one parent (main) process and n-1 child processes)
  * @param oneKey  A key used when setting all items to the same key
  */
-export async function testMultiProcess(n: number, oneKey?: string) {
-  const options: FileLockOptions = { timeoutMs: 5000, ttlMs: 5000, heartbeatTtlMs: 5000 };
+export async function testMultiProcess(n: number, oneKey?: string, opts?: { sleep?: number, timout?: number, hbTtl?: number }) {
+  const sleep = opts?.sleep ?? 100;
+  const timeoutMs = opts?.timout ?? 5000;
+  const heartbeatTtlMs = opts?.hbTtl ?? 5000;
+  const options: FileLockOptions = { timeoutMs/*: 5000*/, ttlMs: 5000, heartbeatTtlMs/*: 5000*/ };
   const parentKey = oneKey ? oneKey : "testMultiProcess"
-  const parentPr = FileLock.withLock(parentKey, async () => { await sleepAsync(100); return 'completed'; }, options);
+  const parentPr = FileLock.withLock(parentKey, async () => { await sleepAsync(/*100*/sleep); return 'completed'; }, options);
   const childrenPr = [] as Promise<unknown>[];
   const childrenKey = [] as string[];
   for( let i = 0; i < n - 1; i++) {
     const key = oneKey ? oneKey : `childKey_${String(i).padStart(4, '0')}`;
-    childrenPr.push((await execChild('lock', { key, sleep: 500, waitAquired: false, ...options })).promise);
+    childrenPr.push((await execChild('lock', { key, sleep/*: 500*/, waitAquired: false, ...options })).promise);
     if (oneKey === undefined) childrenKey.push(key);
   }
 
@@ -352,7 +355,7 @@ export class TestLock extends FileLock {
   }
 
   static getLockDirPath() {
-    return super["_getLockDirPath"]();
+    return FileLock.lockDir;
   }
 
   static getHistoryPath(): string {
