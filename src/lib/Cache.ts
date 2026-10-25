@@ -79,8 +79,6 @@ export class Cache<K = string, V = unknown> {
   public get(key: K): V | undefined {
     const entry = this.#cache.get(key);
 
-//    if (entry === undefined) return undefined;
-
     if (entry && entry.expiresAt <= Date.now()) {
       this.#cache.delete(key);
       return undefined;
@@ -89,18 +87,6 @@ export class Cache<K = string, V = unknown> {
     return entry?.value;
   }
 
-  /**
-   * 
-   * @param key Key.
-   * @returns 'true' if a value corresponding exists. 
-   * Note that no validation of the value is performed; therefore, 
-   * the method will return `true` as long as the value exists, even if it has expired.
-   */
-/*
-  public has(key: K): boolean {
-    return this.#cache.has(key);
-  }
-*/
   /**
    * Put the `value` with the `key`. 
    * @param key Key.
