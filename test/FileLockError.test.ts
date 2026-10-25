@@ -95,12 +95,6 @@ describe('FileLockError', () => {
         reason: "ExistingLock",
         message: "The `lock file` already exists.",
       });
-      /*
-      expect(err.code).toBe('EALREADYLOCKED');
-      expect(err.key).toBe(key);
-      expect(err instanceof AlreadyLocked).toBe(true);
-      expect(err.message.includes("Couldn't the lock because the")).toBe(true);
-      */
     }
     finally {
       try {await a} catch(e) {;/* do nothing*/};
@@ -161,9 +155,6 @@ describe('FileLockError', () => {
     FileLock.setConfig({ cache: false });
     try {
       await FileLock.withLock(key, async () => {
-        // Clear the cache to create a new lock instance.
-        //TestLock.clearCache();
-
         await FileLock.withLock(key, async () => {
           await sleepAsync(500);
         });
@@ -305,16 +296,7 @@ describe('FileLockError', () => {
           message: "The lock was compromised during the locking process.",
           key,
           path: getLockMetaPath(key),
-          //sharer: getLockSharerDir(key),
           reason: "[VERIFY] The `lock file` was overwritten by another lock.",
-          /*causes: [{
-            code: "ECOMPROMISED",
-            key,
-            path: getLockMetaPath(key),
-            reason: "[VERIFY] The `lock file` was overwritten by another lock.",
-            message: "The lock was compromised during the locking process.",
-          }],
-          */
         })
       },
       () => removeLockFiles(key)
@@ -355,8 +337,6 @@ describe('FileLockError', () => {
   function testNoParamsError(ErrorClass: new(...args: any[]) => Error, msg?: string | null, param?: Record<string, unknown>) {
     const err = new ErrorClass(null, param);
     expect(err.message).toBe(msg)
-    //if (msg) expect(err.message).toBe(msg)
-    //else expect(err.message).toBe(null);
   }
 
   it("Instantiating an error class without parameters results in the default message.(LockError).", () => {
