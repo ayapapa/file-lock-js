@@ -172,7 +172,7 @@ describe('FileLock', () => {
   });
 
   it("maxHistoryEntries: 1", async () => {
-    const histInfo = FileLock.getHistoryInfo();
+    const histInfo = FileLock.historyInfo;
     FileLock.setConfig({ _debug: true, maxHistoryEntries: 1 });
     await FileLock.withLock('debug_mode_key', 
       async () => {

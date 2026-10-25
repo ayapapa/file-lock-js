@@ -359,7 +359,7 @@ export class TestLock extends FileLock {
   }
 
   static getHistoryPath(): string {
-    return FileLock.getHistoryInfo().historyPath;
+    return FileLock.historyInfo.historyPath;
   }
 
 

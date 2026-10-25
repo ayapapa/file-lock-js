@@ -47,7 +47,7 @@ describe('FileLockOptions test.', () => {
   }
 
   it("Default options are valid.", () => {
-    testToBeSameAsTheDefaultOptions(FileLock.getDefaultOptions());
+    testToBeSameAsTheDefaultOptions(FileLock.defaultOptions);
   });
 
   it("When the lock with no options, internally resolved options are same as the default options.", async () => {
@@ -83,7 +83,7 @@ describe('FileLockOptions test.', () => {
     )).toBe(retVal);
     // Check options resolved internally.
     expect(opts._resolvedOpts).toBeDefined();
-    const defaultOpts = FileLock.getDefaultOptions();
+    const defaultOpts = FileLock.defaultOptions;
     // Check basic options
     expect(opts._resolvedOpts?.timeoutSec).toBeUndefined();
     expect(opts._resolvedOpts?.timeoutMs).toBe(Math.floor((opts.timeoutSec ?? 0) * 1000)); 
@@ -118,7 +118,7 @@ describe('FileLockOptions test.', () => {
     )).toBe(retVal);
     // Check options resolved internally.
     expect('_resolvedOpts' in opts).toBeTruthy();
-    const defaultOpts = FileLock.getDefaultOptions();
+    const defaultOpts = FileLock.defaultOptions;
     // Check basic options
     if ('_resolvedOpts' in opts) {
       const resolved = opts._resolvedOpts as FileLockOptions;
@@ -432,7 +432,7 @@ describe('FileLockOptions test.', () => {
   }
 
   it("Calling `getRequiredOptions()` results in an error if an option lacks a required property and no default options have been specified.", () => {
-    const or = new TestOptionResolver({}, FileLock.getDefaultOptions());
+    const or = new TestOptionResolver({}, FileLock.defaultOptions);
     expect.assertions(2);
     try {
       or.test_getRequiredOptions_emptyOpts();
@@ -447,7 +447,7 @@ describe('FileLockOptions test.', () => {
   });
 
   it("Calling getRequiredOptions() without specifying default options results in an error.", () => {
-    const optionResolver = new TestOptionResolver({}, FileLock.getDefaultOptions());
+    const optionResolver = new TestOptionResolver({}, FileLock.defaultOptions);
     expect.assertions(2);
     try {
       optionResolver.test_getRequiredOptions_noDefaults();

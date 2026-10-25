@@ -859,7 +859,7 @@ it("不正なロックファイルを故意に作成し、エラーとなるこ�
 
     expect(lock["_interruptPromise"]()).toBeUndefined();
 
-    expect(await lock["withLock"](()=>{return 'complete'}, FileLock.getDefaultOptions())).toBe('complete');
+    expect(await lock["withLock"](()=>{return 'complete'}, FileLock.defaultOptions)).toBe('complete');
   });
 
   it("ファイル名禁止文字を含むキー", async () => {

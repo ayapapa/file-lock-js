@@ -25,14 +25,14 @@ describe('FileLock.Config', () => {
 
   it("`FileLock.setConfig()` works correctly.", () => {
     expect.assertions(3);
-    FileLock.setConfig(FileLock.getDefaultConfig());
-    expect(JSON.stringify(FileLock.getDefaultConfig())).toBe(JSON.stringify(FileLock.getConfig()));
+    FileLock.setConfig(FileLock.defaultConfig);
+    expect(JSON.stringify(FileLock.defaultConfig)).toBe(JSON.stringify(FileLock.getConfig()));
     const lockDirectory = 'hogehoge';
-    let config: FileLockConfig = {...FileLock.getDefaultConfig(), lockDirectory, cache: false, logger: new PrettyConsole() };
+    let config: FileLockConfig = {...FileLock.defaultConfig, lockDirectory, cache: false, logger: new PrettyConsole() };
     FileLock.setConfig(config);
     const newConf = FileLock.getConfig();
     expect(JSON.stringify(newConf)).toBe(JSON.stringify(config));
-    config = {...FileLock.getDefaultConfig(), defaultOptions: { ...FileLock.getDefaultOptions(), allowReentry: true } };
+    config = {...FileLock.defaultConfig, defaultOptions: { ...FileLock.defaultOptions, allowReentry: true } };
     FileLock.setConfig(config);
     expect(JSON.stringify(FileLock.getConfig())).toBe(JSON.stringify(config));
   });
@@ -235,7 +235,7 @@ describe('FileLock.Config', () => {
   });
 
   it("When debug mode is enabled, the history is updated.", async () => {
-    const hist = FileLock.getHistoryInfo().historyPath;//path.join(dir, 'history.json');
+    const hist = FileLock.historyInfo.historyPath;
     if (fs.existsSync(hist) === false) fs.writeFileSync(hist, '');
     const stat_before = fs.statSync(hist);
     expect.assertions(1);

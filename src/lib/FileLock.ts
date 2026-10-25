@@ -59,7 +59,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @internal
    * Current configurations.
    */
-  static #config: Required<FileLockConfig> = FileLock.getDefaultConfig();
+  static #config: Required<FileLockConfig> = FileLock._copyConfig(defaultFileLockConfig);
 
   /**
    * @internal
@@ -110,15 +110,15 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   }
 
   /** Get default configurations. */
-  public static getDefaultConfig(): Required<FileLockConfig> {
+  public static get defaultConfig(): Required<FileLockConfig> {
     return FileLock._copyConfig(defaultFileLockConfig);
   }
 
   /**
-   * Get default options(`FileLockOptions`).
-   * @returns Deault options.
+   * Get default options.
+   * @returns Default options.
    */
-  public static getDefaultOptions(): FileLockRequiredOptions {
+  public static get defaultOptions(): FileLockRequiredOptions {
     return { ...defaultFileLockOptions };
   }
 
@@ -126,7 +126,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * Get the history informations.
    * @returns Returns the history permission flag, history identifier, history file path, and process identification.
    */
-  public static getHistoryInfo(): Readonly<{
+  public static get historyInfo(): Readonly<{
     historyEnabled: boolean, 
     historyId: string, 
     historyPath: string, 
@@ -145,7 +145,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
   /** Resets the current settings to their default values. */
   public static resetConfig(): void {
-    FileLock.setConfig(FileLock.getDefaultConfig());
+    FileLock.setConfig(defaultFileLockConfig);
   }
 
   /**
@@ -212,7 +212,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     REQUIRE(typeof key === 'string' && key !== '', '`key` must be specified as a non-empty string.', InvalidOptions, { name: 'key' });
 
     // If defaultOptions is specified in the config, it will be used as the default options.
-    const defaultOpts: FileLockRequiredOptions = { ...FileLock.getDefaultOptions(), ...FileLock.#config.defaultOptions };
+    const defaultOpts: FileLockRequiredOptions = { ...defaultFileLockOptions, ...FileLock.#config.defaultOptions };
 
     // Resolve options.
     const rOpt = new FileLockOptionsResolver(options, minimumFileLockOptions, defaultOpts).getRequiredOptions();
@@ -519,7 +519,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @return A Promise that resolves with the return value of onLockFn.
    */
   private async withLock(onLockFn: CallbackOnLock, userOpts: FileLockRequiredOptions): Promise<unknown> {
-    REQUIRE_DEBUG(() => includesAllKeysOf(userOpts, FileLock.getDefaultOptions()), 
+    REQUIRE_DEBUG(() => includesAllKeysOf(userOpts, defaultFileLockOptions), 
       "The option remains unresolved.", InvalidOptions, { name: 'userOpts', props: { options: userOpts } } );
 
     // Reconstructs the options by combining the specified options with the internal state.
