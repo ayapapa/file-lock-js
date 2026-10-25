@@ -898,26 +898,31 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
   #getTicket(options: AllOptions, retryMode: RetryMode = 'normal', noThrow = false): Ticket | undefined {
     const tmpLockFile = options._filePath + '.tmp';
     let released = false;
+    let confirmed = false;
     try {
       if (this.#openLockFileExclusively(options, tmpLockFile, retryMode)) {
         return {
           confirm: (meta: FileLockMeta): void => {
-            REQUIRE(() => this.#existsSync(tmpLockFile, options), 
-                "Not found the `temporary lock file`.",
-                FileLockError, { code: 'ENOENT', props: { key: this._key } }
-            );
-            // Write to a temporary file first.
-            this.#writeFileSync(tmpLockFile , meta, options, "Failed to write the `temporary lock file`.");
-            // Replace the target file path with the temporary file (if the file already exists, it is overwritten atomically).
-            this.#renameSync(tmpLockFile , options._filePath, options, "Failed to rename the `temporary lock file`.");
+            // v8 ignore else -- @preserve
+            if (!confirmed) {
+              REQUIRE(() => this.#existsSync(tmpLockFile, options), 
+                  "Not found the `temporary lock file`.",
+                  FileLockError, { code: 'ENOENT', props: { key: this._key } }
+              );
+              // Write to a temporary file first.
+              this.#writeFileSync(tmpLockFile , meta, options, "Failed to write the `temporary lock file`.");
+              // Replace the target file path with the temporary file (if the file already exists, it is overwritten atomically).
+              this.#renameSync(tmpLockFile , options._filePath, options, "Failed to rename the `temporary lock file`.");
+              confirmed = true;
+            }
           },
           release: (): void => {
             // v8 ignore else -- @preserve
             if (!released) {
-              released = true;
               if (this.#existsSync(tmpLockFile, options)) {
                 this.#unlinkSync(tmpLockFile, options, 'double', "Failed to remove the `temporary lock file`.");
               }
+              released = true;
             }
           },
         }
