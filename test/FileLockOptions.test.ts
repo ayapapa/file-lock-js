@@ -30,13 +30,15 @@ describe('FileLockOptions test.', () => {
     expect(opts.ttlSec).toBeUndefined();
     expect(opts.ttlMs).toBe(5000);
     expect(opts.allowReentry).toBe(false);
-    // Check basic options
+    // Check FileLock options
     expect(opts.pollIntervalSec).toBeUndefined();
     expect(opts.pollIntervalMs).toBe(100);
     expect(opts.heartbeatIntervalSec).toBeUndefined();
     expect(opts.heartbeatIntervalMs).toBe(1000);
     expect(opts.heartbeatTtlSec).toBeUndefined();
     expect(opts.heartbeatTtlMs).toBe(5000);
+    expect(opts.heartbeatRetryIntervalSec).toBeUndefined();
+    expect(opts.heartbeatRetryIntervalMs).toBe(100);
     expect(opts.retriesOnIoErr).toBe(1);
     expect(opts.retryIoIntervalSec).toBeUndefined();
     expect(opts.retryIoIntervalMs).toBe(100);
@@ -70,8 +72,8 @@ describe('FileLockOptions test.', () => {
     const retVal = "xxxSecOnlyOpts", key = retVal;
     const opts: FileLockOptions & TestOpts =  {
       timeoutSec : 1.2,  ttlSec: 1.00001, pollIntervalSec: 0.11, 
-      heartbeatIntervalSec: 1.1, heartbeatTtlSec: 10.002555, retryIoIntervalSec: 0.213,
-      invalidTtlSec : 11.0};
+      heartbeatIntervalSec: 1.1, heartbeatTtlSec: 10.002555, heartbeatRetryIntervalSec: 0.123,
+      retryIoIntervalSec: 0.213, invalidTtlSec : 11.0};
     expect(await FileLock.withLock(key, 
       async () => {
         await sleepAsync(500);
@@ -88,13 +90,15 @@ describe('FileLockOptions test.', () => {
     expect(opts._resolvedOpts?.ttlSec).toBeUndefined();
     expect(opts._resolvedOpts?.ttlMs).toBe(Math.floor((opts.ttlSec ?? 0) * 1000));
     expect(opts._resolvedOpts?.allowReentry).toBe(defaultOpts.allowReentry);
-    // Check basic options
+    // Check FileLock options
     expect(opts._resolvedOpts?.pollIntervalSec).toBeUndefined();
     expect(opts._resolvedOpts?.pollIntervalMs).toBe(Math.floor((opts.pollIntervalSec ?? 0) * 1000));
     expect(opts._resolvedOpts?.heartbeatIntervalSec).toBeUndefined();
     expect(opts._resolvedOpts?.heartbeatIntervalMs).toBe(Math.floor((opts.heartbeatIntervalSec ?? 0) * 1000));
     expect(opts._resolvedOpts?.heartbeatTtlSec).toBeUndefined();
     expect(opts._resolvedOpts?.heartbeatTtlMs).toBe(Math.floor((opts.heartbeatTtlSec ?? 0) * 1000));
+    expect(opts._resolvedOpts?.heartbeatRetryIntervalSec).toBeUndefined();
+    expect(opts._resolvedOpts?.heartbeatRetryIntervalMs).toBe(Math.floor((opts.heartbeatRetryIntervalSec ?? 0) * 1000));
     expect(opts._resolvedOpts?.retriesOnIoErr).toBe(defaultOpts.retriesOnIoErr);
     expect(opts._resolvedOpts?.retryIoIntervalSec).toBeUndefined();
     expect(opts._resolvedOpts?.retryIoIntervalMs).toBe(Math.floor((opts.retryIoIntervalSec ?? 0) * 1000));
@@ -123,13 +127,15 @@ describe('FileLockOptions test.', () => {
       expect(resolved.ttlSec).toBeUndefined();
       expect(resolved.ttlMs).toBe(defaultOpts.ttlMs);
       expect(resolved.allowReentry).toBe(opts.allowReentry);
-      // Check basic options
+      // Check FileLock options
       expect(resolved.pollIntervalSec).toBeUndefined();
       expect(resolved.pollIntervalMs).toBe(defaultOpts.pollIntervalMs);
       expect(resolved.heartbeatIntervalSec).toBeUndefined();
       expect(resolved.heartbeatIntervalMs).toBe(defaultOpts.heartbeatIntervalMs);
       expect(resolved.heartbeatTtlSec).toBeUndefined();
       expect(resolved.heartbeatTtlMs).toBe(defaultOpts.heartbeatTtlMs);
+      expect(resolved.heartbeatRetryIntervalSec).toBeUndefined();
+      expect(resolved.heartbeatRetryIntervalMs).toBe(defaultOpts.heartbeatRetryIntervalMs);
       expect(resolved.retriesOnIoErr).toBe(opts.retriesOnIoErr);
       expect(resolved.retryIoIntervalSec).toBeUndefined();
       expect(resolved.retryIoIntervalMs).toBe(defaultOpts.retryIoIntervalMs);
@@ -263,6 +269,14 @@ describe('FileLockOptions test.', () => {
     await testTypeErrorOption('heartbeatTtlMs', 'string');
   });
 
+  it("An `InvalidOptions` error occurs when an option value of a different type is specified(heartbeatRetryIntervalSec).", async () => {
+    await testTypeErrorOption('heartbeatRetryIntervalSec', 'string');
+  });
+  
+  it("An `InvalidOptions` error occurs when an option value of a different type is specified(heartbeatRetryIntervalMs).", async () => {
+    await testTypeErrorOption('heartbeatRetryIntervalMs', 'string');
+  });
+  
   it("An `InvalidOptions` error occurs when an option value of a different type is specified(retryIntervalSec).", async () => {
     await testTypeErrorOption('retryIntervalSec', 'string');
   });
@@ -354,6 +368,14 @@ describe('FileLockOptions test.', () => {
     testNullKindValueOption('heartbeatTtlMs')
   });
 
+  it("Specifying `undefined` or `null` as an option property value passed to `new FileLockOptionsResolver()` results in an error.(heartbeatRetryIntervalSec).", () => {
+    testNullKindValueOption('heartbeatRetryIntervalSec')
+  });
+
+  it("Specifying `undefined` or `null` as an option property value passed to `new FileLockOptionsResolver()` results in an error.(heartbeatRetryIntervalMs).", () => {
+    testNullKindValueOption('heartbeatRetryIntervalMs')
+  });
+
   it("Specifying `undefined` or `null` as an option property value passed to `new FileLockOptionsResolver()` results in an error.(retriesOnIoErr).", () => {
     testNullKindValueOption('retriesOnIoErr')
   });
@@ -419,7 +441,7 @@ describe('FileLockOptions test.', () => {
       expect(err).instanceOf(InvalidOptions);
       expect(err).toMatchObject( {
         code: 'EINVAL', 
-        message: "Missing required option: timeoutMs,ttlMs,allowReentry,pollIntervalMs,heartbeatIntervalMs,heartbeatTtlMs,retriesOnIoErr,retryIoIntervalMs"
+        message: "Missing required option: timeoutMs,ttlMs,allowReentry,pollIntervalMs,heartbeatIntervalMs,heartbeatTtlMs,heartbeatRetryIntervalMs,retriesOnIoErr,retryIoIntervalMs"
       })
     }
   });
@@ -442,25 +464,27 @@ describe('FileLockOptions test.', () => {
 
   it("If a value less than the minimum is specified for a numeric option, the minimum value is set.", async () => {
     const opts: FileLockOptions = {
-      timeoutMs:            -1,
-      ttlMs:                -1,
-      pollIntervalMs:       -1,
-      heartbeatIntervalMs:  -1,
-      heartbeatTtlMs:       -1,
-      retriesOnIoErr:       -1,
-      retryIoIntervalMs:      -1,
-      invalidTtlMs:         -1,
+      timeoutMs:                -1,
+      ttlMs:                    -1,
+      pollIntervalMs:           -1,
+      heartbeatIntervalMs:      -1,
+      heartbeatTtlMs:           -1,
+      heartbeatRetryIntervalMs: -1,
+      retriesOnIoErr:           -1,
+      retryIoIntervalMs:        -1,
+      invalidTtlMs:             -1,
     };
     const exp = {
-      allowReentry:         false,
-      timeoutMs:            0,
-      ttlMs:                1000,
-      pollIntervalMs:       100,
-      heartbeatIntervalMs:  1000,
-      heartbeatTtlMs:       5000,
-      retriesOnIoErr:       0,
-      retryIoIntervalMs:    100,
-      invalidTtlMs:         5000,
+      allowReentry:             false,
+      timeoutMs:                0,
+      ttlMs:                    1000,
+      pollIntervalMs:           100,
+      heartbeatIntervalMs:      1000,
+      heartbeatTtlMs:           5000,
+      heartbeatRetryIntervalMs: 100,
+      retriesOnIoErr:           0,
+      retryIoIntervalMs:        100,
+      invalidTtlMs:             5000,
     };
 
     await FileLock.withLock('testKey8989', () => {}, opts);

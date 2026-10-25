@@ -131,6 +131,8 @@ npm install @ayapapa-npm/file-lock-js
 | `allowReentry` | `boolean` | `false` N/A | Allows re-entering the same lock key within the same process. | Use with care.[^allowReentry] |
 | `heartbeatIntervalMs` | `number` | `1000` `1000` | Heartbeat update interval in milliseconds while the lock is held. | Cannot be used with `heartbeatIntervalSec`. Values below `1000` are treated as `1000`. |
 | `heartbeatIntervalSec` | `number` | Same as `heartbeatIntervalMs` | Heartbeat update interval in seconds while the lock is held. | Cannot be used with `heartbeatIntervalMs`. Internally converted to `heartbeatIntervalMs`. |
+| `heartbeatRetryIntervalMs` | `number` | `100` `100` | Retry interval in milliseconds for failed heartbeat updates. | Cannot be used with `heartbeatRetryIntervalSec`. Values below `100` are treated as `100`. |
+| `heartbeatRetryIntervalSec` | `number` | Same as `heartbeatIntervalMs` | Retry interval in seconds for failed heartbeat updates. | Cannot be used with `heartbeatRetryIntervalMs`. Internally converted to `heartbeatIntervalMs`. |
 | `heartbeatTtlMs` | `number` | `5000` `5000` | Heartbeat validity period in milliseconds. | If the last update is within this period, the process is considered alive. Cannot be used with `heartbeatTtlSec`. Values below `5000` are treated as `5000`. |
 | `heartbeatTtlSec` | `number` | Same as `heartbeatTtlMs` | Heartbeat validity period in seconds. | Cannot be used with `heartbeatTtlMs`. Internally converted to `heartbeatTtlMs`. |
 | `invalidTtlSec` | `number` | Same as `invalidTtlMs` | Expiration period in seconds for invalid lock files and related items. | Cannot be used with `invalidTtlMs`. Internally converted to `invalidTtlMs`. |

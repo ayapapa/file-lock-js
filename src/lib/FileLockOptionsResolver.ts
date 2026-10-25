@@ -27,24 +27,26 @@ export class FileLockOptionsResolver extends LockBaseOptionsResolver<FileLockOpt
     const basics = super._getCheckTypePairs();
     return {
       ...basics,
-      pollIntervalSec:      "number",
-      pollIntervalMs:       "number",
-      heartbeatIntervalSec: "number",
-      heartbeatIntervalMs:  "number",
-      heartbeatTtlSec:      "number",
-      heartbeatTtlMs:       "number",
-      retriesOnIoErr:       "number",
-      retryIoIntervalSec:   "number",
-      retryIoIntervalMs:    "number",
-      invalidTtlSec:        "number",
-      invalidTtlMs:         "number",
+      pollIntervalSec:            "number",
+      pollIntervalMs:             "number",
+      heartbeatIntervalSec:       "number",
+      heartbeatIntervalMs:        "number",
+      heartbeatTtlSec:            "number",
+      heartbeatTtlMs:             "number",
+      retriesOnIoErr:             "number",
+      retryIoIntervalSec:         "number",
+      retryIoIntervalMs:          "number",
+      heartbeatRetryIntervalSec:  "number",
+      heartbeatRetryIntervalMs:   "number",
+      invalidTtlSec:              "number",
+      invalidTtlMs:               "number",
     };
   }
   
   /** Get an array of time-related base names (keys) from the option properties. */
   protected override _getTimeKeys(): TimeBasedKey<FileLockOptions>[] {
     const bases = super._getTimeKeys();
-    bases.push('pollInterval', 'heartbeatInterval', 'heartbeatTtl', 'retryIoInterval', 'invalidTtl');
+    bases.push('pollInterval', 'heartbeatInterval', 'heartbeatTtl', 'retryIoInterval', 'heartbeatRetryInterval', 'invalidTtl');
     return bases;
   }
 

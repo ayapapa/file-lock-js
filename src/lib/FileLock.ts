@@ -807,16 +807,13 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
 
     // Check contents.
     const check = (key: keyof FileLockMeta, type: string | ((v: unknown) => boolean), optional: boolean = false) => {
-      // True if the key exists and the type check is successful.
       if (key in meta) {
         if (
           (typeof type === 'string' &&  typeof meta[key] === type) ||
           (typeof type === 'function' && type(meta[key])         )
         ) return true;
       }
-      // If optional, then true.
       else if (optional) return true;
-      // Otherwise false.
       return false;
     };
 
@@ -829,9 +826,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         optional: true
        }, 
       { key: "expiresAt",    type: "number" },
-      //{ key: "heartbeatTtlMs",    type: "number" },
       { key: "heartbeatExpiresAt",   type: "number" },
-      //{ key: "counter",           type: "number" },
     ] as { key: keyof FileLockMeta, type: string | ((v: unknown) => boolean), optional?: boolean }[];
 
     const checkAll = () => {
@@ -862,7 +857,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    * @returns null if not exist, or the contents as object.
    */
-  #getInfoIfExists(options: AllOptions/*, throwErr: boolean = false*/): { meta: FileLockMeta | null, reason: string, exists?: boolean, cause?: unknown } {
+  #getInfoIfExists(options: AllOptions): { meta: FileLockMeta | null, reason: string, exists?: boolean, cause?: unknown } {
     try {
       if (!this.#existsSync(options._filePath, options)) return { meta: null, exists: false, reason: 'ENOENT' };
       return { meta: this.#getInfo(options, false), reason: 'OK' };
@@ -1367,8 +1362,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       this.#heatbeatUpdating = true;
       let ticket;
       try {
-        const timout = Math.round(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.pollIntervalMs * 2));
-        const delay = new FixedDelay({ base: options.pollIntervalMs, jitterRate: 0.2 })
+        const timout = Math.round(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.heartbeatRetryIntervalMs * 2));
+        const delay = new FixedDelay({ base: options.heartbeatRetryIntervalMs, jitterRate: 0.2 })
         while (this._isALiveHeartbeatTimer && Date.now() < timout &&
               (ticket = this.#getTicket(options, 'no-retry', true)) === undefined) {
           await sleepAsync(delay.next());
