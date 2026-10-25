@@ -28,15 +28,14 @@ type AllOptions = AllOptionsT<FileLockAllOptions, FileLockInternalState>;
  */
 type FileLockAllOptions = FileLockRequiredOptions & Pick<FileLockOptions, 'invalidTtlMs'>
 
-/**
- * @internal
- */
+/** @internal */
 type RetryMode = 'normal' | 'no-retry' | 'double';
 
-/**
- * @internal
- */
+/** @internal */
 type Ticket = { confirm: (meta: FileLockMeta) => void, release: () => void }; 
+
+/** @internal */
+type TryResult = { locked: boolean, reason: string, cause?: unknown };
 
 /**
 * File locking. 
@@ -376,23 +375,25 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options  Lock options.
    */
   protected override async _acquire(options: AllOptions): Promise<void> {
-    const start = Date.now();
-    const timeoutTime = start + options.timeoutMs;
+    const timeoutTime = Date.now() + options.timeoutMs;
     const tryResults = [] as { locked: boolean, reason: string, cause?: unknown }[];
     const delay = new ExponentialDelay({ base: options.pollIntervalMs, max: 1000, factor: 1.2, jitterRate: 0.2 });
-    do {
-      const tryRes = await this.#tryLock(options);
-      if (tryRes.locked) {
-        this._logger.trace(`Acquired the lock(key: ${this._key})  at ${DateFormatter.format(new Date())}.`);
-        return;
-      }
-      tryResults.push(tryRes)
-      if (Date.now() >= timeoutTime) break;
-      await sleepAsync(delay.next());
-      // ignore the eslint warning about the infinite loop, as it is controlled by the timeout condition.
-      // eslint-disable-next-line no-constant-condition
-    } while (true);
+    let   tryRes!: TryResult;
+    const tryLock = async () => {
+      tryResults.push(tryRes = await this.#tryLock(options));
+      return tryRes.locked;
+    };
 
+    while (!(await tryLock()) && Date.now() < timeoutTime) {
+      await sleepAsync(delay.next());
+    }
+
+    if (tryRes?.locked) {
+      this._logger.trace(`Acquired the lock(key: ${this._key})  at ${DateFormatter.format(new Date())}.`);
+      return;
+    }
+
+    // Couldn't acquire the lock
     const causesRaw = tryResults.filter(v => v.cause != null).map(v => v.cause)
     const lastRes = tryResults[tryResults.length - 1];
     const causes = (() => {
@@ -405,7 +406,6 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       props.reason = reason;
       return new AlreadyLocked(msg, { key: this._key, props });
     }
-    // Couldn't acquire the lock
     const errIns = {
       'EALREADYLOCKED': () => newAlreadyLocked('The `lock file` already exists.', 'ExistingLock'),
       'EUPDATING'     : () => {
@@ -416,7 +416,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       'EEXISTANDEIO'  : () => newAlreadyLocked('The `lock file` already exists, but its validity could not be determined due to an I/O error.', 'MetadataReadError'),
       'EIO'           : () => FileLockError.lockFailedDueToIO(this._key, causes),
       'EHISTORY'      : () => FileLockError.lockFailedDueToHistory(FileLock.#historyPath, causes),
-    } as const as Record<string, () => void>;
+    } as const as Record<string, () => Error>;
 
     const err = errIns[lastRes.reason] && errIns[lastRes.reason]();
     ENSURE_DEBUG(err != null, 'Unexpected lock failure reason. This may be a malfunction.',
@@ -487,7 +487,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   protected override _prepare(options: AllOptions): void {
     super._prepare(options);
-    // ディレクトリ指定はsetConfig()で変更される可能性があるため、各パスはここで構築する。
+
     const dirPath       = FileLock.#lockDir;
     const encodedKey = this._key.replace(/[<>:/\\|?*]/g, () => '_').replace(/"/g, () => '');
     options._filePath   = path.join(dirPath, encodedKey + '.json');
@@ -537,7 +537,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options   Lock options.
    * @param errMsg    If error, a message to pass to `Error class`.
    */
-  #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: RetryMode = 'normal'): unknown {
+  #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: RetryMode = 'normal') {
     const retries = retryMode === 'no-retry' ? 0 : (retryMode === 'double' ? options.retriesOnIoErr * 2 : options.retriesOnIoErr);
     const delay = new FixedDelay({ base: options.retryIoIntervalMs, jitterRate: 0.2 })
     const causes = [] as unknown[];
@@ -552,7 +552,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
           sleepSync(delay.next());
           continue;
         }
-        let detailMsg: string = '', code: string = 'EFILELOCK';
+        let detailMsg = '', code = 'EFILELOCK';
         // Avoid `if` statements to address coverage issues.
         err instanceof Error && 
         (detailMsg = `(${err.message})`) && 
@@ -562,8 +562,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
         throw new FileLockError(`${errMsg}${detailMsg}`, {code, props: { path: name, causes: finalCause } });
       }
     }
-    // v8 ignore next  -- @preserve
-    return; // Added for ESLint compatibility.
+    // v8 ignore next -- @preserve
+    return;
   }
 
   /**
@@ -579,21 +579,13 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       const historyFile = FileLock.#historyPath;
       let contents = null;
       if (this.#existsSync(historyFile, options, `Couldn't check the existence of the history file.`)) {
-        try {
-          contents = this.#readFileSync(historyFile, options, "Couldn't read the history file.");
-        }
-        catch (err) {
-          ; // do nothing
-        }
+        try { contents = this.#readFileSync(historyFile, options, "Couldn't read the history file."); }
+        catch (_err) {/* do nothing */}
       }
 
       let history!: Record<string, { key: string, meta: FileLockMeta, options: AllOptions }>;
-      try {
-        history = contents ? JSON.parse(contents) : {};
-      }
-      catch (err) {
-        throw FileLockError.historyPasingFailed(historyFile, [err]);
-      }
+      try { history = contents ? JSON.parse(contents) : {}; }
+      catch (err) { throw FileLockError.historyPasingFailed(historyFile, [err]); }
 
       history[dateTimeStr] = { key: this._key, meta, options };
 
@@ -678,10 +670,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Create `lock file` or verify existing one lock information.
     try {
       // Open the `lock file` exclusively to check whether it can be locked.
-      const opened = this.#openLockFileExclusively(options);
-      if (opened) {
-        return { ticket, reason: 'LOCKFILEOPENED' };
-      }
+      if (this.#openLockFileExclusively(options)) return { ticket, reason: 'LOCKFILEOPENED' };
       
       // Unable to open the `lock file` exclusively (because the `lock file` already existed), so its validity is being checked.
       const info = this.#getInfoIfExists(options);
@@ -1313,7 +1302,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options
    * @returns `true` if acquired lock. 
    */
-  async #tryLock(options: AllOptions): Promise<{ locked: boolean, reason: string, cause?: unknown }> {
+  async #tryLock(options: AllOptions): Promise<TryResult> {
     if (this._acquired) return {locked: false, reason: 'EALREADYLOCKED'};
 
     const al = this.#assertLock(options);

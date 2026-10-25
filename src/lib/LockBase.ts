@@ -289,10 +289,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * Decrement the re-entry lock counter.
    * @param options Lock options.
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  protected async _decReantryCount(options: AllOptions<O, I>): Promise<void> {
-    throw new LockError(`Implement this in the subclass.`, { code: 'ENOIMPL', props: { options } });
-  }
+  // v8 ignore next -- @preserve
+  protected async _decReantryCount(_options: AllOptions<O, I>): Promise<void> {}
 
  /**
   * @internal
@@ -300,10 +298,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
   * Increment the re-entry lock counter.
   * @param options Lock options.
   */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  protected async _incReantryCount(options: AllOptions<O, I>): Promise<void> {
-    throw new LockError(`Implement this in the subclass.`, { code: 'ENOIMPL', props: { options } });
-  }
+  // v8 ignore next -- @preserve
+  protected async _incReantryCount(_options: AllOptions<O, I>): Promise<void> {}
 
   /**
    * @internal
@@ -327,8 +323,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
   /**
    * @internal
    * @abstract
-   * ロックコールバックの完了またはキャンセル（エラー発生による）直後にコールされる同期関数。
-   * @returns 
+   * A synchronous function that is called immediately after a lock callback completes or is cancelled (due to an error).
    */
   // v8 ignore next -- @preserve 
   protected _onDoneOrCancelled(_options: AllOptions<O, I>): void {}
@@ -395,6 +390,12 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     this._releaseSync(options);
   }
 
+  /**
+   * @internal
+   * @abstract
+   * Release the lock.
+   * @param options Lock options.
+   */
   protected _releaseSync(_: AllOptions<O, I>): void {
     this.#acquired = false;
   }
@@ -405,7 +406,6 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * Acquires a lock for the specified key,
    * executes the function `onLockFn` under exclusive control, 
    * and returns a Promise that resolves with the return value of `onLockFn` after the lock is released.
-   *
    * @param onLockFn  A user-specified callback function to be executed after acquiring the lock.
    * @param options   Lock options.
    * @returns A `Promise` that resolves with the return value of `onLockFn`.
@@ -438,7 +438,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     return whithLockInContext();
   }
 
-    /**
+  /**
    * @internal
    * Create a timer for TTL.
    * @param options Lock options.

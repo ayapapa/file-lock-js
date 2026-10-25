@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FileLock, type FileLockConfig, LockError, type LockMonitor } from '../src/index.ts';
+import { FileLock, type FileLockConfig, type LockMonitor } from '../src/index.ts';
 import { LockBase } from '../src/lib/LockBase.ts';
 import { TestLock } from './FileLockTestCommon.ts'
 import { getCallStack, isEqualObjectType, sleepAsync, sleepSync } from '../src/lib/Util.ts'
@@ -90,6 +90,7 @@ describe('LockBase and Util', () => {
     }
   }
 
+  /* もう、不要。
   async function testNotImpleMethod(cb: () => Promise<void>) {
     expect.assertions(3)
     try {
@@ -115,7 +116,7 @@ describe('LockBase and Util', () => {
       await (new TestLockBase().test_decReantryCount());
     });
   });
-
+*/
   it("`LockBase._acquire()`.", async () => {
       const tlb = new TestLockBase();
       await tlb.test_acquire();

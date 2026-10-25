@@ -63,12 +63,6 @@ describe('FileLockError', () => {
         reason: "ExistingLock",
         message: "The `lock file` already exists.",
       });
-      /*
-      expect(err.code).toBe('EALREADYLOCKED');
-      expect(err.key).toBe(key);
-      expect(err instanceof AlreadyLocked).toBe(true);
-      expect(err.message.includes("Couldn't the lock because the")).toBe(true);
-      */
     }
     finally {
       removeLockFiles(key);

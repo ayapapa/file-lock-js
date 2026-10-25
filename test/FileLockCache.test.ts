@@ -3,7 +3,6 @@ import { type FileLockConfig, FileLock } from '../src/index.ts';
 import { Cache } from '../src/lib/Cache.ts';
 import { sleepAsync } from './FileLockTestCommon.ts'
 
-
 let orgConfig: FileLockConfig;
 beforeEach(() => {
   vi.restoreAllMocks();
