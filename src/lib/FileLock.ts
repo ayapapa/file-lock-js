@@ -604,7 +604,11 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       if (names.length >= FileLock.#config.maxHistoryFiles) {
         names.sort();
         for( let i = 0; i < names.length - FileLock.#config.maxHistoryFiles; i++) {
-          this.#unlinkSync(path.join(FileLock.#historyDir, names[i]), options, 'normal', `Couldn't remove the history file.`);
+          try {
+            this.#unlinkSync(path.join(FileLock.#historyDir, names[i]), options, 'normal', `Couldn't remove the history file.`);
+          }
+          // v8 ignore next
+          catch (_e) {/* do nothing */};
         }
       };
     };
@@ -1202,20 +1206,15 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Lock share directory.
     const interval = options._sharerLockIntervalMs;
     const timeout = Date.now() + options._sharerLocktimeoutMs;
-    let lastErr;
-    do {
-      try {
-        this.#openSyncExclusively(lockPath, options);
-        break;
-      }
-      catch (err) {
-        lastErr = err;
-        if (Date.now() >= timeout) break;
-        await sleepAsync(interval);
-      }
-      // ignore the eslint warning about the infinite loop, as it is controlled by the timeout condition.
-      // eslint-disable-next-line no-constant-condition
-    } while (true);
+    let lastErr!: unknown;
+    const lockSharer = () => {
+      try { this.#openSyncExclusively(lockPath, options); lastErr = undefined; return true; }
+      catch (err) { lastErr = err; return false; }
+    };
+
+    while (!lockSharer() && Date.now() < timeout) {
+      await sleepAsync(interval);
+    }
 
     if (lastErr instanceof Error) throw Object.assign(lastErr, { path: lockPath });
     
