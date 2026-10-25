@@ -69,7 +69,6 @@ export interface FileLockOptions extends LockBaseOptions {
    */
   heartbeatRetryIntervalMs?: number;
 
-
   /**
    * Number of retries for `lock file` operations in the event of an I/O error. <br>
    * Minimum is `0`; if a value lower than this is specified, this minimum value is used.
