@@ -879,7 +879,6 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       return { meta: this.#getInfo(options, false), reason: 'OK' };
     }
     catch (err) {
-      // ここで、あるはずのロックファイルが無いケースを観測したため、改めて存在を確認
       const exists = this.#existsSync(options._filePath, options);
       const ret = { meta: null, reason: 'EUNKNOWN', exists, cause: err };
       err instanceof Error && 'code' in err && (Object.assign(ret, { reason: String(err.code) }));
@@ -1379,8 +1378,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       this.#heatbeatUpdating = true;
       let ticket;
       try {
-        const timout = Math.ceil(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.pollIntervalMs * 2));
-        const delay = new FixedDelay({ base: options.retryIoIntervalMs, jitterRate: 0.2 })
+        const timout = Math.round(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.pollIntervalMs * 2));
+        const delay = new FixedDelay({ base: options.pollIntervalMs, jitterRate: 0.2 })
         while (this._isALiveHeartbeatTimer && Date.now() < timout &&
               (ticket = this.#getTicket(options, 'no-retry', true)) === undefined) {
           await sleepAsync(delay.next());
