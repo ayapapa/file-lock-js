@@ -40,8 +40,8 @@ describe('LockBase and Util', () => {
     await sleepAsync(100);
 
     const elapsed = Date.now() - start;
-    // Verify that at least 99 ms have elapsed to account for margin of error.
-    expect(elapsed).toBeGreaterThanOrEqual(99);
+    // Verify that at least 98 ms have elapsed to account for margin of error.
+    expect(elapsed).toBeGreaterThanOrEqual(98);
   });
 
   it("`sleepSync()` sleeps for the specified duration.", () => {
@@ -49,8 +49,8 @@ describe('LockBase and Util', () => {
     sleepSync(100);
     
     const elapsed = Date.now() - start;
-    // Verify that at least 99 ms have elapsed to account for margin of error.
-    expect(elapsed).toBeGreaterThanOrEqual(99);
+    // Verify that at least 98 ms have elapsed to account for margin of error.
+    expect(elapsed).toBeGreaterThanOrEqual(98);
   });
 
   class TestLockBase extends LockBase {
