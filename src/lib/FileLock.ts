@@ -11,7 +11,7 @@ import { FileLockOptionsResolver } from "./FileLockOptionsResolver.ts";
 import { FileLockError, LockCompromised, LockDirectoryCreationFailed, LockDirectoryStatFailed} from './FileLockErrors.ts';
 import { type AllOptions as AllOptionsT } from './AllOptions.ts';
 import { defaultFileLockConfig, type FileLockConfig } from './FileLockConfig.ts';
-import { getCallStack, includesAllKeysOf, sleepSync, typedKeys } from './Util.ts'
+import { getCallStack, includesAllKeysOf, sleepSync } from './Util.ts'
 import { type FileLockMeta } from './FileLockMeta.ts'
 import { AlreadyLocked, InvalidOptions, ReleaseFailed } from './LockBaseErrors.ts';
 import { ExponentialDelay, FixedDelay, retry  } from './RetryDelay.ts';
@@ -279,27 +279,22 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
       }
     }
 
-    const candies = {
-      'config.lockDirectory' : FileLock.#config.lockDirectory,
-      'process.cwd()': path.join(process.cwd(), '.lock'),
-    };
-
-    // Check whether the directory is one specified by the user.
-    const isSpecified = (i: number) => i === 0;
+    const candidates = [
+      [FileLock.#config.lockDirectory, true],
+      [path.join(process.cwd(), '.lock'), false],
+    ] as const;
 
     // Create a `lock directory`.
-    let candidates: string = '';
-    const keys = typedKeys(candies);
-    for(let i = 0; i < keys.length; i++) {
-      const dir = candies[keys[i]];
+    let attempted: string = '';
+    for (const [dir, required] of candidates) {
       if (!dir) continue;
-      candidates += "\n" + `- ${dir}`;
+      attempted += "\n" + `- ${dir}`;
       try {
         if (existsDir(dir) === false) mkdir(dir);
         return dir;
       }
       catch (err) {
-        if (isSpecified(i)) throw err;
+        if (required) throw err;
         continue;
       }
     };
@@ -307,8 +302,8 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     throw new LockDirectoryCreationFailed(
       "Failed to create the `lock directory`." +
       "\nAttempted to locate and create it in the following order:" +
-      candidates,
-      { props: { candidates } }
+      attempted,
+      { props: { candidates: attempted } }
     );
   }
 
@@ -394,29 +389,31 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
     // Couldn't acquire the lock
     const causesRaw = tryResults.filter(v => v.cause != null).map(v => v.cause)
     const lastRes = tryResults[tryResults.length - 1];
-    const causes = (() => {
-      if (lastRes.reason === 'EHISTORY') return causesRaw.slice(-2);
-      return causesRaw.slice(-1);
-    })();
+    const causes = causesRaw.slice(lastRes.reason === 'EHISTORY' ? -2 : -1);
     const props = {} as Record<string, unknown>;
     causes.length > 0 && (props.causes = causes);
-    const newAlreadyLocked = (msg: string, reason: string) => {
-      props.reason = reason;
-      return new AlreadyLocked(msg, { key: this._key, props });
+    const lockErrorDetails = {
+      EALREADYLOCKED: { message: 'The `lock file` already exists.', reason: 'ExistingLock' },
+      EUPDATING: { message: 'The `lock file` already exists and may still be updating.', reason: 'Updating' },
+      EINITIALIZING: { message: 'The `lock file` already exists and may still be initializing.', reason: 'Initializing' },
+      EBROKEN: { message: 'The `lock file` already exists, but its metadata is invalid.', reason: 'InvalidMetadata' },
+      EEXISTANDEIO: { message: 'The `lock file` already exists, but its validity could not be determined due to an I/O error.', reason: 'MetadataReadError' },
+    } as const satisfies Record<string, { message: string, reason: string }>;
+    const lockError = lockErrorDetails[lastRes.reason as keyof typeof lockErrorDetails];
+    let err: Error | undefined;
+    if (lockError) {
+      props.reason = lockError.reason;
+      err = new AlreadyLocked(lockError.message, { key: this._key, props });
     }
-    const errIns = {
-      'EALREADYLOCKED': () => newAlreadyLocked('The `lock file` already exists.', 'ExistingLock'),
-      'EUPDATING'     : () => {
-        return newAlreadyLocked('The `lock file` already exists and may still be updating.', 'Updating'); 
-      },
-      'EINITIALIZING' : () => newAlreadyLocked('The `lock file` already exists and may still be initializing.', 'Initializing'), 
-      'EBROKEN'       : () => newAlreadyLocked('The `lock file` already exists, but its metadata is invalid.', 'InvalidMetadata'),
-      'EEXISTANDEIO'  : () => newAlreadyLocked('The `lock file` already exists, but its validity could not be determined due to an I/O error.', 'MetadataReadError'),
-      'EIO'           : () => FileLockError.lockFailedDueToIO(this._key, causes),
-      'EHISTORY'      : () => FileLockError.lockFailedDueToHistory(FileLock.#historyPath, causes),
-    } as const as Record<string, () => Error>;
-
-    const err = errIns[lastRes.reason] && errIns[lastRes.reason]();
+    else if (lastRes.reason === 'EHISTORY') {
+      err = FileLockError.lockFailedDueToHistory(FileLock.#historyPath, causes);
+    }
+    else {
+      // v8 ignore else -- @preserve
+      if (lastRes.reason === 'EIO' || lastRes.reason === 'ERMTEMP') {
+        err = FileLockError.lockFailedDueToIO(this._key, causes);
+      }
+    }
     ENSURE_DEBUG(err != null, 'Unexpected lock failure reason. This may be a malfunction.',
       FileLockError, { code: 'EUNEXPECTED', props: { reason: lastRes.reason, cause: lastRes.cause } });
     throw err;

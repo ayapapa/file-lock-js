@@ -428,11 +428,23 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
         // Since re-entry is permitted, increment the lock count and then execute the callback.
         this._logger.trace(`Allow re-entry lock(key=${this.#key}) ` + "in accordance with `options.allowReentry`.");
-        return this.#execWithoutLock(onLockFn, options)
+        return this.#execLockCommon(
+          onLockFn,
+          async () => this._incReantryCount(options),
+          async () => this._decReantryCount(options),
+          'Re-entrant locking callback.',
+          options
+        );
       }
 
       // Exeute locking operations.
-      return this.#execWithLock(onLockFn, options);
+      return this.#execLockCommon(
+        onLockFn,
+        async () => this._acquire(options),
+        async () => this._release(options),
+        'Callback or Timer in withLock().',
+        options
+      );
     }
 
     return whithLockInContext();
@@ -500,13 +512,13 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
     // Created promises.
     const ttlTimer      = this.#createTtlTimer(options);
-    const onExitPromise = this.#onExitPromise();
+    const onExitPromise = this.#createDeferredPromise();
     const cbPromise     = this.#execCallback(onLockFn, options);
     const racePrs = [cbPromise, ttlTimer.promise, onExitPromise.promise];
     // Register reject functions.
     this.#onExitRejects[options._sharerId] = onExitPromise.reject;
 
-    const interruptPromise = this.#interruptPromise();
+    const interruptPromise = this.#createDeferredPromise();
     racePrs.push(interruptPromise.promise);
     this.#onInterruptRejects[options._sharerId] = interruptPromise.reject;
 
@@ -534,39 +546,6 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     }
   }
 
-  /**
-   * @internal
-   * Acquire the lock and execute the callback function.
-   * @param onLockFn  Callback function to execute while locked.
-   * @param options   Lock options.
-   * @returns 
-   */
-  async #execWithLock(onLockFn: CallbackOnLock, options: AllOptions<O, I>): Promise<unknown> {
-    return this.#execLockCommon(
-      onLockFn, 
-      async () => this._acquire(options), 
-      async () => this._release(options), 
-      'Callback or Timer in withLock().',
-      options
-    );
-  }
-
-  /**
-   * @internal
-   * Increment the lock counter and execute the callback function.
-   * @param onLockFn  Callback function to execute while locked.
-   * @param options   Lock options.
-   */
-  async #execWithoutLock(onLockFn: CallbackOnLock, options: AllOptions<O, I>) {
-    return this.#execLockCommon(
-      onLockFn, 
-      async () => this._incReantryCount(options), 
-      async () => this._decReantryCount(options), 
-      'Re-entrant locking callback.',
-      options
-    );
-  }
-
   /** 
    * @internal
    * Retrieve the current context. <br>
@@ -574,24 +553,6 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    */
   #getReentrantContext() : ReentrantContext | undefined {
     return LockBase.#als.getStore();
-  }
-
-  /** 
-   * @interna
-   * Create a promise for interrupt detection.
-   * @returns A `promise` for detecting interrupt processing, along with its `resolve` and `reject` functions.
-   */
-  #interruptPromise(): { promise: Promise<unknown>, resolve: (v: unknown) => void, reject: (r?: unknown) => void} {
-    let onResolve!: ((v: unknown) => void);
-    let onReject!: ((r?: unknown) => void);
-    return {
-      promise: new Promise((resolve, reject) => {
-        onResolve = resolve;
-        onReject  = reject;
-      }),
-      resolve: onResolve,
-      reject: onReject
-    };
   }
 
   /**
@@ -616,21 +577,18 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     };
   }
 
-  /**
-   * @internal
-   * Create a promise for the termination process, set the `reject` function to `this`, 
-   * and return the promise and the `resolve` function.
-   */
-  #onExitPromise() {
-    let onExitResolve!: ((v: unknown) => void);
-    let onExitReject!: ((r: unknown) => void);
+  /** Create a promise with externally accessible resolve and reject functions. */
+  #createDeferredPromise() {
+    let resolve!: (value: unknown) => void;
+    let reject!: (reason?: unknown) => void;
     return {
-      promise: new Promise((resolve, reject) => {
-        onExitResolve = resolve;
-        onExitReject = reject;
+      promise: new Promise((resolvePromise, rejectPromise) => {
+        // Promise executor runs synchronously, so these are initialized before return.
+        resolve = resolvePromise;
+        reject = rejectPromise;
       }),
-      resolve: onExitResolve,
-      reject: onExitReject
+      resolve,
+      reject
     };
   }
 

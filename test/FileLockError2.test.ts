@@ -766,6 +766,34 @@ it("Deliberately create an invalid lock file and verify that it results in an er
     );
   });
 
+  it("A temporary lock file error with code ERMTEMP is reported as an I/O lock failure.", async () => {
+    const key = "temporaryLockFileError";
+    await testSpyIO(
+      key,
+      'writeFileSync',
+      (_, args, orgFn) => {
+        if (args[0] === getLockMetaPath(key) + '.tmp') {
+          throw Object.assign(new Error("temporary file error!"), { code: 'ERMTEMP' });
+        }
+        return orgFn(...args);
+      },
+      false, // error
+      FileLockError,
+      {
+        code: 'EIO',
+        key,
+        message: "Failed to acquire the lock due to a file I/O error.",
+        causes: [{
+          code: 'ERMTEMP',
+          path: getLockMetaPath(key) + '.tmp',
+          message: "Failed to write the `temporary lock file`.(temporary file error!)",
+        }],
+      },
+      true, // sweep
+      null,
+    );
+  });
+
   it("Failed to create temporary lock file (during heartbeat update)", async () => {
     const key = "createTmpFailedHeatbeat";
     await testSpyIO(
@@ -834,4 +862,3 @@ it("Deliberately create an invalid lock file and verify that it results in an er
   });
 
 });
-
