@@ -506,14 +506,9 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
     // Register reject functions.
     this.#onExitRejects[options._sharerId] = onExitPromise.reject;
 
-    // If there is an interrupt promise in the inheriting class, 
-    // have it participate in the promise race described below.
     const interruptPromise = this.#interruptPromise();
-    // v8 ignore else  -- @preserve
-    if (interruptPromise) {
-      racePrs.push(interruptPromise.promise);
-      this.#onInterruptRejects[options._sharerId] = interruptPromise.reject;
-    }
+    racePrs.push(interruptPromise.promise);
+    this.#onInterruptRejects[options._sharerId] = interruptPromise.reject;
 
     // A race between callback processing and the TTL timer.
     try {
@@ -525,11 +520,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
           ttlTimer.id && clearTimeout(ttlTimer.id);
           onExitPromise.resolve('No forced termination');
           delete this.#onExitRejects[options._sharerId];
-          // v8 ignore else  -- @preserve
-          if (interruptPromise) {
-            interruptPromise.resolve('Ok');
-            delete this.#onInterruptRejects[options._sharerId];
-          }
+          interruptPromise.resolve('Ok');
+          delete this.#onInterruptRejects[options._sharerId];
         }
       );
     }
@@ -586,12 +578,10 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
   /** 
    * @interna
-   * @abstract
-   * Create a promise for interrupt detection.<br>
-   * This method is intended to be overridden in subclasses as needed.
+   * Create a promise for interrupt detection.
    * @returns A `promise` for detecting interrupt processing, along with its `resolve` and `reject` functions.
    */
-  #interruptPromise(): { promise: Promise<unknown>, resolve: (v: unknown) => void, reject: (r?: unknown) => void} | undefined {
+  #interruptPromise(): { promise: Promise<unknown>, resolve: (v: unknown) => void, reject: (r?: unknown) => void} {
     let onResolve!: ((v: unknown) => void);
     let onReject!: ((r?: unknown) => void);
     return {

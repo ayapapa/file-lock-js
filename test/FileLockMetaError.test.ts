@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sleepAsync, getLockMeta, setLockMeta, removeLockFiles, getLockMetaPath, TestLock  } from './FileLockTestCommon.ts';
 import { AlreadyLocked, FileLock, type FileLockConfig, } from '../src/index.ts';
@@ -95,20 +96,94 @@ describe('FileLock', () => {
 */
   it("Verify that the heartbeat is functioning correctly.", async () => {
     const key = "testKey", retVal = key;
-    expect(await FileLock.withLock(
+    let resolveCallbackEntered!: () => void;
+    const callbackEntered = new Promise<void>(resolve => {
+      resolveCallbackEntered = resolve;
+    });
+    let resolveCallback!: () => void;
+    const callbackGate = new Promise<void>(resolve => {
+      resolveCallback = resolve;
+    });
+
+    vi.useFakeTimers();
+    const lockPromise = FileLock.withLock(
       key,
       async () => {
-        const meta1 = getLockMeta(key);
-        const interval = 200
-        for (let left = 1200; left > 0; left -= interval) {
-          await sleepAsync(interval);
-        }
-        const meta2 = getLockMeta(key);
-        expect(meta2.heartbeatExpiresAt).toBeGreaterThan(meta1.heartbeatExpiresAt);
+        resolveCallbackEntered();
+        await callbackGate;
         return retVal;
       },
-      {ttlMs: 3000}
-    )).toBe(retVal);
-    expect(TestLock.isReleasedState(key)).toBeTruthy();
+      { ttlMs: 3000 }
+    );
+
+    try {
+      await callbackEntered;
+      const metaBefore = getLockMeta(key);
+      await vi.advanceTimersByTimeAsync(1000);
+      const metaAfter = getLockMeta(key);
+      expect(metaAfter.heartbeatExpiresAt).toBeGreaterThan(metaBefore.heartbeatExpiresAt);
+
+      resolveCallback();
+      expect(await lockPromise).toBe(retVal);
+      expect(TestLock.isReleasedState(key)).toBeTruthy();
+    }
+    finally {
+      resolveCallback();
+      vi.useRealTimers();
+      removeLockFiles(key);
+    }
+  });
+
+  it("Stops retrying a heartbeat update after the lock is released.", async () => {
+    const key = `heartbeatRetryAfterRelease_${Date.now()}`;
+    const tmpPath = getLockMetaPath(key) + '.tmp';
+    const originalOpenSync = fs.openSync;
+    let heartbeatOpenAttempts = 0;
+    let resolveHeartbeatAttempt!: () => void;
+    const heartbeatAttempt = new Promise<void>(resolve => {
+      resolveHeartbeatAttempt = resolve;
+    });
+    let resolveCallbackEntered!: () => void;
+    const callbackEntered = new Promise<void>(resolve => {
+      resolveCallbackEntered = resolve;
+    });
+
+    vi.useFakeTimers();
+    const openSpy = vi.spyOn(fs, 'openSync').mockImplementation((filePath, flags, mode) => {
+      if (filePath === tmpPath && new Error().stack?.includes('#updateHeartbeat')) {
+        heartbeatOpenAttempts++;
+        resolveHeartbeatAttempt();
+        throw Object.assign(new Error('Temporary lock file is busy.'), { code: 'EEXIST' });
+      }
+      return originalOpenSync(filePath, flags, mode);
+    });
+
+    try {
+      const lockPromise = FileLock.withLock(
+        key,
+        async () => {
+          resolveCallbackEntered();
+          await heartbeatAttempt;
+          return key;
+        },
+        { timeoutMs: 0, ttlMs: 10000 }
+      );
+
+      await callbackEntered;
+      await vi.advanceTimersByTimeAsync(1000);
+      await expect(lockPromise).resolves.toBe(key);
+
+      // Let the pending retry observe that releasing the lock stopped its heartbeat timer.
+      await vi.advanceTimersByTimeAsync(3000);
+
+      expect(heartbeatOpenAttempts).toBe(1);
+      expect(TestLock.isReleasedState(key)).toBeTruthy();
+    }
+    finally {
+      resolveHeartbeatAttempt();
+      openSpy.mockRestore();
+      vi.useRealTimers();
+      removeLockFiles(key);
+    }
   });
 });

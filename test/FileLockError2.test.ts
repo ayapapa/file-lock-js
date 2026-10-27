@@ -393,7 +393,9 @@ describe('FileLockError2', () => {
         const filePath = args[0] as string;
         const parent = path.basename(path.dirname(filePath))
         const name = path.basename(filePath)
-        if (parent.endsWith('.sharer') && name === '.lock') throw Object.assign(new Error("openSync error!"), { code: 'EOMOON' });
+        if (parent.endsWith('.sharer') && name === '.lock') {
+          throw Object.assign(new Error("openSync error!"), { code: 'EOMOON' });
+        }
         return orgFn(...args);
       },
       false, // error
@@ -471,7 +473,7 @@ describe('FileLockError2', () => {
           code: 'EIO',
           key,
           sharerDir: targetPath,
-          message: "Failed to get the list of `lock sharer`s.",
+          message: "Failed to count the `lock sharer`.",
           causes: [cause2]
     };
 
@@ -479,14 +481,17 @@ describe('FileLockError2', () => {
       key,
       'readdirSync',
       (_, args, orgFn) => {
-        if (targetPath === args[0]) throw Object.assign(new Error('readdirSync error'), { code: 'ERDMOON' });
+        if (targetPath === args[0]) {
+          throw Object.assign(new Error('readdirSync error'), { code: 'ERDMOON' });
+        }
         return orgFn(...args);
       },
       false, // error
-      FileLockError,
+      ReleaseFailed,
       {
-        code: "EIO",
+        code: "ERELEASE",
         key,
+        message: "Processing is interrupted because the lock release or lock counter decrement failed.",
         causes: [cause]
       },
       true, // sweep

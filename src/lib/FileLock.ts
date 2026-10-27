@@ -11,10 +11,10 @@ import { FileLockOptionsResolver } from "./FileLockOptionsResolver.ts";
 import { FileLockError, LockCompromised, LockDirectoryCreationFailed, LockDirectoryStatFailed} from './FileLockErrors.ts';
 import { type AllOptions as AllOptionsT } from './AllOptions.ts';
 import { defaultFileLockConfig, type FileLockConfig } from './FileLockConfig.ts';
-import { getCallStack, includesAllKeysOf, sleepAsync, sleepSync, typedKeys } from './Util.ts'
+import { getCallStack, includesAllKeysOf, sleepSync, typedKeys } from './Util.ts'
 import { type FileLockMeta } from './FileLockMeta.ts'
 import { AlreadyLocked, InvalidOptions, ReleaseFailed } from './LockBaseErrors.ts';
-import { ExponentialDelay, FixedDelay  } from './RetryDelay.ts';
+import { ExponentialDelay, FixedDelay, retry  } from './RetryDelay.ts';
 
 /** 
  * @ internal
@@ -375,18 +375,16 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options  Lock options.
    */
   protected override async _acquire(options: AllOptions): Promise<void> {
-    const timeoutTime = Date.now() + options.timeoutMs;
     const tryResults = [] as { locked: boolean, reason: string, cause?: unknown }[];
-    const delay = new ExponentialDelay({ base: options.pollIntervalMs, max: 1000, factor: 1.2, jitterRate: 0.2 });
-    let   tryRes!: TryResult;
-    const tryLock = async () => {
-      tryResults.push(tryRes = await this.#tryLock(options));
-      return tryRes.locked;
-    };
-
-    while (!(await tryLock()) && Date.now() < timeoutTime) {
-      await sleepAsync(delay.next());
-    }
+    const tryRes = await retry(async () => {
+      const res = await this.#tryLock(options);
+      tryResults.push(res);
+      return res;
+    }, (result: TryResult) => !result.locked, {
+      timeout: Date.now() + options.timeoutMs
+    }, ExponentialDelay, {
+      base: options.pollIntervalMs, max: 1000, factor: 1.2, jitterRatio: 0.2
+    });
 
     if (tryRes?.locked) {
       this._logger.trace(`Acquired the lock(key: ${this._key})  at ${DateFormatter.format(new Date())}.`);
@@ -539,7 +537,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #accessInfo(name: string, methodCb: () => unknown, options: AllOptions, errMsg: string, retryMode: RetryMode = 'normal') {
     const retries = retryMode === 'no-retry' ? 0 : (retryMode === 'double' ? options.retriesOnIoErr * 2 : options.retriesOnIoErr);
-    const delay = new FixedDelay({ base: options.retryIoIntervalMs, jitterRate: 0.2 })
+    const delay = new FixedDelay({ base: options.retryIoIntervalMs, jitterRatio: 0.2 })
     const causes = [] as unknown[];
     for (let i = 0; i <= retries; i++) {
       try {
@@ -623,10 +621,10 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   async #addOwnerAs1stSharer(options: AllOptions): Promise<void> {
     const sharerDir = options._sharerDir;
-    // Create the `lock sharer directory`
-    this.#mkdirSync(sharerDir, options, { recursive: true }, "Couldn't create the `lock sharer directory`.");
     // There might be an old shared information directory, so delete the shared information.
     await this.#removeSharers(options);
+    // Create the `lock sharer directory`
+    this.#mkdirSync(sharerDir, options, { recursive: true }, "Couldn't create the `lock sharer directory`.");
     // Add myself as owner into the `lock sharer directory`
     return this.#addSharer(options);
   }
@@ -764,12 +762,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #existsSync(path: string, options: AllOptions, msg = `check the existence of the file or directory.`): boolean {
-    return this.#accessInfo(
-      path,
-      () => fs.existsSync(path), 
-      options, 
-      msg
-    ) as boolean;
+    return this.#accessInfo(path, () => fs.existsSync(path), options, msg) as boolean;
   }
 
   /**
@@ -974,12 +967,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #mkdirSync(path: string, options: AllOptions, fsOpts: object = {}, msg = `Couldn't create the directory.`): void {
-    this.#accessInfo(
-      path,
-      () => fs.mkdirSync(path, fsOpts),
-      options,
-      msg
-    );
+    this.#accessInfo(path, () => fs.mkdirSync(path, fsOpts), options, msg);
   }
 
   /**
@@ -1019,13 +1007,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param noRetry 
    */
   #openSyncExclusively(path: string, options: AllOptions, msg = "Couldn't create the file.", retryMode: RetryMode = 'normal'): void {
-    this.#accessInfo(
-      path,
-      () => { const fd = fs.openSync(path, 'wx'); fs.closeSync(fd); },
-      options, 
-      msg,
-      retryMode
-    )
+    this.#accessInfo(path, () => { const fd = fs.openSync(path, 'wx'); fs.closeSync(fd); }, options, msg, retryMode);
   }
 
   /**
@@ -1036,12 +1018,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @returns An array of error directory information.
    */
   #readdirSync(path: string, options: AllOptions, msg = "Couldn't read the direcroty."): fs.Dirent<string>[] {
-    return this.#accessInfo(
-      path,
-      () => fs.readdirSync(path, { withFileTypes: true }), 
-      options, 
-      msg
-    ) as fs.Dirent<string>[];
+    return this.#accessInfo(path, () => fs.readdirSync(path, { withFileTypes: true }), options, msg) as fs.Dirent<string>[];
   }
 
   /**
@@ -1051,12 +1028,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * 
    */
   #readFileSync(path: string, options: AllOptions, msg: string = "Couldn't read the `lock file`."): string {
-    return this.#accessInfo(
-      path,
-      () => fs.readFileSync(path, 'utf8'), 
-      options, 
-      msg
-    ) as string;
+    return this.#accessInfo(path, () => fs.readFileSync(path, 'utf8'), options, msg) as string;
   }
 
   /**
@@ -1119,16 +1091,18 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param msg     Message displayed upon an addition error.
    */
   async #removeSharers(options: AllOptions, sharers?: string[], msg: string = "Failed to remove `lock sharer`s."): Promise<void> {
-    sharers = sharers ?? this.#listSharer(options, "Failed to get the list of `lock sharer`s.");
-    if (sharers.length === 0) return;
+    //sharers = sharers ?? this.#listSharer(options, "Failed to get the list of `lock sharer`s.");
+    //if (sharers.length === 0) return;
     try {
+      if (!this.#existsSync(options._sharerDir, options)) return;
       return await this.#share(() => {
+        sharers = sharers ?? this.#listSharer(options, "Failed to get the list of `lock sharer`s.");
         sharers.forEach(path => this.#unlinkSync(path, options));
       }, options/*, false*/);
     }
     catch (err) {
       const props = { key: this._key, causes: [err] } as Record<string, unknown>;
-      sharers.length === 1 && (props.sharerId = sharers[0]);
+      //sharers.length === 1 && (props.sharerId = sharers[0]);
       throw new FileLockError(msg, { code: 'EIO', props });
     }
   }
@@ -1149,12 +1123,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #renameSync(oldPath: string, newPath: string, options: AllOptions, msg: string): void {
-    this.#accessInfo(
-      oldPath,
-      () => fs.renameSync(oldPath, newPath),
-      options,
-      msg
-    );
+    this.#accessInfo(oldPath, () => fs.renameSync(oldPath, newPath), options, msg);
   }
 
   /**
@@ -1165,12 +1134,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @returns 
    */
   #rmDirSync(path: string, options: AllOptions, msg: string = "Couldn't remove the directory.") {
-    return this.#accessInfo(
-      path,
-      () => fs.rmSync(path, { force: true, recursive: true }), 
-      options, 
-      msg
-    );
+    return this.#accessInfo(path, () => fs.rmSync(path, { force: true, recursive: true }), options, msg);
   }
 
   /**
@@ -1183,13 +1147,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param msg 
    */
   #rmSync(path: string, options: AllOptions, fsOpts: object = {}, retryMode: RetryMode = 'normal', msg = `Couldn't remove the file or directory.`): void {
-    this.#accessInfo(
-      path,
-      () => fs.rmSync(path, fsOpts),
-      options,
-      msg,
-      retryMode
-    );
+    this.#accessInfo(path, () => fs.rmSync(path, fsOpts), options, msg, retryMode);
   }
 
   /**
@@ -1202,21 +1160,16 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   async #share(operation: () => void, options: AllOptions/*, withLock: boolean = true*/): Promise<void> {
     const lockPath = path.join(options._sharerDir, '.lock');
+    const res = await retry(() => {
+      try { this.#openSyncExclusively(lockPath, options); return undefined; }
+      catch (err) { return err; }
+    }, (result: unknown) => result !== undefined, { 
+      timeout: Date.now() + options._sharerLocktimeoutMs
+    },  FixedDelay, {
+      base: options._sharerLockIntervalMs, jitterRatio: 0.2,
+    });
 
-    // Lock share directory.
-    const interval = options._sharerLockIntervalMs;
-    const timeout = Date.now() + options._sharerLocktimeoutMs;
-    let lastErr!: unknown;
-    const lockSharer = () => {
-      try { this.#openSyncExclusively(lockPath, options); lastErr = undefined; return true; }
-      catch (err) { lastErr = err; return false; }
-    };
-
-    while (!lockSharer() && Date.now() < timeout) {
-      await sleepAsync(interval);
-    }
-
-    if (lastErr instanceof Error) throw Object.assign(lastErr, { path: lockPath });
+    if (res instanceof Error) throw Object.assign(res, { path: lockPath });
     
     // Exec operation
     try {
@@ -1233,7 +1186,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #startHeartbeat(options: AllOptions): void {
-    REQUIRE_DEBUG(this.#heartbeatTimer == null, 
+    REQUIRE_DEBUG(!this._isALiveHeartbeatTimer, 
       'Heartbeat multiple startup error. Possible bug.', 
       FileLockError, { code: 'EFILELOCK', props: { options } });
 
@@ -1342,13 +1295,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    * @param options Lock options.
    */
   #unlinkSync(path: string, options: AllOptions, retryMode: RetryMode = 'normal', msg = `Couldn't remove the file.`): void {
-    this.#accessInfo(
-      path,
-      () => fs.unlinkSync(path),
-      options,
-      msg,
-      retryMode
-    );
+    this.#accessInfo(path, () => fs.unlinkSync(path), options, msg, retryMode);
   }
 
   /**
@@ -1357,16 +1304,18 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   async #updateHeartbeat(options: AllOptions) {
     // v8 ignore else -- @preserve
-    if (this.#heartbeatTimer && !this.#heatbeatUpdating) {
+    if (this._isALiveHeartbeatTimer && !this.#heatbeatUpdating) {
       this.#heatbeatUpdating = true;
-      let ticket;
+      let ticket: Ticket | undefined;
       try {
-        const timout = Math.round(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.heartbeatRetryIntervalMs * 2));
-        const delay = new FixedDelay({ base: options.heartbeatRetryIntervalMs, jitterRate: 0.2 })
-        while (this._isALiveHeartbeatTimer && Date.now() < timout &&
-              (ticket = this.#getTicket(options, 'no-retry', true)) === undefined) {
-          await sleepAsync(delay.next());
-        }
+        ticket = await retry(() => {
+          return this._isALiveHeartbeatTimer ? this.#getTicket(options, 'no-retry', true) : undefined;
+        }, (result: Ticket | undefined) => result === undefined, {
+          timeout: Math.round(this.#heartbeatExpiresAt - (options.heartbeatIntervalMs + options.heartbeatRetryIntervalMs * 2))
+        }, FixedDelay, {
+          base: options.heartbeatRetryIntervalMs, jitterRatio: 0.2
+        });
+
 
         // Check _isALiveHeartbeatTimer just in case.
         // v8 ignore else  -- @preserve
@@ -1439,14 +1388,7 @@ export class FileLock extends LockBase<FileLockAllOptions, FileLockInternalState
    */
   #writeFileSync(path: string, data: unknown, options: AllOptions, msg: string = "Couldn't write the `lock file`."): void {
     const str = JSON.stringify(data, null , "  ");
-    this.#accessInfo(
-      path,
-      () => {
-        fs.writeFileSync(path, str, 'utf8');
-      },
-      options,
-      msg
-    );
+    this.#accessInfo(path, () => fs.writeFileSync(path, str, 'utf8'), options, msg);
   }
 
 }
