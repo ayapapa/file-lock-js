@@ -17,6 +17,8 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
 
+    "stripInternal": true,
+
     "strict": true,
     "noImplicitReturns": true, 
     "noFallthroughCasesInSwitch": true, 

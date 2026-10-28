@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { getHistoryPath,  getLockMetaPath, getLockSharerDir, removeLockFiles, setLockMeta, sleepAsync, TestLock  } from './FileLockTestCommon.ts';
 import { AlreadyLocked, type FileLockConfig,  FileLock, FileLockError, ReleaseFailed, type LockMonitor, type FileLockOptions } from '../src/index.ts';
+import { FileLockInternal } from '../src/lib/FileLockInternal.ts';
 
 
 
@@ -249,7 +250,7 @@ describe('FileLockError2', () => {
       await FileLock.withLock(key, async monitor => {
         mon = monitor;
         await sleepAsync(200);
-        FileLock.onExit(2, 'SIGTERM');
+        FileLockInternal.onExit(2, 'SIGTERM');
         },
         {}
       );

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileLock, type FileLockConfig, type FileLockOptions, InvalidOptions } from '../src/index.ts';
 import { FileLockOptionsResolver } from '../src/lib/FileLockOptionsResolver.ts';
-import { type FileLockRequiredOptions, minimumFileLockOptions } from '../src/lib/FileLockOptions.ts';
+import { type FileLockRequiredOptions, minimumFileLockOptions } from '../src/lib/FileLockInternal.ts';
 import { type OptionsForTesting } from '../src/lib/AllOptions.ts'
 
 let orgConfig: FileLockConfig;
@@ -432,7 +432,7 @@ describe('FileLockOptions test.', () => {
   }
 
   it("Calling `getRequiredOptions()` results in an error if an option lacks a required property and no default options have been specified.", () => {
-    const or = new TestOptionResolver({}, FileLock.defaultOptions);
+    const or = new TestOptionResolver({}, FileLock.defaultOptions as FileLockRequiredOptions);
     expect.assertions(2);
     try {
       or.test_getRequiredOptions_emptyOpts();
@@ -447,7 +447,7 @@ describe('FileLockOptions test.', () => {
   });
 
   it("Calling getRequiredOptions() without specifying default options results in an error.", () => {
-    const optionResolver = new TestOptionResolver({}, FileLock.defaultOptions);
+    const optionResolver = new TestOptionResolver({}, FileLock.defaultOptions as FileLockRequiredOptions);
     expect.assertions(2);
     try {
       optionResolver.test_getRequiredOptions_noDefaults();

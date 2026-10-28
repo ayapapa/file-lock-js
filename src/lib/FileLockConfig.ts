@@ -1,5 +1,5 @@
-import { defaultFileLockOptions, type FileLockOptions, } from './FileLockOptions.ts';
-import { defaultLockBaseConfig, type LockBaseConfig } from './LockBaseConfig.ts'
+import { type FileLockOptions } from './FileLockOptions.ts';
+import { type LockBaseConfig } from './LockBaseConfig.ts'
 
 /**
  * FileLock cofiguration. 
@@ -70,18 +70,3 @@ export interface FileLockConfig extends LockBaseConfig {
   maxHistoryFiles?: number;
 }
 
-/**
- * @internal
- * Default values ​​for FileLockConfig. 
- */
-export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
-  ...defaultLockBaseConfig,
-  cache:              true,
-  cacheMaxNum:        100,
-  cacheTtlMs:         10000,
-  defaultOptions:     { ...defaultFileLockOptions },
-  history:            false,
-  lockDirectory:      null,
-  maxHistoryEntries:  100,
-  maxHistoryFiles:    100,
-};

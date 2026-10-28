@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PrettyConsole } from '@ayapapa-npm/pretty-console-js';
 
-import { type FileLockConfig, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed } from '../src/index.ts';
+import { type FileLockConfig, type LogProvider, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed } from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
 
 type NumberKeys<T> = {
@@ -35,6 +35,17 @@ describe('FileLock.Config', () => {
     config = {...FileLock.defaultConfig, defaultOptions: { ...FileLock.defaultOptions, allowReentry: true } };
     FileLock.setConfig(config);
     expect(JSON.stringify(FileLock.getConfig())).toBe(JSON.stringify(config));
+  });
+
+  it("`FileLock.resetConfig()` works correctly.", () => {
+    const dummyLogger: LogProvider = {
+      log: ()=>{}, info: ()=>{}, trace: ()=>{}, debug: ()=>{}, warn: ()=>{}, error: ()=>{}, fatal: ()=>{}
+    }
+    FileLock.setConfig({ lockDirectory: null, logger: dummyLogger, _debug: true,  cache: false });
+    const conf = FileLock.getConfig();
+    FileLock.resetConfig();
+    expect(FileLock.getConfig()).toMatchObject(FileLock.defaultConfig);
+    expect(FileLock.getConfig()).not.toMatchObject(conf);
   });
 
   it("In `setConfig()`, if a value lower than the minimum is specified " +

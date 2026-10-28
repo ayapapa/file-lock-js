@@ -1,5 +1,6 @@
 import { REQUIRE, REQUIRE_DEBUG, VERIFY_DEBUG } from './Contracts.ts';
-import { type LockBaseOptions, type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions } from './LockBaseOptions.ts';
+import { type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions } from './LockBase.ts';
+import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { InvalidOptions } from './LockBaseErrors.ts';
 import { includesAllKeysOf, typedKeys, type KeyTypeMap, type TimeBasedKey } from './Util.ts'
 

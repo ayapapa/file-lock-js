@@ -6,7 +6,7 @@
 
 # Interface: FileLockConfig
 
-Defined in: [src/lib/FileLockConfig.ts:7](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L7)
+Defined in: [src/lib/FileLockConfig.ts:7](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/FileLockConfig.ts#L7)
 
 FileLock cofiguration.
 
@@ -16,35 +16,11 @@ FileLock cofiguration.
 
 ## Properties
 
-### \_debug?
-
-> `optional` **\_debug?**: `boolean`
-
-Defined in: [src/lib/LockBaseConfig.ts:26](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/LockBaseConfig.ts#L26)
-
-**`Internal`**
-
-Indicates whether to execute in debug mode. <br>
-If `true`:
-- Process-related information is added to the lock information file.
-- History tracking is enabled.
-- If no logger is specified, or if `console` is specified as the logger, `trace` and `debug` logs from this library are output.   
-This is a debug flag for this class and is intended for use only during development.
-However, if an external logger is injected, it cannot be controlled; 
-please adjust the log level yourself as necessary.
-Default is `false`.
-
-#### Inherited from
-
-`LockBaseConfig._debug`
-
-***
-
 ### cache?
 
 > `optional` **cache?**: `boolean`
 
-Defined in: [src/lib/FileLockConfig.ts:22](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L22)
+Defined in: [src/lib/FileLockConfig.ts:22](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/FileLockConfig.ts#L22)
 
 Whether to enable caching for FileLock instances associated with a key.
 Default is `true`.
@@ -55,7 +31,7 @@ Default is `true`.
 
 > `optional` **cacheMaxNum?**: `number`
 
-Defined in: [src/lib/FileLockConfig.ts:30](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L30)
+Defined in: [src/lib/FileLockConfig.ts:30](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/FileLockConfig.ts#L30)
 
 Maximum number that can be cached. 
 `0` means `cache` is disabled, even if `cache` is true.
@@ -68,7 +44,7 @@ Default is `100`.
 
 > `optional` **cacheTtlMs?**: `number`
 
-Defined in: [src/lib/FileLockConfig.ts:36](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L36)
+Defined in: [src/lib/FileLockConfig.ts:36](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/FileLockConfig.ts#L36)
 
 Cache expiration time (milliseconds). 
 Default and minimum `10000`.
@@ -79,7 +55,7 @@ Default and minimum `10000`.
 
 > `optional` **defaultOptions?**: [`FileLockOptions`](FileLockOptions.md)
 
-Defined in: [src/lib/FileLockConfig.ts:43](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L43)
+Defined in: [src/lib/FileLockConfig.ts:43](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/FileLockConfig.ts#L43)
 
 Global default options.
 These are used as the default values ​​for options specified in `withLock()`.
@@ -87,26 +63,11 @@ Default is the return value of `FileLock.getDefaultOptions()`.
 
 ***
 
-### history?
-
-> `optional` **history?**: `boolean`
-
-Defined in: [src/lib/FileLockConfig.ts:52](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L52)
-
-**`Internal`**
-
-Whether to keep a history of lock information. 
-This is for debugging.
-If `true`, a history of lock information will be appended into a file named `xxxx.json` in the `lock directory`/history/.
-Default is `false`.
-
-***
-
 ### lockDirectory?
 
 > `optional` **lockDirectory?**: `string` \| `null`
 
-Defined in: [src/lib/FileLockConfig.ts:16](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L16)
+Defined in: [src/lib/FileLockConfig.ts:16](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/FileLockConfig.ts#L16)
 
 Specifies the directory path to stored locking imformations.
 If it has been specified, use this as the top priority.
@@ -121,7 +82,7 @@ Note: In cases where the directory is explicitly specified (1 or 2 above), an er
 
 > `optional` **logger?**: [`LogProvider`](../type-aliases/LogProvider.md)
 
-Defined in: [src/lib/LockBaseConfig.ts:12](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/LockBaseConfig.ts#L12)
+Defined in: [src/lib/LockBaseConfig.ts:12](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/LockBaseConfig.ts#L12)
 
 External logger. 
 Default is `console`.
@@ -136,7 +97,7 @@ Default is `console`.
 
 > `optional` **maxHistoryEntries?**: `number`
 
-Defined in: [src/lib/FileLockConfig.ts:61](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L61)
+Defined in: [src/lib/FileLockConfig.ts:61](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/FileLockConfig.ts#L61)
 
 Maximum number of history entries to keep. 
 This is for debugging.
@@ -150,7 +111,7 @@ Default is `100`.
 
 > `optional` **maxHistoryFiles?**: `number`
 
-Defined in: [src/lib/FileLockConfig.ts:70](https://github.com/ayapapa/file-lock-js/blob/8daabf4724d46e7075873cb3fc88b2e5b13ef4f4/src/lib/FileLockConfig.ts#L70)
+Defined in: [src/lib/FileLockConfig.ts:70](https://github.com/ayapapa/file-lock-js/blob/e10258163e96cfb93e4fb3aead0876ee9d5c7eed/src/lib/FileLockConfig.ts#L70)
 
 Maximum number of history files to keep. 
 This is for debugging.

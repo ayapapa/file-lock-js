@@ -2,7 +2,6 @@ import { type LockBaseOptions } from "./LockBaseOptions.ts";
 import { type LockBaseInternalState } from "./LockBaseInternalState.ts";
 
 /**
- * @internal 
  * A fusion of user options and internal options.
  */
 export type AllOptions<
@@ -11,7 +10,6 @@ export type AllOptions<
 > = U & I;
 
 /** 
- * @internal
  * Keys of AllOptions 
  */
 export type AllOptionsKey<
@@ -20,7 +18,6 @@ export type AllOptionsKey<
 > = keyof AllOptions<U, I>;
 
 /**
- * @internal
  * Options for testing.
  */
 export interface OptionsForTesting<T> {

@@ -9,7 +9,8 @@ import { pino } from 'pino'
 import { createStream } from 'rotating-file-stream'
 
 import { AlreadyLocked, FileLock, type FileLockOptions } from '../src/index.ts';
-import { type FileLockRequiredOptions } from '../src/lib/FileLockOptions.ts';
+import { type FileLockRequiredOptions } from '../src/lib/FileLockInternal.ts';
+import { FileLockInternal } from '../src/lib/FileLockInternal.ts';
 
 export async function sleepAsync(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -319,7 +320,7 @@ export async function testMultiProcess(n: number, oneKey?: string, opts?: { slee
  * Lock for testing
  */
 // @ts-expect-error constructor of `FileLock` is private.
-export class TestLock extends FileLock {
+export class TestLock extends FileLockInternal {
 
   static getExitFuncs() {
     return super["_onExitFns"];
@@ -378,7 +379,7 @@ export class TestLock extends FileLock {
   }
 */
   async testWithLockEmptyOptions(cb: () => unknown): Promise<unknown> {
-    return super["withLock"](cb, {} as FileLockRequiredOptions);
+    return super["_withLock"](cb, {} as FileLockRequiredOptions);
   }
   debugLog(...args: unknown[]) {
     this._debugLog(...args);

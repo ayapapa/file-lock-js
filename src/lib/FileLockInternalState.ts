@@ -1,7 +1,6 @@
 import { type LockBaseInternalState } from './LockBaseInternalState.ts';
 
 /**
- * @internal 
  * FileLock status information. 
  */
 export interface FileLockInternalState extends LockBaseInternalState {

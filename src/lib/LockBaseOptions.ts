@@ -70,33 +70,3 @@ export interface LockBaseOptions {
    // ConflictPolicy: 'FAIL_FAST' | 'WAIT_UNTIL_TIMEOUT';
   }
 
-/**
- * @internal
- * An internal options type consisting only of the required properties of LockBaseOptions.
- */
-export type LockBaseRequiredOptions = Required<Pick<LockBaseOptions, 'timeoutMs' | 'ttlMs' | 'allowReentry'>>;
-
-/**
- * @internal
- * Default values of LockBaseRequiredOptions.
- */
-export const defaultLockBaseOptions: Readonly<LockBaseRequiredOptions> = {
-  timeoutMs:      5000,   // Default maximum wait time for lock release is 5 seconds
-  ttlMs:          5000,   // Default lock validity period (time to live) is 5 seconds
-  allowReentry:   false,  // Default to disallowing re-entrant locks
-};
-
-/**
- * @internal
- * Definition of an options type consisting solely of the required numeric properties of `LockBaseOptions`.
- */
-export type LockBaseRequiredNumericOptions = Pick<LockBaseRequiredOptions, 'timeoutMs' | 'ttlMs'>;
-
-/**
- * @internal
- * Definition of the minimum value for the numeric properties of LockBaseOptions. 
- */
-export const minimumLockBaseOptions: Readonly<LockBaseRequiredNumericOptions> = {
-  timeoutMs:      0,    // Not wait for the release of the preceding-stage lock.
-  ttlMs:          1000, // The minimum lifetime for the callback processing after acquiring the lock is 1 second.
-}

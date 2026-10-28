@@ -1,4 +1,4 @@
-import { defaultLockBaseOptions, minimumLockBaseOptions, type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions, type LockBaseOptions } from './LockBaseOptions.ts';
+import { type LockBaseOptions } from './LockBaseOptions.ts';
 
 /**
  * User options for FileLock (inherits from LockBaseOptions)
@@ -110,44 +110,3 @@ export interface FileLockOptions extends LockBaseOptions {
   invalidTtlMs?: number,
 }
 
-/**
- * @internal
- * Definition of required properties for the FileLockOtions.
- */
-export type FileLockRequiredOptions = Required<Pick<FileLockOptions, 
-  'pollIntervalMs' | 'heartbeatIntervalMs' | 'heartbeatTtlMs' | 'heartbeatRetryIntervalMs' | 'retriesOnIoErr' | 'retryIoIntervalMs'>> & LockBaseRequiredOptions;
-
-/**
- * @internal
- * Definition of default values ​​for FileLockOtions.
- */
-export const defaultFileLockOptions : Readonly<FileLockRequiredOptions> = {
-  ...defaultLockBaseOptions,
-  pollIntervalMs:           100,
-  heartbeatIntervalMs:      1000,
-  heartbeatTtlMs:           5000,
-  heartbeatRetryIntervalMs: 100,
-  retriesOnIoErr:           1,
-  retryIoIntervalMs:        100,
-};
-
-/**
- * @internal
- * Definition of required numeric properties of the FileLockOtions.
- */
-export type FileLockRequiredNumericOptions = Pick<FileLockRequiredOptions, 
-  'pollIntervalMs' | 'heartbeatIntervalMs' | 'heartbeatTtlMs' | 'heartbeatRetryIntervalMs' | 'retriesOnIoErr' | 'retryIoIntervalMs'> & LockBaseRequiredNumericOptions;
-
-/**
- * @internal
- * Definition of the minimum value for required numeric properties of the FileLockOtions.
- */
-export const minimumFileLockOptions: Readonly<FileLockRequiredNumericOptions> = {
-  ...minimumLockBaseOptions,
-  pollIntervalMs:           100,
-  heartbeatIntervalMs:      1000,
-  heartbeatTtlMs:           5000,
-  heartbeatRetryIntervalMs: 100,
-  retriesOnIoErr:           0,
-  retryIoIntervalMs:        100,
-}

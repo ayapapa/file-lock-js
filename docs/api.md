@@ -29,6 +29,7 @@
 - [CallbackOnLock](type-aliases/CallbackOnLock.md)
 - [LockErrorProps](type-aliases/LockErrorProps.md)
 - [LogProvider](type-aliases/LogProvider.md)
+- [MaybePromise](type-aliases/MaybePromise.md)
 
 ## References
 

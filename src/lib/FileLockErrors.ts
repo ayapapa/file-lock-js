@@ -31,7 +31,7 @@ export class FileLockError extends LockError {
    * @internal
    * Create a history file analysis error instance.
    * @param history  Path to the history file. 
-   * @param cause    The parsing error that caused the issue.
+   * @param causes    The parsing error that caused the issue.
    * @returns An instance of FileLockError.
    */
   public static historyPasingFailed(history: string, causes: unknown[]): FileLockError {
@@ -41,7 +41,7 @@ export class FileLockError extends LockError {
  /**
   * Create a lock acquisition errors caused by history file analysis errors.
    * @param history  Path to the history file. 
-   * @param cause    The parsing error that caused the issue.
+   * @param causes    The parsing error that caused the issue.
    * @returns An instance of FileLockError.
   */
   public static lockFailedDueToHistory(history: string, causes: unknown[]): FileLockError {
@@ -51,7 +51,6 @@ export class FileLockError extends LockError {
 };
 
 /** 
- * @internal
  * Lock directory access error.
  */
 class LockDirectoryAccessFailed extends FileLockError {

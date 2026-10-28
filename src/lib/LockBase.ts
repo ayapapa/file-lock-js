@@ -3,17 +3,45 @@ import { onExit } from 'signal-exit';
 import { Contracts, ENSURE_DEBUG, REQUIRE_DEBUG } from './Contracts.ts';
 import { LockError, DeadlockDetected, TTLExceeded } from './LockBaseErrors.ts';
 import { type AllOptions } from './AllOptions.ts';
-import { type LockBaseRequiredOptions } from './LockBaseOptions.ts';
+import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { type LockBaseInternalState } from './LockBaseInternalState.ts'
 import { defaultLockBaseConfig, type LockBaseConfig, type LogProvider } from './LockBaseConfig.ts'
 import { isEqualObjectType } from './Util.ts';
 import { type Monitor } from './LockMonitor.ts';
 
-/** Definition of the callback function to be executed after acquiring the lock. */
-export type CallbackOnLock = (monitor: Monitor) => MaybePromise;
+/**
+ * An internal options type consisting only of the required properties of LockBaseOptions.
+ */
+export type LockBaseRequiredOptions = Required<Pick<LockBaseOptions, 'timeoutMs' | 'ttlMs' | 'allowReentry'>>;
+
+/**
+ * Default values of LockBaseRequiredOptions.
+ */
+export const defaultLockBaseOptions: Readonly<LockBaseRequiredOptions> = {
+  timeoutMs:      5000,   // Default maximum wait time for lock release is 5 seconds
+  ttlMs:          5000,   // Default lock validity period (time to live) is 5 seconds
+  allowReentry:   false,  // Default to disallowing re-entrant locks
+};
+
+/**
+ * Definition of an options type consisting solely of the required numeric properties of `LockBaseOptions`.
+ */
+export type LockBaseRequiredNumericOptions = Pick<LockBaseRequiredOptions, 'timeoutMs' | 'ttlMs'>;
+
+/**
+ * Definition of the minimum value for the numeric properties of LockBaseOptions. 
+ */
+export const minimumLockBaseOptions: Readonly<LockBaseRequiredNumericOptions> = {
+  timeoutMs:      0,    // Not wait for the release of the preceding-stage lock.
+  ttlMs:          1000, // The minimum lifetime for the callback processing after acquiring the lock is 1 second.
+}
 
 /** Definition of the return type of callback function to be executed after acquiring the lock. */
-export type MaybePromise = unknown | PromiseLike<unknown>;
+export type MaybePromise<T> = T | PromiseLike<T>;
+
+/** Definition of the callback function to be executed after acquiring the lock. */
+export type CallbackOnLock<T> = (monitor: Monitor) => MaybePromise<T>;
+
 
 /** 
  * @internal
@@ -25,7 +53,6 @@ export interface ReentrantContext  {
 }
 
 /**
- * @internal
  * Base class for implementing mutual exclusion (locking). 
  * Uses AsyncLocalStorage to prevent re-entrant locking issues. 
  *
@@ -410,15 +437,15 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param options   Lock options.
    * @returns A `Promise` that resolves with the return value of `onLockFn`.
    */
-  protected async _withLock(onLockFn: CallbackOnLock, options: AllOptions<O, I>): Promise<unknown> {
+  protected async _withLock<T>(onLockFn: CallbackOnLock<T>, options: AllOptions<O, I>): Promise<T> {
     REQUIRE_DEBUG(onLockFn && typeof onLockFn === 'function', 'Invalid onLockFn.', LockError, {code: 'EINVAL'});
 
-    const whithLockInContext = async (): Promise<unknown> => {
+    const whithLockInContext = async (): Promise<T> => {
       // Preparing for recursive lock checks.
       const rc = this.#getReentrantContext();
       if (!rc) {
         // Since there is no context for reentrancy lock detection yet, I will create a new context and call `withLock` again within it.
-        return this.#runInNewContext(async () => whithLockInContext());
+        return this.#runInNewContext<T>(async () => whithLockInContext());
       }
 
       // Re-entry lock check.
@@ -428,7 +455,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
 
         // Since re-entry is permitted, increment the lock count and then execute the callback.
         this._logger.trace(`Allow re-entry lock(key=${this.#key}) ` + "in accordance with `options.allowReentry`.");
-        return this.#execLockCommon(
+        return this.#execLockCommon<T>(
           onLockFn,
           async () => this._incReantryCount(options),
           async () => this._decReantryCount(options),
@@ -474,7 +501,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param options   Lock options.
    * @returns A `Promise` that resolves to the return value of onLockFn.
    */
-  async #execCallback(onLockFn: CallbackOnLock, options: AllOptions<O, I>): Promise<unknown> {
+  async #execCallback<T>(onLockFn: CallbackOnLock<T>, options: AllOptions<O, I>): Promise<T> {
     REQUIRE_DEBUG(options._monitor !== undefined, 'options._monitor is undefined!', LockError, { code: 'EINVAL' });
     const parent = this.#getReentrantContext();
     REQUIRE_DEBUG(parent !== undefined, 're-entrant context is undefined!', LockError, { code: 'EINVAL' });
@@ -491,8 +518,6 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
       child.heldLocks.set(contextId, { monitor });
     }
 
-    // 'async' is intentional to treat synchronous exceptions as Promise rejections. 
-    // eslint-disable-next-line @typescript-eslint/require-await
     return LockBase.#als.run(child, async () => onLockFn(monitor));
   }
 
@@ -505,8 +530,8 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param operation Operation description.
    * @param options   Lock options.
    */
-  async #execLockCommon(onLockFn: CallbackOnLock, aquire: () => Promise<void>, 
-    release: () => Promise<void>, operation: string, options: AllOptions<O, I>): Promise<unknown> {
+  async #execLockCommon<T>(onLockFn: CallbackOnLock<T>, aquire: () => Promise<void>, 
+    release: () => Promise<void>, operation: string, options: AllOptions<O, I>): Promise<T> {
     // Acquire the lock.
     await aquire();
 
@@ -535,7 +560,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
           interruptPromise.resolve('Ok');
           delete this.#onInterruptRejects[options._sharerId];
         }
-      );
+      ) as T;
     }
     catch (err) {
       this._onError(err, operation, options, 'ECALLBACK');
@@ -612,9 +637,9 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param {function} fn Callback function to be called within the context.
    * @returns 
    */
-  #runInNewContext(fn: () => unknown) {
+  #runInNewContext<T>(fn: () => unknown): T {
     const initialContext: ReentrantContext = { heldLocks: new Map() };
-    return LockBase.#als.run(initialContext, () => fn());
+    return LockBase.#als.run(initialContext, () => fn()) as T;
   }
 
   /**

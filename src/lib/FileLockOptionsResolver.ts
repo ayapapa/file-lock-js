@@ -1,8 +1,9 @@
 import { LockBaseOptionsResolver } from './LockBaseOptionsResolver.ts';
-import { type FileLockRequiredNumericOptions, type FileLockOptions, type FileLockRequiredOptions } from './FileLockOptions.ts';
+import { type FileLockRequiredNumericOptions, type FileLockRequiredOptions } from './FileLockInternal.ts';
+import { type FileLockOptions } from './FileLockOptions.ts';
 import { type KeyTypeMap, type TimeBasedKey } from './Util.ts';
-import { VERIFY_DEBUG } from './Contracts.ts';
-import { InvalidOptions } from './LockBaseErrors.ts';
+//import { VERIFY_DEBUG } from './Contracts.ts';
+//import { InvalidOptions } from './LockBaseErrors.ts';
 
 /**
  * @internal
@@ -57,9 +58,7 @@ export class FileLockOptionsResolver extends LockBaseOptionsResolver<FileLockOpt
    */
   protected override _normalizeOptions(): void {
     super._normalizeOptions();
-    VERIFY_DEBUG(this.options.heartbeatTtlMs != null, 
-      "invalid `heartbeatTtlMs`. Maybe a bug.", InvalidOptions, { name: 'heartbeatTtlMs' } )
-    if ('invalidTtlMs' in this.options) {
+    if (this.options.heartbeatTtlMs != null && 'invalidTtlMs' in this.options) {
       // Since the existence of `heartbeatTtlMs` has already been verified above, 
       // it is used as a confirmed value.
       this.options.invalidTtlMs = Math.max(this.options.invalidTtlMs, this.options.heartbeatTtlMs!);

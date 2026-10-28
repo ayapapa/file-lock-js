@@ -1,7 +1,6 @@
 import { type Monitor } from './LockMonitor.ts';
 
 /** 
- * @internal
  * Basic status information. <br>
  * It is the definition of the lock processing status to be maintained for each lock request. 
  * Internally, it is used during lock processing as part of the internal options merged 
