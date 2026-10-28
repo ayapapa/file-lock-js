@@ -123,7 +123,7 @@ npm install @ayapapa-npm/file-lock-js
 > Note:
 > `_debug` and `history` are internal debugging options and are not intended for normal production use.
 
-[^defaultOptions]: You can obtain it using FileLock.getDefaultOptions().
+[^defaultOptions]: You can obtain it using FileLock.defaultOptions.
 
 ## Options
 | Name | Type | Default and Min | Description | Notes |
