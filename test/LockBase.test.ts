@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileLock, type FileLockConfig, type LockMonitor } from '../src/index.ts';
 import { LockBase } from '../src/lib/LockBase.ts';
 import { TestLock } from './FileLockTestCommon.ts'
-import { getCallStack, isEqualObjectType, sleepAsync, sleepSync } from '../src/lib/Util.ts'
+import { getCallStack, isEqualObjectType, sleepAsync/*, sleepSync*/ } from '../src/lib/Util.ts'
 
 let orgConfig: FileLockConfig;
 beforeEach(() => {
@@ -43,7 +43,7 @@ describe('LockBase and Util', () => {
     // Verify that at least 98 ms have elapsed to account for margin of error.
     expect(elapsed).toBeGreaterThanOrEqual(98);
   });
-
+/*
   it("`sleepSync()` sleeps for the specified duration.", () => {
     const start = Date.now();
     sleepSync(100);
@@ -52,7 +52,7 @@ describe('LockBase and Util', () => {
     // Verify that at least 98 ms have elapsed to account for margin of error.
     expect(elapsed).toBeGreaterThanOrEqual(98);
   });
-
+*/
   class TestLockBase extends LockBase {
     constructor() {
       super("Key");

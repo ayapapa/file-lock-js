@@ -283,7 +283,7 @@ describe('FileLockError2', () => {
   // A test that intentionally creates an invalid lock file to deliberately trigger a file I/O error.
   async function testSpyIO(
     key: string, 
-    targetFn: 'openSync' | 'readFileSync' | 'existsSync' | 'unlinkSync' | 'writeFileSync' |'readdirSync' | 'rmSync' | 'statSync', 
+    targetFn: 'openSync' | 'readFileSync' | 'existsSync' | 'unlinkSync' | 'writeFileSync' |'readdirSync' | 'rmSync' | 'statSync' | 'mkdirSync', 
     spyCb: (counter: number, args: unknown[], orgFn: (...args: unknown[]) => unknown) => unknown, 
     sucsess: boolean, 
     ErrClass: unknown, 
@@ -380,7 +380,7 @@ describe('FileLockError2', () => {
         code: "EALREADYLOCKED",
         path: getLockMetaPath(key),
         key: key,
-        message: `Couldn't the lock because the '${key}' is already locked.`
+        message: `Failed to the lock because the '${key}' is already locked.`
       }
     );
   });
@@ -412,7 +412,7 @@ describe('FileLockError2', () => {
           causes: [{
             code: "EOMOON",
             path: path.join(getLockSharerDir(key), ".lock"),
-            message: "Couldn't create the file.(openSync error!)",
+            message: "Failed to create the file.(openSync error!)",
           }]
         }],
       },
@@ -449,7 +449,7 @@ describe('FileLockError2', () => {
           causes: [{
             code: "ERMMOON",
             path: path.join(getLockSharerDir(key), '.lock'),
-            message: "Couldn't remove the file or directory.(rmSync error!)",
+            message: "Failed to remove the file or directory.(rmSync error!)",
             causes: [
               { code: "ERMMOON", message: "rmSync error!" },
             ]
@@ -468,7 +468,7 @@ describe('FileLockError2', () => {
     const cause2 = {
       code: 'ERDMOON',
       path: targetPath,
-      message: "Couldn't read the direcroty.(readdirSync error)",
+      message: "Failed to read the direcroty.(readdirSync error)",
     };
     const cause = {
           code: 'EIO',
@@ -507,7 +507,7 @@ describe('FileLockError2', () => {
 
     const cause2 = {
       code: 'EULMOON',
-      message: "Couldn't remove the file.(unlinkSync error)",
+      message: "Failed to remove the file.(unlinkSync error)",
     };
     const cause = {
           code: 'EIO',
@@ -720,7 +720,7 @@ it("Deliberately create an invalid lock file and verify that it results in an er
         causes: [{
           code: "ERMMOON",
           path: path,
-          message: "Failed to remove the `lock file`(rmSyncError!!)",
+          message: "Failed to remove the `lock file`.(rmSyncError!!)",
           causes: [{
             code: "ERMMOON",
             message: "rmSyncError!!",
@@ -755,7 +755,7 @@ it("Deliberately create an invalid lock file and verify that it results in an er
         causes: [{
           code: "EOMOON",
           path: getLockMetaPath(key) + '.tmp',
-          message: "Couldn't create the file.(openSync error!)",
+          message: "Failed to create the file.(openSync error!)",
           causes: [{
             code: "EOMOON",
             message: "openSync error!",
@@ -845,7 +845,7 @@ it("Deliberately create an invalid lock file and verify that it results in an er
         causes: [{
           code: "ESMOON",
           path: getLockMetaPath(key),
-          message: "Couldn't get status of the file.(statiSync error!)",
+          message: "Failed to get status of the file.(statiSync error!)",
           causes: [{
             code: "ESMOON",
             message: "statiSync error!",
@@ -860,6 +860,29 @@ it("Deliberately create an invalid lock file and verify that it results in an er
   it("Key containing characters prohibited in filenames.", async () => {
     const key = 'Hoge[<>:/\\*]""';
     expect(await FileLock.withLock(key, () => { return 'complete'; })).toBe('complete');
+  });
+
+  // failed to create history directory
+  it("failed to create history directory.", () => {
+    const hdir = path.dirname(getHistoryPath());
+    const org = fs.mkdirSync;
+    const spy = vi.spyOn(fs, 'mkdirSync').mockImplementation((...args: unknown[]) => {
+      const path = args[0] as string;
+      if (path === hdir) {
+        throw Object.assign(new Error("mkdirSync error!"), { code: 'EMDMOON' });
+      }
+      else {
+        org(path);
+        return undefined;
+      }
+    });
+    try {
+      FileLock.setConfig({});
+    }
+    catch (_err) {;}
+    finally {
+      spy.mockRestore();
+    }
   });
 
 });

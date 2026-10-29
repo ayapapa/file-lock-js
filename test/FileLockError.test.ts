@@ -348,7 +348,7 @@ describe('FileLockError', () => {
   });
 
   it("Instantiating an error class without parameters results in the default message.(AlreadyLocked).", () => {
-    testNoParamsError(AlreadyLocked , "Couldn't acquire the lock because the 'key' is already locked.");
+    testNoParamsError(AlreadyLocked , "Failed to acquire the lock because the 'key' is already locked.");
   });
 
   it("Instantiating an error class without parameters results in the default message.(InvalidOptions).", () => {
@@ -484,7 +484,7 @@ describe('FileLockError', () => {
         causes: [{
           code: "ERMOON",
           path: getLockMetaPath(key),
-          message: "Couldn't read the `lock file`.(readFileSync error!)",
+          message: "Failed to read the `lock file`.(readFileSync error!)",
         }],
       });
     }
@@ -528,7 +528,7 @@ describe('FileLockError', () => {
         causes: [{
           code: "EWMOON",
           //path: getLockSharerDir(key) + xxxxx,
-          message: "Couldn't write the `lock file`.(writeFileSync error!)",
+          message: "Failed to write the `lock file`.(writeFileSync error!)",
         }],
       });
     }

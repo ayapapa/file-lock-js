@@ -150,7 +150,9 @@ describe('FileLock', () => {
 
     vi.useFakeTimers();
     const openSpy = vi.spyOn(fs, 'openSync').mockImplementation((filePath, flags, mode) => {
-      if (filePath === tmpPath && new Error().stack?.includes('#updateHeartbeat')) {
+      const err = new Error();
+      Error.stackTraceLimit = 20;
+      if (filePath === tmpPath && err.stack?.includes('#updateHeartbeat')) {
         heartbeatOpenAttempts++;
         resolveHeartbeatAttempt();
         throw Object.assign(new Error('Temporary lock file is busy.'), { code: 'EEXIST' });

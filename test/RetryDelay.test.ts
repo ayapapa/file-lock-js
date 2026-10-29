@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type FileLockConfig, FileLock } from '../src/index.ts';
-import { ExponentialDelay, FixedDelay, LinearDelay, RetryDelay, retry, type DelayOptions } from '../src/lib/RetryDelay.ts';
+import { ExponentialDelay, FixedDelay, /*LinearDelay, */RetryDelay, retry, type DelayOptions } from '../src/lib/RetryDelay.ts';
 //import { sleepAsync } from './FileLockTestCommon.ts';
 
 let orgConfig: FileLockConfig;
@@ -23,8 +23,8 @@ describe('RetryDelay', () => {
   it("construct", () => {
     const delayT = new TestDelay({ base: 100 });
     expect(delayT.next()).toBe(100);
-    const delayL = new LinearDelay({ base: 100 });
-    expect(delayL.next()).toBe(100);
+    //const delayL = new LinearDelay({ base: 100 });
+    //expect(delayL.next()).toBe(100);
     const delayE = new ExponentialDelay({ base: 100 });
     expect(delayE.next()).toBe(100);
     const delayF = new FixedDelay({ base: 100 });
@@ -53,7 +53,7 @@ describe('RetryDelay', () => {
       retry(() => 'result', () => false, { retries: 0 }, ExtendedFixedDelay, { base: 0 })
     ).rejects.toThrow(TypeError);
   });
-
+/*
   it("LinearDelay", () => {
     const delay = new LinearDelay({ base: 100, max: 1000, factor: 1, jitterRatio: 0});
     expect(delay.next()).toBe(100);
@@ -81,7 +81,7 @@ describe('RetryDelay', () => {
       expect(d).toBeLessThanOrEqual(Math.round(capped * jitterMax));
     }
   });
-
+  */
   it("ExponentialDelay", () => {
     const delay = new ExponentialDelay({ base: 100, max: 1000, factor: 1, jitterRatio: 0});
     expect(delay.next()).toBe(100);

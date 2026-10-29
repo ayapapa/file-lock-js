@@ -21,24 +21,24 @@ Examples include limiting access to a specific service to a single process or th
 ## Definitions of Terms
 |        Term     |  Explanation  |  See also  |
 | --------------- | ------------- | -------------|
-| `lock key`        | A key used to apply a lock. When multiple operations use the same key, they are executed sequentially. If the specified `lock key` contains characters that are invalid for a file path, it is converted into a valid file path by replacing those characters with underscores and removing double quotation marks. | `lock file`, `temporary lock file`, `lock sharers` | 
+| `lock key`        | A key used to apply a lock. When multiple operations use the same key, they are executed sequentially. If the specified `lock key` contains characters that are invalid for a file path, it is converted into a valid file path by replacing those characters with underscores and removing double quotation marks. | `lock file`, `temporary lock file`, `lock sharer` | 
 | `lock directory`  | A directory where `lock file`s are stored. | `lock file`, [Configurations](#configurations) |
 | `lock file`       | It is associated with the specified `lock key` and stores information related to the lock owner, the actual expiration time, and so forth. <br>For example, if the `lock key` is "key001", a file named "key001.json" is created under the `lock directory` and deleted when the lock is released. <br>As long as this file exists, the key is considered to be locked. | `lock key`, `lock directory` |
 | `temporary lock file` | A file created temporarily during the initial write and subsequent updates of the `lock file`. <br>For example, if the `lock key` is "key001", a file named "key001.json.tmp" is created under the `lock directory`.  <br>After this file is created, the `lock file` is updated atomically using `fs.renameSync` (renaming the `temporary lock file` to the `lock file`). | `lock file` |
 | `lock sharer` | A file named with the `ID` assigned to each `FileLock.withLock(key, ...)` invocation. For example, if the `lock key` is "key001", this is created under the `lock sharer directory` named with "key001.sharer". | `lock key`, `lock file` |
-| `lock sharer directory` | A directory that stores the `lock sharer`. <br>It stores the  and the IDs of reentrant invocations that are allowed to share the lock. <br>In this library, reentrant locking is implemented by adding IDs to this directory instead of incrementing a lock counter. <br>For example, if the `lock key` is "key001", this directory is created under the `lock directory` with the name "key001.sharer". | `lock key`, `lock file` |
+| `lock sharer directory` | A directory that stores the `lock sharer`s. <br>It stores the  and the IDs of reentrant invocations that are allowed to share the lock. <br>In this library, reentrant locking is implemented by adding IDs to this directory instead of incrementing a lock counter. <br>For example, if the `lock key` is "key001", this directory is created under the `lock directory` with the name "key001.sharer". | `lock key`, `lock file` |
 | `re-entrant lock` | A lock that allows the same owner to acquire it multiple times without blocking itself. Enable this behavior with `{ allowReentry: true }`. <br>It prevents `self-deadlock` when the same owner acquires the same lock again. <br>It does not prevent `circular deadlocks` between different owners. | `deadlock`, `allowReentry` in [Options](#options) |
 | `deadlock` | It is a state where operations cannot proceed because they keep waiting. <br>A `self-deadlock` is caused by reacquiring the same lock, while `circular deadlock` is caused by different owners waiting on each other.<br>Due to the timeout setting, it will not wait indefinitely; however, this results in a lock acquisition error. | `re-entrant lock`, `timeourMs` or `timeoutSec` in [Options](#options) |
 
 ### `lock directory` structure 
 ```
 `lock directory`
-  ├── `lock key`.json
-  ├── `lock key`.json.tmp
-  └── `lock key`.sharer
-        ├── `(ID of the initial lock-owning invocation)`
-        ├── `(ID of allowed to share the first lock)`
-        ├── `(ID of allowed to share the second lock)`
+  ├── `lock key`.json                                     # `lock file`
+  ├── `lock key`.json.tmp                                 # `temporary lock file`
+  └── `lock key`.sharer                                   # `lock sharer directory`
+        ├── `(ID of the initial lock-owning invocation)`  # `lock sharer`
+        ├── `(ID of allowed to share the first lock)`     # `lock sharer`
+        ├── `(ID of allowed to share the second lock)`    # `lock sharer`
         :
         :
 ```

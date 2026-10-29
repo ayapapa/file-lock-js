@@ -58,6 +58,7 @@ export class RetryDelay {
  * taking the result of `base * factor * call_count` (where `call_count` starts at 1) 
  * and adding some jitter (random variation) to it.
  */
+/*
 export class LinearDelay extends RetryDelay {
   public constructor(options: DelayOptions) {
     options.factor = options.factor ?? 1;
@@ -65,7 +66,7 @@ export class LinearDelay extends RetryDelay {
   }
   protected override nextRaw() { return this._base * this._factor * (this._attempt + 1); }
 }
-
+*/
 /**
  * @internal
  * A class that calculates a jittered delay 
