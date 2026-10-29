@@ -268,7 +268,6 @@ export async function testMultiProcess(n: number, oneKey?: string, opts?: { slee
   }
   else {
     const reason = ('reason' in pResult) ? pResult.reason : ''; 
-    // 破損ファイルの発見が無ければOK。
     const foundBroken: boolean = reason instanceof AlreadyLocked && reason.message.includes('InvalidMetadata');
     if (BROKEN_ERROR_WATCH_MODE === false) expect(foundBroken).toBeFalsy();
     if (foundBroken) {

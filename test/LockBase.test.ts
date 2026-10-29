@@ -18,23 +18,6 @@ afterEach(() => {
 
 describe('LockBase and Util', () => {
 
-  /* AsyncLocalStorageのテストになってしまっているので、不要。
-  it("The reentrancy context is shared even when the lock instances are different.", () => {
-    const als = LockBase["_als"] as AsyncLocalStorage<ReentrantContext>;
-    const rc: ReentrantContext | undefined = als.getStore();
-    const childContext: ReentrantContext = { heldLocks: new Map(rc?.heldLocks) };
-    const contextId = 'text-context';
-    childContext.heldLocks.set(contextId, { monitor: { cancelled: false } });
-    als.run(childContext, () => {
-      const key1 = 'testKey1', key2 = 'testKey2';
-      const ins1 = TestLock.getLock(key1);
-      const ins2 = TestLock.getLock(key2);
-      expect(ins1 !== ins2).toBe(true);
-      expect(ins1.getReentrantContext()?.heldLocks.has(contextId)).toBe(true);
-      expect(ins2.getReentrantContext()?.heldLocks.has(contextId)).toBe(true);
-    });
-  });
-*/
   it("`sleepAsync()` sleeps for the specified duration.", async () => {
     const start = Date.now();
     await sleepAsync(100);
@@ -90,33 +73,6 @@ describe('LockBase and Util', () => {
     }
   }
 
-  /* もう、不要。
-  async function testNotImpleMethod(cb: () => Promise<void>) {
-    expect.assertions(3)
-    try {
-      await cb();
-    }
-    catch (err) {
-      if (err instanceof Error) {
-        expect(err instanceof LockError).toBeTruthy();
-        expect(err.message).toBe('Implement this in the subclass.');
-        expect('code' in err && err.code === 'ENOIMPL').toBeTruthy();
-      }
-    }
-  }
-
-  it("Failing to implement `LockBase._incReantryCount()` results in a `not implemented` error.", async () => {
-    await testNotImpleMethod(async() => {
-      await (new TestLockBase().test_incReantryCount());
-    });
-  });
-
-  it("Failure to implement `LockBase._decReantryCount()` results in an `not implemented` error.", async () => {
-    await testNotImpleMethod(async () => {
-      await (new TestLockBase().test_decReantryCount());
-    });
-  });
-*/
   it("`LockBase._acquire()`.", async () => {
       const tlb = new TestLockBase();
       await tlb.test_acquire();

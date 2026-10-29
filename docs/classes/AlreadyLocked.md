@@ -6,7 +6,7 @@
 
 # Class: AlreadyLocked
 
-Defined in: [src/lib/LockBaseErrors.ts:65](https://github.com/ayapapa/file-lock-js/blob/5451d71cbfa3ccf417ddd6ff2007a3d6224285d7/src/lib/LockBaseErrors.ts#L65)
+Defined in: [src/lib/LockBaseErrors.ts:65](https://github.com/ayapapa/file-lock-js/blob/9a4b225094bc62e2fd0cd9f11797b01f21689625/src/lib/LockBaseErrors.ts#L65)
 
 Already locked error.
 
@@ -20,7 +20,7 @@ Already locked error.
 
 > **new AlreadyLocked**(`msg`, `params?`): `AlreadyLocked`
 
-Defined in: [src/lib/LockBaseErrors.ts:71](https://github.com/ayapapa/file-lock-js/blob/5451d71cbfa3ccf417ddd6ff2007a3d6224285d7/src/lib/LockBaseErrors.ts#L71)
+Defined in: [src/lib/LockBaseErrors.ts:71](https://github.com/ayapapa/file-lock-js/blob/9a4b225094bc62e2fd0cd9f11797b01f21689625/src/lib/LockBaseErrors.ts#L71)
 
 Constructor.
 
@@ -70,7 +70,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/5451d71cbfa3ccf417ddd6ff2007a3d6224285d7/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/9a4b225094bc62e2fd0cd9f11797b01f21689625/src/lib/LockBaseErrors.ts#L8)
 
 #### Inherited from
 
