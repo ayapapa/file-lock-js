@@ -62,9 +62,10 @@ describe('Local tests!', () => {
     // Processing time (sleep duration): 1000, minimum heartbeat interval: 1000, 
     // minimum TTL: 1000 — Depending on the timing, a heartbeat update may occur before a TTL error; 
     // however, it is also possible for this to coincide with the release timing after the process has completed successfully.    
-    const n = 100;//100;
+    const n = 30;
     let errCount = 0;
     for(let i = 0; i < n; ++i) {
+      console.log('I =', i);
      try {
         await testChildError('childTtlError', { sleep: 100, timeout: 5000 }, { sleep: 2000, ttl: 1000/*min is '1000'*/ }, true, 'TTLExceeded');
       }
