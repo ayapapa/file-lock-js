@@ -26,7 +26,6 @@ afterAll(() => {
   report();
 });
 
-
 describe('Simultaneous locking test for multiple processes using distinct keys.', () => {
 
   it("2 processes.", async () => {
@@ -56,22 +55,3 @@ describe('Simultaneous locking test for multiple processes using distinct keys.'
   });
 
 });
-
-
-/*
-
-複数子プロセス → 同時Lock競合
-TTL / Heartbeat
-子Lock中 → TTL超過
-子Lock中 → Heartbeat timeout
-TTL + Heartbeat両方無効 → Lock失効
-子プロセス異常終了
-子Lock中 → 正常終了（Unlockあり）
-子Lock中 → process.exit()（Unlockなし）
-子Lock中 → 親から強制終了
-子Lock中 → 例外終了
-子プロセス異常終了後 → 親がLock再取得
-プロセス境界
-親のreentry状態 → 子ではreentryにならない
-別プロセス間では同一Lockを同時保持できない
-*/

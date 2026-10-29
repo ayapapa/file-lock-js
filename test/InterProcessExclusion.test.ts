@@ -1,6 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
-
 import { AlreadyLocked, FileLock, ReleaseFailed, type FileLockConfig } from '../src/index.ts';
 import { getLockMetaPath, removeLockFiles, sleepAsync, execChild, stdOut, childErrCount, childExecCount, childErrors, resetExecResources, TestLock, type Options, getLockMeta, setLockMeta } from './FileLockTestCommon.ts';
 
@@ -28,7 +27,7 @@ afterAll(() => {
   console.log(`### Child errors(count = ${childErrors.length}) =`, childErrors);
 });
 
-describe('別プロセスとの競合テスト', () => {
+describe('Testing for conflicts with other processes.', () => {
 
   function childCompeleted() {
     for (const v of stdOut) {
@@ -37,7 +36,7 @@ describe('別プロセスとの競合テスト', () => {
     return false;
   }
 
-  it("子プロセスを先に起動し、それを強制終了させるとどうなる？？", async () => {
+  it("What happens if you start a child process and then forcibly terminate it?", async () => {
     const key = 'subKey0011';
     const child = await execChild('lock', { key, sleep: 1000, waitAquired: true });
 
@@ -52,35 +51,26 @@ describe('別プロセスとの競合テスト', () => {
       expect(err).toBe("child failed: code=null signal=SIGTERM msg=");
     }
 
-    // 強制終了なので、
-    // 子プロセスは完了していない
     expect(childCompeleted()).toBeFalsy();
-    // ロック情報ディレクトリおよびファイルは残っている
     expect(fs.existsSync(getLockMetaPath(key))).toBeTruthy();
-    // ロック情報ディレクトリおよびファイルを消す
     removeLockFiles(key);
   });
 
-  it("子プロセスを先に起動し、別のキーでロックすると、干渉されずにいずれも処理が完了する.", async () => {
+  it("By launching the child process first and using a different key for locking, both processes can complete their tasks without interference.", async () => {
     const child = await execChild('lock', { key: 'subKey', sleep: 200 });
-
     const key = 'mainKey001';
     const start = Date.now();
-
     await FileLock.withLock(key, async () => {
       await sleepAsync(200);
     })
     const elapsed =  Date.now() - start;
     expect(elapsed).toBeGreaterThanOrEqual(199);
     expect(elapsed).toBeLessThan(1000);
-
     await child.promise;
-    
     expect(childCompeleted()).toBeTruthy();
-    
   });
 
-  it("同じキーで、子プロセスを先に起動し、それを待ってロックが完了する.", async () => {
+  it("Using the same key, the child process is launched first, and the lock is considered complete once that process has been awaited.", async () => {
     const key = 'mainKey002';
     const childSleep = 500;
     const parentSleep = 100;
@@ -91,37 +81,30 @@ describe('別プロセスとの競合テスト', () => {
     })
     const elapsed =  Date.now() - start;
     expect(elapsed).toBeGreaterThanOrEqual(childSleep);
-
     await child.promise;
-
     expect(childCompeleted()).toBeTruthy();
   });
 
-  it("同じキーで、親プロセスを先に起動し、それを待って子プロセスのロックが完了する.", async () => {
+  it("Using the same key, the parent process is started first, and the child process waits for it before completing its own lock.", async () => {
     const key = 'mainKey002';
     const childSleep = 100;
     const parentSleep = 500;
-
     const pp = FileLock.withLock(key, async () => {
       await sleepAsync(parentSleep);
       return 'complete'
     })
-
     const start = Date.now();
     const child = await execChild('lock', { key, sleep: childSleep });
     await child.promise;
     expect(await pp).toBe('complete');
-
     const elapsed =  Date.now() - start;
-    //console.log('elapsed =', elapsed);
     expect(elapsed).toBeGreaterThanOrEqual(parentSleep - 1);
     expect(childCompeleted()).toBeTruthy();
   });
 
-  it("同じキーをつかい、子プロセスを先に起動し、親プロセスがタイムアウトエラーになる.", async () => {
+  it("Using the same key, the child process is started first, causing the parent process to encounter a timeout error.", async () => {
     const key = 'mainKey009';
     const child = await execChild('lock', { key, sleep: 1000, waitAquired: true });
-
     const pp = FileLock.withLock(key, async () => {
         await sleepAsync(100);
         return 'complete';
@@ -129,13 +112,11 @@ describe('別プロセスとの競合テスト', () => {
       { timeoutMs: 0}
     );
     const results = await Promise.allSettled([child.promise, pp]);
-
     // One of them has resulted in a timeout error (AlreadyLocked).
     expect(results[0]).toMatchObject({
       status: 'fulfilled',
       value: { code: 0, signal: null }
     });
-
     expect(results[1]).toMatchObject({
       status: 'rejected',
       reason: {
@@ -180,22 +161,18 @@ describe('別プロセスとの競合テスト', () => {
     expect(results[pIdx]).toMatchObject({ status: 'fulfilled', value: 'completed' });
   } 
 
-  it("同じキーをつかい、親プロセスを先に起動し、子プロセスがタイムアウトエラーになる.", async () => {
+  it("Using the same key, the parent process is started first, which causes the child process to encounter a timeout error.", async () => {
     await testChildError('childTimeout', { sleep: 1000, timeout: 500 }, { sleep: 150, waitAquired: false }, false, 'AlreadyLocked');
   });
 
-  it("同じキーを使い、子プロセスを先に起動したがttlエラーになり、処理はキャンセル状態となったところで、親プロセスはロック処理が進む.", async () => {
-    // 処理時間(sleep時間)：1000, 鼓動間隔最小値: 1000, ttl最小値1000 -> タイミングにより、TTLエラーの前に、鼓動更新が走るが、正常終了になった後でリリースタイミングと重なることがある。
+  it("Using the same key, the child process was launched first, but a TTL error occurred, resulting in the process being cancelled; meanwhile, the parent process proceeded with the locking operation.", async () => {
     await testChildError('childTtlError', { sleep: 100, timeout: 5000 }, { sleep: 2000, ttl: 1000/*min is '1000'*/ }, true, 'TTLExceeded');
   });
 
-  it("子プロセスを先に起動したが、実行中に、強制的にプロセスをキルする。親プロセスは、ロック情報の無効化を確認後ロック処理が進む.", async () => {
+  it("A child process is started, but it is then forcibly killed while running. The parent process proceeds with its locking operation only after confirming that the lock information has been invalidated.", async () => {
     const key = 'subKey0031';
     const child = await execChild('lock', { key, sleep: 1000, ttlMs: 1100, heartbeatTtlMs: 5000, waitAquired: true });
-
-    //await sleepAsync(500);
     child.cid.kill();
-
     const pp = FileLock.withLock(key, async () => {
         await sleepAsync(500);
         return 'completed'
@@ -219,7 +196,7 @@ describe('別プロセスとの競合テスト', () => {
     expect(childCompeleted()).toBeFalsy();
   });
 
-  it("同じキーを使い、親プロセスを先に起動したが、親のロックファイルが賞味期限となり、子プロセスがロックファイルを上書きしてロックを取得し完了する", async () => {
+  it("Using the same key, the parent process is started first; however, the parent's lock file expires, allowing the child process to overwrite the lock file, acquire the lock, and complete its task.", async () => {
     
     const key = 'keyParentStale001';
     const parentPr = FileLock.withLock(key, async () => {
@@ -228,7 +205,6 @@ describe('別プロセスとの競合テスト', () => {
       meta["expiresAt"] = t;
       meta["heartbeatExpiresAt"] = t;
       setLockMeta(key, meta);
-
       await sleepAsync(4000);
       return 'completed'
     }, {
@@ -236,9 +212,7 @@ describe('別プロセスとの競合テスト', () => {
     });
 
     const child = await execChild('lock', { key, sleep: 450, ttlMs: 1500, timeOutMs: 5000, waitAquired: true });
-
     const results = await Promise.allSettled([child.promise, parentPr]);
-
     // The result of child.
     expect(results[0]).toMatchObject({ status: 'fulfilled'/*, value: 'completed'*/ });
     // The result of parent.
@@ -254,20 +228,16 @@ describe('別プロセスとの競合テスト', () => {
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
-  it("同じキーを使い、子プロセスを先に起動⇒親のロック（タイムアウト0、リエントリー）→タイムアウトエラー", async () => {
+  it("Using the same key, the child process is started first; then the parent attempts to acquire the lock (with a timeout of 0 and re-entry enabled) — resulting in a timeout error.", async () => {
     const key = 'rentryAlreadyLocked';
-
     const child = await execChild('lock', { key, sleep: 1000, ttlMs: 2000, timeOutMs: 0, waitAquired: true });
-
     const parentPr = FileLock.withLock(key, () => {
       return 'completed'
     }, {
       timeoutMs: 0,
       allowReentry: true,
     });
-
     const results = await Promise.allSettled([child.promise, parentPr]);
-
     // The result of child.
     expect(results[0]).toMatchObject({ status: 'fulfilled'/*, value: 'completed'*/ });
     // The result of parent.
@@ -284,21 +254,3 @@ describe('別プロセスとの競合テスト', () => {
   });
 
 });
-
-
-/*
-
-TTL / Heartbeat
-子Lock中 → TTL超過
-子Lock中 → Heartbeat timeout
-TTL + Heartbeat両方無効 → Lock失効
-子プロセス異常終了
-子Lock中 → 正常終了（Unlockあり）
-子Lock中 → process.exit()（Unlockなし）
-子Lock中 → 親から強制終了
-子Lock中 → 例外終了
-子プロセス異常終了後 → 親がLock再取得
-プロセス境界
-親のreentry状態 → 子ではreentryにならない
-別プロセス間では同一Lockを同時保持できない
-*/

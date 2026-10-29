@@ -41,7 +41,7 @@ describe('Concurrent locking test that also accounts for heartbeats from multipl
     await testMultiProcess(10, 'StressHeartbeat10', { sleep: 4500, timout: 10000, hbTtl: 10000 });
   });
 
-/* これ以上負荷をかけても、結局ロックが取れないプロセスが増えるだけで、ハートビートのテストとしては、あまり意味がない
+/* Increasing the load any further will only result in more processes failing to release their locks, making it largely meaningless as a heartbeat test.
   it("25 processes.", async () => {
     await testMultiProcess(25, 'StressHeartbeat25', { sleep: 4500, timout: 1npm test0000, hbTtl: 10000 });
   });

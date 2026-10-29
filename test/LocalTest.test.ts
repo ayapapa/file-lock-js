@@ -1,9 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-//import fs from 'node:fs';
-
 import { FileLock, type FileLockConfig } from '../src/index.ts';
 import { sleepAsync, execChild, isCI, type Options } from './FileLockTestCommon.ts';
-
 
 let orgConfig: FileLockConfig;
 
@@ -20,7 +17,7 @@ afterEach(() => {
 afterAll(() => {
 });
 
-describe('別プロセスとの競合テスト', () => {
+describe('Local tests!', () => {
 
   it("dummy", () => {});
 
@@ -28,7 +25,7 @@ describe('別プロセスとの競合テスト', () => {
 
   if (process.env.LOCAL_TEST !== 'true') return;
 
-async function testChildError(key: string, pPara: { sleep: number, timeout: number }, cPara: { sleep: number, timeOutMs?: number, waitAquired?: boolean, ttl?: number }, childFirst: boolean, reason: string): Promise<void> {
+  async function testChildError(key: string, pPara: { sleep: number, timeout: number }, cPara: { sleep: number, timeOutMs?: number, waitAquired?: boolean, ttl?: number }, childFirst: boolean, reason: string): Promise<void> {
     const createParentPr = async () => FileLock.withLock(key, async () => {
         await sleepAsync(pPara.sleep);
         return 'completed'
@@ -61,8 +58,10 @@ async function testChildError(key: string, pPara: { sleep: number, timeout: numb
     expect(results[pIdx]).toMatchObject({ status: 'fulfilled', value: 'completed' });
   } 
 
-  it("同じキーを使い、子プロセスを先に起動したがttlエラーになり、処理はキャンセル状態となったところで、親プロセスはロック処理が進む.", async () => {
-    // 処理時間(sleep時間)：1000, 鼓動間隔最小値: 1000, ttl最小値1000 -> タイミングにより、TTLエラーの前に、鼓動更新が走るが、正常終了になった後でリリースタイミングと重なることがある。
+  it("Using the same key, the child process was launched first, but a TTL error occurred, resulting in the process being cancelled; meanwhile, the parent process proceeded with the locking operation.", async () => {
+    // Processing time (sleep duration): 1000, minimum heartbeat interval: 1000, 
+    // minimum TTL: 1000 — Depending on the timing, a heartbeat update may occur before a TTL error; 
+    // however, it is also possible for this to coincide with the release timing after the process has completed successfully.    
     const n = 100;//100;
     let errCount = 0;
     for(let i = 0; i < n; ++i) {

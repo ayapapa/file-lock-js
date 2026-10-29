@@ -491,8 +491,6 @@ describe('FileLockError', () => {
     finally {
       // @ts-expect-error : this is spy
       if (spy) spy.mockRestore();
-      // Since the read operation fails, the contents of the `lock file` cannot be verified, preventing it from being deleted normally—meaning other locks will perceive it as still locked.
-      // Therefore, the file is forcibly deleted here.
       try {
         removeLockFiles(key);
       }

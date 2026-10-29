@@ -1,13 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-
 import { expect } from 'vitest';
-
 import { PrettyConsole, type Config as PrettyCOnfig,  type LogEntry } from '@ayapapa-npm/pretty-console-js';
 import { pino } from 'pino'
 import { createStream } from 'rotating-file-stream'
-
 import { AlreadyLocked, FileLock, type FileLockOptions } from '../src/index.ts';
 import { type FileLockRequiredOptions } from '../src/lib/FileLockInternal.ts';
 import { FileLockInternal } from '../src/lib/FileLockInternal.ts';
@@ -147,11 +144,6 @@ export async function execChild(command: 'lock' | 'sleep', options: Options) {
     String(options.heartbeatTtlMs ?? 5000),
   ];
   
-  // Due to a bug in Node.js 20.x, if a file path contains spaces, the `spawn` operation itself fails, preventing the launch of a child process.
-  // I attempted to use 'node' instead of `process.execPath`, 
-  // but it turns out that even when 'node' is specified, it gets resolved to an absolute path 
-  // within the CI system—which still includes spaces—so this did not solve the issue. Consequently, I have excluded Node.js 20.x from the CI process.
-  //const child = spawn(process.execPath, args);
   const child = spawn('node', args);
   childExecCount++;
 
@@ -191,8 +183,6 @@ export async function execChild(command: 'lock' | 'sleep', options: Options) {
 
   if (options.waitAquired && command === 'lock') {
     const cStart = Date.now();
-    // Confirm that the child process has entered the locking phase
-    // Looks like a margin is needed... otherwise, someone else might beat us to it.
     while(locked === false && (Date.now() - cStart) <= options.sleep + 110) {
       await sleepAsync(100);
     }
@@ -238,7 +228,6 @@ export function report() {
 }
 
 /**
- * 
  * @param n       Number of concurrently executing processes (consisting of one parent (main) process and n-1 child processes)
  * @param oneKey  A key used when setting all items to the same key
  */
@@ -373,11 +362,6 @@ export class TestLock extends FileLockInternal {
     Object.assign(this, lock);
   }
 
-  /*
-  getReentrantContext() {
-    return super["_getReentrantContext"]();
-  }
-*/
   async testWithLockEmptyOptions(cb: () => unknown): Promise<unknown> {
     return super["_withLock"](cb, {} as FileLockRequiredOptions);
   }

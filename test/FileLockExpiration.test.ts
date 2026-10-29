@@ -15,12 +15,10 @@ afterEach(() => {
   FileLock.setConfig(orgConfig);
 });
 
-
 describe('FileLock', () => {
-
   it("If `expiresAt` is a past value and heartbeat is enabled, the lock cannot be acquired.", async () => {
     const key = String(randomUUID());
-    const meta = {ownerId: "hoge", counter: 1, expiresAt: Date.now() - 1000, /*heartbeatTtlMs:5000,*/ heartbeatExpiresAt: Date.now() + 5000};
+    const meta = {ownerId: "hoge", counter: 1, expiresAt: Date.now() - 1000, eartbeatExpiresAt: Date.now() + 5000};
     setLockMeta(key, meta);
 
     expect.assertions(2);
@@ -92,11 +90,11 @@ describe('FileLock', () => {
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
-  it("不正なロックファイルを故意に作成し、`invalidTtlMs`時間後にロック成功することを確認する", async () => {
+  it("Intentionally create an invalid lock file and verify that a lock attempt succeeds after `invalidTtlMs` has elapsed.", async () => {
     const key = "invald_loclfile_error";
     const meta = {};
     setLockMeta(key, meta);
-    const d = new Date(Date.now() - 5000); // 過去に設定
+    const d = new Date(Date.now() - 5000);
     fs.utimesSync(getLockMetaPath(key), d, d);
     expect.assertions(2);
     try {
@@ -108,10 +106,7 @@ describe('FileLock', () => {
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
-
-  // 不正ファイルのstatSyncでundefiendを返す⇒不正ファイルが無効と判定され、正常にロック。
-  it("不正ロックファイル⇒statSyncでundefiendを返す⇒不正ファイルが無効と判定され、正常にロック.", async () => {
-    // statSyncは、ファイルが無いときには、undefinedを返す。
+  it("Invalid lock file → `statSync` returns `undefined` → the invalid file is deemed ineffective → lock is successfully established.", async () => {
     const key = "testKey_invalidMeta_statSyncUndefined_lockOK";
     const meta = {};
     setLockMeta(key, meta);
@@ -132,25 +127,6 @@ describe('FileLock', () => {
       try { removeLockFiles(key); } catch (_e) {;};
     }
     expect(TestLock.isReleasedState(key)).toBeTruthy();
-  });
-
-
-
-  // ★★★ IOリトライ：sleepAsyncに変えてみるのが先！！！かもしれない。。。
-
-
-  it("ロック一時ファイルを故意に作成し、`invalidTtlMs`時間後にロック成功することを確認する", async () => {
-    // ★★★ IOリトライを、sleepAsyncに変えてみるのが先かもしれない。。。
-    // ロック一時ファイルが長期にわたって残っていること自体が不正であるため中味は確認しない。
-    // しかし、この期間を決めるのが難しい（最小値は、heartbeatTtlMsで、良いかもしれない）
-    // 想定できるのは、、、
-    // １）超負荷時になかなかロックファイルへの反映が出来ない。。。これに、２秒とかかかるのは、あきらかにおかしい、、、
-    // ２）強制終了。。。これなら、数十秒で削除してもいだろう。。。に、２秒とかかかるのは、あきらかにおかしい、、、
-    // となると、、１０秒以上を設定するのが望ましいと思われる。
-    // ★★★ しかし、tmpの乗っ取り！が行われることを前提にしないといけない！　
-    // 　⇒　ctimeあるいはmtimeを確認し、自分が保存しているそれらと異なっていたら、あるいは、tmpがなかったら、乗っ取られた
-    //  ⇒　つまり、その場合は、ロック失敗で、また、ロックをリトライするしかない。このtmpのチェックはtmpアクセス時に必ず実施する軽い関数としよう。
-    //  isMyTmp(options): boolean …　軽くって、、、リトライ無し？　statSyncで、ENOENT以外はあきらめで良いよ！
   });
 
 });

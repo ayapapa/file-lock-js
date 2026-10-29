@@ -301,7 +301,6 @@ describe('FileLockOptions test.', () => {
     await testTypeErrorOption('invalidTtlMs', 'string');
   });
 
-  // null系指定が許可されていないオプションのnull系指定エラーテスト
   function _testNullKindValueOption(key: keyof FileLockOptions, value: undefined | null) {
     const options: FileLockOptions = {};
     const addedOpt = {} as Record<string, unknown>;
@@ -317,7 +316,6 @@ describe('FileLockOptions test.', () => {
     }
   }
 
-  // null系指定が許可されていないオプションのnull系指定エラーテスト
   function testNullKindValueOption(key: keyof FileLockOptions) {
     expect.assertions(4);
     _testNullKindValueOption(key, null);
@@ -406,15 +404,11 @@ describe('FileLockOptions test.', () => {
     expect('_resolvedOpts' in options && options._resolvedOpts.allowReentry === rOpts1.allowReentry).toBeTruthy();
     expect(options.allowReentry).toBe(true);
     expect(options._resolvedOpts.allowReentry).toBe(false);
-
-    // もう一度、同じoptions(_resolvedOpts付き)を解決すると、
-    // _resolvedOptsは、options.allowReentryと同じ値になっているはず。
     const rOpts2 = new FileLockOptionsResolver(options, minimumFileLockOptions).getOptions()
     expect(rOpts2.allowReentry).toBe(options.allowReentry);
     expect('_resolvedOpts' in options ? options._resolvedOpts?.allowReentry : "hoge").toBe(options.allowReentry);
   });
 
-  //FileLockOptionsResolver
   class TestOptionResolver extends FileLockOptionsResolver {
     constructor(options: FileLockOptions, defaultOpts: FileLockRequiredOptions) {
       super(options, minimumFileLockOptions, defaultOpts);

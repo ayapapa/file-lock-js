@@ -5,8 +5,6 @@ import { getHistoryPath,  getLockMetaPath, getLockSharerDir, removeLockFiles, se
 import { AlreadyLocked, type FileLockConfig,  FileLock, FileLockError, ReleaseFailed, type LockMonitor, type FileLockOptions } from '../src/index.ts';
 import { FileLockInternal } from '../src/lib/FileLockInternal.ts';
 
-
-
 let orgConfig: FileLockConfig;
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -638,10 +636,6 @@ it("Deliberately create an invalid lock file and verify that it results in an er
     }
   });
 
-
-  // Proceed by simulating the creation of a 'tmp' file (i.e., attempting to create it, failing to do so, but without triggering an explicit error).
-  // This should lead to a 'tmp' file write error, ultimately resulting in a failure to acquire the lock.
-  // Then, verify that everything—including the 'tmp' file—is left in a clean state.
   it("Falsely claim that a temporary lock file has been created", async() => {
     const key = "fakeTmpCreation";
     const openSync = fs.openSync as (...args: unknown[]) => number;
@@ -683,10 +677,6 @@ it("Deliberately create an invalid lock file and verify that it results in an er
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
-  // Proceed by simulating the creation of a 'tmp' file (i.e., an attempt to create it is made, but it fails without triggering an explicit error).
-  // This should lead to a 'tmp' file write error, ultimately resulting in a failure to acquire the lock.
-  // Next, force `rmSync` to fail as well, ensuring that an empty lock file remains behind.
-  // Finally, perform a forced deletion to conclude the test.
   it("Falsely claim that a temporary lock file has been created(remain 'lock file` related)", async() => {
     const key = "fakeTmpCreationAndRmError";
     const openSync = fs.openSync as (...args: unknown[]) => number;
@@ -862,7 +852,6 @@ it("Deliberately create an invalid lock file and verify that it results in an er
     expect(await FileLock.withLock(key, () => { return 'complete'; })).toBe('complete');
   });
 
-  // failed to create history directory
   it("failed to create history directory.", () => {
     const hdir = path.dirname(getHistoryPath());
     const org = fs.mkdirSync;
