@@ -66,7 +66,7 @@ export function isEqualObjectType(o1: Record<string, unknown>, o2: Record<string
  * @param target 
  * @param reference 
  * @param missings 
- * @returns If target has all keys of the `reference`, true;
+ * @returns If `target` has all keys of the `reference`, true;
  */
 export function includesAllKeysOf<T extends object, R extends object>(target: T, reference: R, missings: string[] = []): boolean {
   const keys = Object.keys(reference) as (keyof T)[];

@@ -589,7 +589,7 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
 
     // Adjust to the maximum number.
     const keys = Object.keys(history);
-    for ( let i = 0; i < keys.length - maxEntries; i++) {
+    for (let i = 0; i < keys.length - maxEntries; i++) {
       delete history[keys[i]];
     }
 

@@ -146,7 +146,6 @@ export class LockBaseOptionsResolver <
     const keys = Object.keys(this.minimumOptions);
     keys.forEach(key => {
       if (key in this.options) {
-
         // To be certain, verify that typeof options[key] is numerical.
         // Since this function is not accessed directly from the outside, `_DEBUG` is used.
         VERIFY_DEBUG(
@@ -155,7 +154,6 @@ export class LockBaseOptionsResolver <
           InvalidOptions,
           { name: key, props: { value: opt[key] } }
         );
-
         opt[key] = Math.max(opt[key], min[key]);
       }
     });
@@ -173,13 +171,12 @@ export class LockBaseOptionsResolver <
    */
   #checkTypes() {
     const pairs = this._getCheckTypePairs();
-
     typedKeys(pairs).forEach(key => {
       const t = pairs[key];
       const v = this.options[key];
       REQUIRE(key in this.options === false || /*typeof t === 'function' && t(v) ||*/ typeof v === t, 
         `The type of option ${key} is incorrect.`, InvalidOptions, { name: key });
-      });
+    });
   }
 
   /**
@@ -250,9 +247,7 @@ export class LockBaseOptionsResolver <
     keys.forEach(key => {
       const fromKey = `${key}Sec` as SecKey<O>;
       const toKey = `${key}Ms` as MsKey<O>;
-
       const value = optionsAsNumbers[fromKey];
-
       if (value != null) {
         optionsAsNumbers[toKey] = Math.floor(value * 1000);
         delete optionsAsNumbers[fromKey];
