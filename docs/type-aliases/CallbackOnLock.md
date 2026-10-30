@@ -8,7 +8,7 @@
 
 > **CallbackOnLock**\<`T`\> = (`monitor`) => [`MaybePromise`](MaybePromise.md)\<`T`\>
 
-Defined in: [src/lib/LockBase.ts:43](https://github.com/ayapapa/file-lock-js/blob/9a4b225094bc62e2fd0cd9f11797b01f21689625/src/lib/LockBase.ts#L43)
+Defined in: [src/lib/LockBase.ts:43](https://github.com/ayapapa/file-lock-js/blob/0ea00e16c0a65e325945ad421e3b27e5d6d579b5/src/lib/LockBase.ts#L43)
 
 Definition of the callback function to be executed after acquiring the lock.
 

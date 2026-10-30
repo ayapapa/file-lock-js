@@ -854,15 +854,14 @@ it("Deliberately create an invalid lock file and verify that it results in an er
 
   it("failed to create history directory.", () => {
     const hdir = path.dirname(getHistoryPath());
-    const org = fs.mkdirSync;
+    const mkdirSync = fs.mkdirSync as (...args: unknown[]) => string | undefined;
     const spy = vi.spyOn(fs, 'mkdirSync').mockImplementation((...args: unknown[]) => {
       const path = args[0] as string;
       if (path === hdir) {
         throw Object.assign(new Error("mkdirSync error!"), { code: 'EMDMOON' });
       }
       else {
-        org(path);
-        return undefined;
+        return mkdirSync(...args);
       }
     });
     try {
