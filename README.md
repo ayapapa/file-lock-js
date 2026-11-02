@@ -113,7 +113,7 @@ npm install @ayapapa-npm/file-lock-js
 | `cacheMaxNum` | `number` | `100` `0` | Maximum number of cached instances. | If set to `0`, caching is effectively disabled even when `cache` is `true`. Values below `0` are treated as `0`. |
 | `cacheTtlMs` | `number` | `10000` `10000` | Cache expiration time in milliseconds. | Values below `10000` use `10000`. |
 | `defaultOptions` | `FileLockOptions` | `default options`[^defaultOptions] N/A | Global default options used by `withLock()`. | Applied when options are not explicitly specified in `withLock()`. |
-| `lockDirectory` | `string \| null` | `process.cwd()` N/A | Directory used to store lock information. | If specified, this value takes highest priority. If the directory does not exist and cannot be created, an error is thrown. |
+| `lockDirectory` | `string \| null` | `${process.cwd()}/.lock` N/A | Directory used to store lock information. | If specified, this value takes highest priority. If the directory does not exist and cannot be created, an error is thrown. |
 | `logger` | `LogProvider` | `console` N/A | External logger instance. | Must provide `log`, `trace`, `debug`, `info`, `warn`, and `error`. `fatal` is optional. |
 | `_debug` | `boolean` | `false` N/A | Enables debug mode for this class. | Internal use. When `true`, process-related information is added to the lock info file and history tracking is enabled. |
 | `history` | `boolean` | `false` N/A | Enables lock information history. | Internal debug option. When `true`, history is appended to `xxxx.json` files under `lockDirectory/history/`. |

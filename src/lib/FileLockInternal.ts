@@ -89,7 +89,7 @@ export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
   cacheTtlMs:         10000,
   defaultOptions:     { ...defaultFileLockOptions },
   history:            false,
-  lockDirectory:      null,
+  lockDirectory:      path.join(process.cwd(), '.lock'),
   maxHistoryEntries:  100,
   maxHistoryFiles:    100,
 };

@@ -41,7 +41,7 @@ describe('FileLock.Config', () => {
     const dummyLogger: LogProvider = {
       log: ()=>{}, info: ()=>{}, trace: ()=>{}, debug: ()=>{}, warn: ()=>{}, error: ()=>{}, fatal: ()=>{}
     }
-    FileLock.setConfig({ lockDirectory: null, logger: dummyLogger, _debug: true,  cache: false });
+    FileLock.setConfig({ /*lockDirectory: undefined, */logger: dummyLogger, _debug: true,  cache: false });
     const conf = FileLock.getConfig();
     FileLock.resetConfig();
     expect(FileLock.getConfig()).toMatchObject(FileLock.defaultConfig);
@@ -114,7 +114,7 @@ describe('FileLock.Config', () => {
     try {
       fs.rmSync(dir, { force: true, recursive: true });
       fs.writeFileSync(dir, "");
-      FileLock.setConfig({ logger });
+      FileLock.setConfig({ lockDirectory: null, logger } as unknown as FileLockConfig);
     }
     catch (err) {
       expect(err).instanceOf(LockDirectoryCreationFailed);

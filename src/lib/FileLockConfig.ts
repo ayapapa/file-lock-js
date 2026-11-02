@@ -10,10 +10,10 @@ export interface FileLockConfig extends LockBaseConfig {
    * If it has been specified, use this as the top priority.
    * The directory is determined based on the following order of priority:<br>
    *  1. Specified via an `Config` (user's explicit intent)
-   *  2. `process.cwd()` (current working directory at runtime)
-   * Note: In cases where the directory is explicitly specified (1 or 2 above), an error occurs if the specified directory does not exist and its creation fails.
+   *  2. `${process.cwd()}/.lock` ('.lock' under the current working directory at runtime.)
+   * Note: In cases where the directory is explicitly specified (1 above), an error occurs if the specified directory does not exist and its creation fails.
    */
-  lockDirectory?: string | null;
+  lockDirectory?: string;
 
   /** 
    * Whether to enable caching for FileLock instances associated with a key.
