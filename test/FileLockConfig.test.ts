@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { PrettyConsole } from '@ayapapa-npm/pretty-console-js';
 
-import { type FileLockConfig, type LogProvider, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed } from '../src/index.ts';
+import { type FileLockConfig, type FileLockOptions, type LogProvider, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed } from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
 
 type NumberKeys<T> = {
@@ -22,6 +22,21 @@ afterEach(() => {
 });
 
 describe('FileLock.Config', () => {
+
+  it('exports public types', () => {
+    expectTypeOf<FileLockConfig>().toEqualTypeOf<{
+      logger?: LogProvider;
+      _debug?: boolean;
+      lockDirectory?: string;
+      cache?: boolean;
+      cacheMaxNum?: number;
+      cacheTtlMs?: number;
+      defaultOptions?: FileLockOptions;
+      history?: boolean;
+      maxHistoryEntries?: number;
+      maxHistoryFiles?: number;
+     }>();
+  });
 
   it("`FileLock.setConfig()` works correctly.", () => {
     expect.assertions(3);

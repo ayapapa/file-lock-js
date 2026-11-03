@@ -10,6 +10,15 @@ type Entry<V> = {
 
 /**
  * @internal
+ * Cache configuration.
+ */
+export type Config = {
+  max?: number;
+  ttlMs?: number;
+};
+
+/**
+ * @internal
  * Cache.
  */
 export class Cache<K = string, V = unknown> {
@@ -45,7 +54,7 @@ export class Cache<K = string, V = unknown> {
    * - max: `number` type - Maximum number of entries. Default is `100`.
    * - ttlMs: `number` type - TTL(milliseconds) of `cache entry`. Default is `10000`.
    */
-  public constructor(config?: { max?: number, ttlMs?: number }) {
+  public constructor(config?: Config) {
     this.#max = config?.max ?? 100;
     if (!Number.isSafeInteger(this.#max) || this.#max < 1) {
       throw new RangeError("`max` must be a positive safe integer.");

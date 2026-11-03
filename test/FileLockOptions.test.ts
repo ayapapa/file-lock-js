@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { FileLock, type FileLockConfig, type FileLockOptions, InvalidOptions } from '../src/index.ts';
 import { FileLockOptionsResolver } from '../src/lib/FileLockOptionsResolver.ts';
 import { type FileLockRequiredOptions, minimumFileLockOptions } from '../src/lib/FileLockInternal.ts';
@@ -22,6 +22,30 @@ async function sleepAsync(ms: number) {
 type TestOpts = OptionsForTesting<FileLockOptions>;
 
 describe('FileLockOptions test.', () => {
+
+  it('exports public types', () => {
+    expectTypeOf<FileLockOptions>().toEqualTypeOf<{
+      timeoutSec?: number;
+      timeoutMs?: number;
+      ttlSec?: number
+      ttlMs?: number;
+      allowReentry?: boolean;
+      pollIntervalSec?: number;
+      pollIntervalMs?: number;
+      heartbeatIntervalSec?: number;
+      heartbeatIntervalMs?: number;
+      heartbeatTtlSec?: number;
+      heartbeatTtlMs?: number;
+      heartbeatRetryIntervalSec?: number;
+      heartbeatRetryIntervalMs?: number;
+      retriesOnIoErr?: number;
+      retryIoIntervalSec?: number;
+      retryIoIntervalMs?: number;
+      invalidTtlSec?: number,
+      invalidTtlMs?: number,
+    }>();
+  });
+
 
   function testToBeSameAsTheDefaultOptions(opts: FileLockOptions): void {
     // Check basic options

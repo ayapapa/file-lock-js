@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { type FileLockConfig, FileLock } from '../src/index.ts';
-import { Cache } from '../src/lib/Cache.ts';
+import { Cache, type Config as CacheConfig } from '../src/lib/Cache.ts';
 import { sleepAsync } from './FileLockTestCommon.ts'
 
 let orgConfig: FileLockConfig;
@@ -15,6 +15,10 @@ afterEach(() => {
 });
 
 describe('Cache', () => {
+  it('exports public types', () => {
+    expectTypeOf<CacheConfig>().toEqualTypeOf<{ max?: number; ttlMs?: number }>();
+  });
+
   // Cache
   it("Cache", () => {
     expect(() => new Cache()).not.toBeUndefined();
