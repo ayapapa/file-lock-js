@@ -41,6 +41,13 @@ describe('LockBase and Util', () => {
       super("Key");
     }
 
+    protected async _incReantryCount(_: unknown): Promise<void> {
+    }
+    protected async _decReantryCount(_: unknown): Promise<void> {
+    }
+    protected _onDoneOrCancelled(_: unknown): void {
+    }
+    /*
     async test_incReantryCount() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return await this._incReantryCount({ _ownerId: "", _contextId: "" } as any);
@@ -50,7 +57,7 @@ describe('LockBase and Util', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
        return await this._decReantryCount({ _ownerId: "", _contextId: "" } as any);
     }
-
+*/
     async test_acquire() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return await this._acquire({ _ownerId: "", _contextId: "" } as any);

@@ -61,7 +61,7 @@ class LockDirectoryAccessFailed extends FileLockError {
    * @param code  Error code string.
    * @param params  Parameters.
    */
-  constructor(fsErrMsg: string | null, operation: string, code: string, params?: {path?: string, props?: LockErrorProps }) {
+  protected constructor(fsErrMsg: string | null, operation: string, code: string, params?: {path?: string, props?: LockErrorProps }) {
     const path = params?.path;
     const props = { ...params?.props };
     if (path != null) props.path = path;

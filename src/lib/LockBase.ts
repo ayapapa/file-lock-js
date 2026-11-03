@@ -62,7 +62,7 @@ export interface ReentrantContext  {
  * from within that context.
  * @abstract
  */
-export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptions, I extends LockBaseInternalState = LockBaseInternalState>  {
+export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptions, I extends LockBaseInternalState = LockBaseInternalState>  {
 
   /** 
    * Static fieilds. 
@@ -201,7 +201,6 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @param config 
    * @returns A logger where all methods are mandatory.
    */
-  //protected static _resolveLogger(config: Required<LockBaseConfig>): Required<LogProvider> {
   static #resolveLogger(config: Required<LockBaseConfig>): Required<LogProvider> {
     let logger: LogProvider = config.logger;
     if (logger === console) {
@@ -316,8 +315,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * Decrement the re-entry lock counter.
    * @param options Lock options.
    */
-  // v8 ignore next -- @preserve
-  protected async _decReantryCount(_options: AllOptions<O, I>): Promise<void> {}
+  protected abstract _decReantryCount(_options: AllOptions<O, I>): Promise<void>;
 
  /**
   * @internal
@@ -325,8 +323,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
   * Increment the re-entry lock counter.
   * @param options Lock options.
   */
-  // v8 ignore next -- @preserve
-  protected async _incReantryCount(_options: AllOptions<O, I>): Promise<void> {}
+  protected abstract _incReantryCount(_options: AllOptions<O, I>): Promise<void>;
 
   /**
    * @internal
@@ -352,8 +349,7 @@ export class LockBase <O extends LockBaseRequiredOptions = LockBaseRequiredOptio
    * @abstract
    * A synchronous function that is called immediately after a lock callback completes or is cancelled (due to an error).
    */
-  // v8 ignore next -- @preserve 
-  protected _onDoneOrCancelled(_options: AllOptions<O, I>): void {}
+  protected abstract _onDoneOrCancelled(_options: AllOptions<O, I>): void;
 
   /**
    * @internal
