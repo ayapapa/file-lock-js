@@ -77,6 +77,12 @@ export class FileLock {
    *                  Both synchronous and asynchronous functions can be specified.
    * @param options   Lock options.
    * @return A Promise that resolves with the return value of onLockFn.
+   * @throws {@link InvalidOptions} Invalid options.
+   * @throws {@link AlreadyLocked}  Failed to acquire the lock within the specified time. See {@link FileLockOptions}'s `timeoutMs`.
+   * @throws {@link TTLExceeded}  Failed to release the lock within the specified time. See {@link FileLockOptions}'s`ttlMs`.
+   * @throws {@link DeadlockDetected} A deadlock has been detected. See {@link FileLockOptions}'s `allowReentry`.
+   * @throws {@link LockDirectoryCreationFailed} Failed to create the `lock directory`.
+   * @throws {@link LockCompromised} The lock was compromised during the locking process.
    */
   public static async withLock<T>(key: string, onLockFn: CallbackOnLock<T>, options: FileLockOptions  = {}): Promise<T> {
     REQUIRE(typeof key === 'string' && key !== '', '`key` must be specified as a non-empty string.', InvalidOptions, { name: 'key' });
