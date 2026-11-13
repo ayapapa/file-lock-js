@@ -71,7 +71,7 @@
     "vitest": "^5.0.3"
   },
   "dependencies": {
-    "@ayapapa-npm/contracts-js": "^0.7.1",
+    "@ayapapa-npm/contracts-js": "^0.7.3",
     "@ayapapa-npm/date-formatter-js": "^0.1.2",
     "signal-exit": "^4.1.0"
   }

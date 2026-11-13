@@ -423,7 +423,7 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
     const causesRaw = tryResults.filter(v => v.cause != null).map(v => v.cause)
     const lastRes = tryResults[tryResults.length - 1];
     const causes = causesRaw.slice(lastRes.reason === 'EHISTORY' ? -2 : -1);
-    const props = {} as Record<string, unknown>;
+    const props = { timeoutMs: options.timeoutMs } as Record<string, unknown>;
     causes.length > 0 && (props.causes = causes);
     const lockErrorDetails = {
       EALREADYLOCKED: { message: 'The `lock file` already exists.', reason: 'ExistingLock' },
@@ -436,7 +436,7 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
     let err: Error | undefined;
     if (lockError) {
       props.reason = lockError.reason;
-      err = new AlreadyLocked(lockError.message, { key: this._key, props });
+      err = new AlreadyLocked(lockError.message, { key: this._key, timeoutMs: options.timeoutMs, props });
     }
     else if (lastRes.reason === 'EHISTORY') {
       err = FileLockError.lockFailedDueToHistory(FileLockInternal.#historyPath, causes);

@@ -6,7 +6,7 @@
 
 # Class: LockDirectoryStatFailed
 
-Defined in: [src/lib/FileLockErrors.ts:76](https://github.com/ayapapa/file-lock-js/blob/ed69b66081feab80268dd987be28c28f46527513/src/lib/FileLockErrors.ts#L76)
+Defined in: [src/lib/FileLockErrors.ts:76](https://github.com/ayapapa/file-lock-js/blob/e1820887e08620427c76daaa0a7fd2a8a1edb756/src/lib/FileLockErrors.ts#L76)
 
 Lock directory 'Stat' error.
 
@@ -20,7 +20,7 @@ Lock directory 'Stat' error.
 
 > **new LockDirectoryStatFailed**(`fsErrMsg`, `params?`): `LockDirectoryStatFailed`
 
-Defined in: [src/lib/FileLockErrors.ts:82](https://github.com/ayapapa/file-lock-js/blob/ed69b66081feab80268dd987be28c28f46527513/src/lib/FileLockErrors.ts#L82)
+Defined in: [src/lib/FileLockErrors.ts:82](https://github.com/ayapapa/file-lock-js/blob/e1820887e08620427c76daaa0a7fd2a8a1edb756/src/lib/FileLockErrors.ts#L82)
 
 Constructor.
 
@@ -70,7 +70,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/ed69b66081feab80268dd987be28c28f46527513/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/e1820887e08620427c76daaa0a7fd2a8a1edb756/src/lib/LockBaseErrors.ts#L8)
 
 #### Inherited from
 
@@ -210,7 +210,7 @@ a();
 
 > `static` **lockFailedDueToHistory**(`history`, `causes`): [`FileLockError`](FileLockError.md)
 
-Defined in: [src/lib/FileLockErrors.ts:47](https://github.com/ayapapa/file-lock-js/blob/ed69b66081feab80268dd987be28c28f46527513/src/lib/FileLockErrors.ts#L47)
+Defined in: [src/lib/FileLockErrors.ts:47](https://github.com/ayapapa/file-lock-js/blob/e1820887e08620427c76daaa0a7fd2a8a1edb756/src/lib/FileLockErrors.ts#L47)
 
 Create a lock acquisition errors caused by history file analysis errors.
  *

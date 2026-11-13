@@ -68,7 +68,7 @@ export class AlreadyLocked extends LockError {
    * @param msg   Error message.
    * @param params  Parameters.
    */
-  constructor(msg: string, params?: { key: string, props?: LockErrorProps } ) {
+  constructor(msg: string, params?: { key: string, timeoutMs?: number, props?: LockErrorProps } ) {
     const key = params?.key;
     msg = msg || `Failed to acquire the lock because the '${key ?? "key"}' is already locked.`;
     const props = {...params?.props};
