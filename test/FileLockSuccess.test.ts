@@ -112,14 +112,10 @@ describe('FileLock', () => {
   it("When reentrant locking is enabled, if `withLock` is called from within " +
     "a callback function using a different lock instance but the same key while the lock " + 
     "is already held, the call completes successfully.", async () => {
-      // Disabling caching results in a new instance being created each time.
-      FileLock.setConfig({ cache: false });
-      const key = "testKey", retVal = "Reentrant-lock is enabled.";
-      expect (await FileLock.withLock(key, async () => {
-      // Clear the cache to create a new lock instance.
-      //TestLock.clearCache();
-
-
+    // Disabling caching results in a new instance being created each time.
+    FileLock.setConfig({ cache: false });
+    const key = "testKey", retVal = "Reentrant-lock is enabled.";
+    expect (await FileLock.withLock(key, async () => {
       return await FileLock.withLock(
         key, 
         async () => {
@@ -130,6 +126,28 @@ describe('FileLock', () => {
       );
     })).toBe(retVal);
     expect(TestLock.isReleasedState(key)).toBeTruthy();
+  });
+
+  it("With tow-level lock nesting, tow same-key in depth 2.", async () => {
+ 
+    const key1 = "testKey_10000", key2 = 'testKey_20000';
+    const ret = "OK";
+    expect(await FileLock.withLock(key1, async () => {
+      const p1 = FileLock.withLock(key2, async () => {
+          await sleepAsync(500);
+          return ret;
+      });
+      const p2 = FileLock.withLock(key2, async () => {
+          await sleepAsync(500);
+          return ret;
+      });
+      const restuls = await Promise.allSettled([p1, p2]);
+      expect(restuls[0].status).toBe('fulfilled');
+      expect(restuls[1].status).toBe('fulfilled');
+      return ret;
+    })).toBe(ret);
+    expect(TestLock.isReleasedState(key1)).toBeTruthy();
+    expect(TestLock.isReleasedState(key2)).toBeTruthy();
   });
 
   it("Since a different key is used, it completes successfully even if re-entry locking is disabled.", async () => {

@@ -8,6 +8,7 @@ import { type LockBaseInternalState } from './LockBaseInternalState.ts'
 import { defaultLockBaseConfig, type LockBaseConfig, type LogProvider } from './LockBaseConfig.ts'
 import { isEqualObjectType } from './Util.ts';
 import { type Monitor } from './LockMonitor.ts';
+import { AsyncQueue } from './AsyncQueue .ts';
 
 /**
  * An internal options type consisting only of the required properties of LockBaseOptions.
@@ -114,6 +115,12 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
   static #onExitFns = [] as ((code: number | null | undefined, signal: NodeJS.Signals | null) => void)[];
 
   /**
+   * @internal
+   * Task queues.
+   */
+  static #queues: Record<string, AsyncQueue> = {};
+
+  /**
    * Static methods.
    */
 
@@ -169,7 +176,19 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     // Set configurations of `Contrats`.
     Contracts.setConfig({ debug: LockBase.#config._debug, logger: LockBase._logger });
   }
-  
+
+  /**
+   * @internal
+   * Get task queue for key.
+   * @param key 
+   * @returns Task queue for key.
+   */
+  static #getQueue(key: string): AsyncQueue {
+    if (LockBase.#queues[key] === undefined)
+      LockBase.#queues[key] = new AsyncQueue(key);
+    return LockBase.#queues[key];
+  }
+
   /**
    * @interface
    * @param config  User-specified settings.
@@ -269,6 +288,12 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
   #onInterruptRejects: Record<string, ((reason?: unknown) => void)> = {};
 
   /**
+   * @internal
+   * Task queue.
+   */
+  #queue: AsyncQueue;
+
+  /**
    *  Instance methods. 
    */
 
@@ -281,6 +306,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
   protected constructor(key: string/*, config: LockBaseConfig = LockBase.#config*/) {
     this.#key = key;
     this.#id  = crypto.randomUUID();
+    this.#queue = LockBase.#getQueue(key);
   }
 
   /**
@@ -396,6 +422,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    */
   protected _prepare(options: AllOptions<O, I>): void {
     this.#newMonitor(options);
+    options._contextId  = this.#key; 
     options._sharerId = crypto.randomUUID();
     // Note: This ID is a unique identifier assigned to each lock request.
     // If the lock is successfully acquired via the request (i.e., the key is not currently locked),
@@ -461,13 +488,26 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
       }
 
       // Exeute locking operations.
-      return this.#execLockCommon(
+      const start = Date.now();
+      return this.#queue.enqueue(async (): Promise<T> => {
+        options._queueTimeSpent = Date.now() - start;
+        return this.#execLockCommon<T>(
+          onLockFn,
+          async () => this._acquire(options),
+          async () => this._release(options),
+          'Callback or Timer in withLock().',
+          options,
+        );
+      }, options.timeoutMs)
+      /*-*
+      return this.#execLockCommon<T>(
         onLockFn,
         async () => this._acquire(options),
         async () => this._release(options),
         'Callback or Timer in withLock().',
         options
       );
+      */
     }
 
     return whithLockInContext();

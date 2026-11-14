@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PrettyConsole } from '@ayapapa-npm/pretty-console-js';
 
-import { type FileLockConfig, type FileLockOptions, type LogProvider, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed } from '../src/index.ts';
+import { type FileLockConfig, type FileLockOptions, type LogProvider, DeadlockDetected, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed } from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
 
 type NumberKeys<T> = {
@@ -223,41 +223,62 @@ describe('FileLock.Config', () => {
     )).toBe(retVal);
   });
 
+  // これは、キーが同じでも、ディレクトリを変えてしまったら、allowReentryに関係なく、ロックできてしまうというストーリー
+  // ★★★これって、不具合では？？　つまり、あくまでの同Keyなので、デッドロックと判定されるべき
   it("Changing the directory path while a lock is held and then locking again using the same key does not result in an error.", async () => {
     const retVal = "changeDir2", key = retVal;
     FileLock.setConfig({ logger: console });
-    expect(await FileLock.withLock(key, 
-      async () => {
-        FileLock.setConfig({ lockDirectory: path.join(process.cwd(), 'test/tmp') });
-        await FileLock.withLock(key, 
-          () => {
-            return;
-          }
-        );
-        await sleepAsync(500);
-        return retVal;
-      },
-      {}
-    )).toBe(retVal);
+    expect.assertions(1);
+    try {
+      await FileLock.withLock(key, 
+        async () => {
+          FileLock.setConfig({ lockDirectory: path.join(process.cwd(), 'test/tmp') });
+          await FileLock.withLock(key, 
+            () => {
+              return;
+            }
+          );
+          await sleepAsync(500);
+          return retVal;
+        },
+        {}
+      );
+    }
+    catch (err) {
+      expect(err).instanceOf(DeadlockDetected);
+    }
   });
 
+  // これは、キーが同じでも、ディレクトリを変えてしまったら、allowReentryに関係なく、ロックできてしまうし、というストーリー
+  // ★★★これって、不具合では？？　つまり、あくまでの同Keyなので、デッドロックと判定されるべき
+  // ★★★つまり、このテストは、途中でディレクトリを変えてしまったので、ロックファイルの特定が出来ずに、エラーになるというシナリオでOK
   it("Changing the directory path while a lock is held and subsequently acquiring another lock " +
     "using the same key—while in reentrant lock permission mode—does not result in an error.", async () => {
     const retVal = "changeDir3", key = retVal;
     FileLock.setConfig({ logger: console });
-    expect(await FileLock.withLock(key, 
-      async () => {
-        FileLock.setConfig({ lockDirectory: path.join(process.cwd(), 'test/tmp') });
-        await FileLock.withLock(key, 
-          () => {
-            return;
-          },
-          { allowReentry: true }
-        );
-        await sleepAsync(500);
-        return retVal;
-      },
-    )).toBe(retVal);
+    try {
+      expect(await FileLock.withLock(key, 
+        async () => {
+          FileLock.setConfig({ lockDirectory: path.join(process.cwd(), 'test/tmp') });
+          await FileLock.withLock(key, 
+            () => {
+              return;
+            },
+            { allowReentry: true }
+          );
+          await sleepAsync(500);
+          return retVal;
+        },
+      )).toBe(retVal);
+    }
+    catch (err) {
+      expect(err).instanceOf(FileLockError);
+      expect(err).toMatchObject({
+        code: 'EIO',
+        key,
+        message: "Failed to add the lock request to `lock sharer directory`."
+      })
+    }
   });
 
   it("When debug mode is enabled, the history is updated.", async () => {

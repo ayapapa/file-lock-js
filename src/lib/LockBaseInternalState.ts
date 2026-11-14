@@ -37,5 +37,8 @@ export interface LockBaseInternalState {
 
   /** Monitoring information to be passed to the callback function. */
   _monitor: Monitor;
+
+  /** Time spent in the queue. */
+  _queueTimeSpent: number;
 }
 

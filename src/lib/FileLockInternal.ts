@@ -409,7 +409,7 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
       tryResults.push(res);
       return res;
     }, (result: TryResult) => !result.locked, {
-      timeout: Date.now() + options.timeoutMs
+      timeout: Date.now() + Math.max(options.timeoutMs - options._queueTimeSpent, 0)
     }, ExponentialDelay, {
       base: options.pollIntervalMs, max: 1000, factor: 1.2, jitterRatio: 0.2
     });
@@ -519,10 +519,12 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
     const encodedKey    = this._key.replace(/[<>:/\\|?*]/g, () => '_').replace(/"/g, () => '');
     options._filePath   = path.join(dirPath, encodedKey + '.json');
     options._sharerDir  = path.join(dirPath, encodedKey + '.sharer');
+    /*
     options._contextId  = options._filePath;  // Use the file path as the context ID 
                                               // to avoid issues caused by changes 
                                               // to the `lock directory` configuration.
-    options._sharerLockIntervalMs = Math.max(options._sharerLockIntervalMs ?? 100, 100);
+    */
+   options._sharerLockIntervalMs = Math.max(options._sharerLockIntervalMs ?? 100, 100);
     options._sharerLocktimeoutMs = Math.max(options._sharerLocktimeoutMs ?? 5000, 0);
   }
 
@@ -1097,10 +1099,10 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
    */
   async #share(operation: () => MaybePromise<void>, options: AllOptions/*, withLock: boolean = true*/): Promise<void> {
     const lockPath = path.join(options._sharerDir, '.lock');
-    const res = await retry(async () => {
+    const res = await retry<Error | undefined>(async (): Promise<Error | undefined> => {
       try { await this.#openSyncExclusively(lockPath, options); return undefined; }
-      catch (err) { return err; }
-    }, (result: unknown) => result !== undefined, { 
+      catch (err) { return err as Error; }
+    }, (result: Error | undefined) => result instanceof FileLockError && result.code !== 'ENOENT'/* result !== undefined*/, { 
       timeout: Date.now() + options._sharerLocktimeoutMs
     },  FixedDelay, {
       base: options._sharerLockIntervalMs, jitterRatio: 0.2,
