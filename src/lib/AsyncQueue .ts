@@ -1,9 +1,10 @@
-import { AlreadyLocked } from './LockBaseErrors.ts';
+/** Queueに登録するタスク */
+export type QueueTask<T> = () => Promise<T>;
 
 /** Queueに登録するデータ構造 */
 interface QueueItem<T> {
     /** 実際に実行するタスク（非同期処理） */
-    task: () => Promise<T>;
+    task: QueueTask<T>;
     /** 処理成功時にPromiseを完了させる */
     resolve: (value: T) => void;
     /** 処理失敗時にPromiseを拒否する */
@@ -14,90 +15,82 @@ interface QueueItem<T> {
 		timer: NodeJS.Timeout;
 }
 
-/** Queueに登録するタスク */
-type QueueTask<T> = () => Promise<T>;
-
 /** 非同期タスクキュー */
 export class AsyncQueue {
-    #queue: QueueItem<unknown>[] = [];
-    #running = false;
-		readonly #key: string;
+	#queue: QueueItem<unknown>[] = [];
+	#running = false;
+	readonly #id: string | number;
 
-		public constructor(key: string) {
-			this.#key = key;
-		}
+	public constructor(id: string | number) {
+		this.#id = id;
+	}
 
-    /** 
-     * キューにタスクを追加する
-     * 追加されたタスクは、順次実行される。
-     */
-    public async enqueue<T>(task: QueueTask<T>, timeoutMs: number): Promise<T> {
-			const start = Date.now();
-			//const timer = this.#createTimer(timeoutMs);
-			return new Promise<T>((resolve, reject) => {
-				const item = {
-							task,
-							resolve: resolve as (value: unknown) => void,
-							reject,
-							enqueuedAt: start,
-							timer: setTimeout(() => {
-								const index = this.#queue.indexOf(item);
-								if (index !== -1) {
-										this.#queue.splice(index, 1);
-								}
-								reject(new AlreadyLocked('The `lock file` already exists.', {
-									timeoutMs, key: this.#key, props: { reason: 'ExistingLock' } 
-								}));
-							}, timeoutMs),
-				}
-				this.#queue.push(item);
-				this.#processNext();
-			});
-			/*
-			return Promise.race([taskPr, timer.promise as Promise<T>])
-				.finally(() => { // In any case, turn off the timer.
-					clearTimeout(timer.id!);
-				});
-				*/
-    }
-
-    async #processNext(): Promise<void> {
-			if (this.#running) return;
-
-			const item = this.#queue.shift();
-			if (!item) return;
-
-			this.#running = true;
-
-			try {
-				clearTimeout(item.timer);
-				const result = await item.task();
-				item.resolve(result);
-			} catch (error) {
-				item.reject(error);
-			} finally {
-				this.#running = false;
-				this.#processNext();
+	/** 
+	 * キューにタスクを追加する
+	 * 追加されたタスクは、順次実行される。
+	 * @param task キューに追加するタスク。
+	 * @param timerInfo 
+	 */
+	public async enqueue<T>(task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }): Promise<T> {
+		console.log("enqueue");
+		const start = Date.now();
+		return new Promise<T>((resolve, reject) => {
+			const item = {
+				task,
+				resolve: resolve as (value: unknown) => void,
+				reject,
+				enqueuedAt: start,
+				timer: setTimeout(() => {
+					const index = this.#queue.indexOf(item);
+					if (index !== -1) {
+							this.#queue.splice(index, 1);
+					}
+					reject(timerInfo.reason);
+				}, timerInfo.timeout),
 			}
-    }
-  /**
-   * @internal
-   * Create a timer for TTL.
-   * @param options Lock options.
-   */
-	/*
-  #createTimer(timeoutMs: number): { id: NodeJS.Timeout | null, promise: Promise<unknown> } {
-    let id: NodeJS.Timeout | null = null;
-    const promise = new Promise((_, reject) => {
-      id = setTimeout(() => {
-        reject(new AlreadyLocked('The `lock file` already exists.', {
-					timeoutMs, key: this.#key, props: { reason: 'ExistingLock' } 
-				}));
-      },
-      timeoutMs);
-    });
-    return { id, promise };
-  }
-	*/
+			this.#push(item);
+			this.#processNext();
+		});
+	}
 
+	public get id(): string | number { return this.#id; }
+
+	public get size(): number { 
+		return this.#running 
+		? this.#queue.length + 1 
+		: this.#queue.length;
+	}
+
+	async #processNext(): Promise<void> {
+		if (this.#running) return;
+
+		console.log("processNext");
+
+		const item = this.#queue.shift();
+		if (!item) return;
+
+		this.#running = true;
+
+		try {
+			item.timer != null && clearTimeout(item.timer);
+			const result = await item.task();
+			item.resolve(result);
+		} catch (error) {
+			item.reject(error);
+		} finally {
+			this.#running = false;
+			this.#processNext();
+		}
+	}
+
+	#max: number = 0;
+
+	#push(item: QueueItem<unknown>) {
+		this.#queue.push(item);
+		// for debug
+		if (this.#max < this.size) {
+			this.#max = this.size;
+			console.log("AsyncQueue's id =", this.#id, "size =", this.#max)
+		}
+	}
 }

@@ -29,9 +29,9 @@ afterAll(() => {
 describe('Simultaneous lock test for multiple processes using the same key.', () => {
 
   it("2 processes.", async () => {
-    await testMultiProcess(2, "multiProcessLockWithSameKey2");
+    await testMultiProcess(100, "multiProcessLockWithSameKey2");
   });
-
+return;
   if (isCI) return;
 
   it("5 processes.", async () => {

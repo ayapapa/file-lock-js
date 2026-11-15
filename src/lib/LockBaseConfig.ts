@@ -5,15 +5,35 @@ export type LogProvider = Pick<Console, 'log' | 'trace' | 'debug' | 'info' | 'wa
 export interface LockBaseConfig {
 
   /**
-  * External logger. 
-  * Default is `console`.
-  * 
-  */
+   * External logger. 
+   * Default is `console`.
+   * 
+   */
   logger?: LogProvider;
 
   /**
+   * Whether or not to use a lock request queue.
+   * Default is true.
+   */
+  queue?: boolean;
+
+  /**
+   * The max number of lock requests allowed at a time.
+   * Valid only when `queue` is `true`.
+   * Default is 500.
+   */
+  maxPending?: number;
+
+  /**
+   * The number of lock requests that can be processed concurrently.
+   * Valid only when `queue` is `true`.
+   * Default is 5. Min is 1. Max is 
+   */
+  maxConcurrency?: number;
+
+  /**
    * @internal
-   * Indicates whether to execute in debug mode. <br>
+   * Whether to execute in debug mode. <br>
    * If `true`:
    * - Process-related information is added to the lock information file.
    * - History tracking is enabled.
@@ -32,5 +52,8 @@ export interface LockBaseConfig {
  */
  export const defaultLockBaseConfig: Readonly<Required<LockBaseConfig>> = {
   logger: console,
+  queue: true,
+  maxPending: 100,
+  maxConcurrency: 5,
   _debug: false,
 }

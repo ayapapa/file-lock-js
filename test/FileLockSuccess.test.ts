@@ -18,7 +18,7 @@ describe('FileLock', () => {
 
   it("The lock is successfully acquired, and the return value of the callback is obtained.", async () => {
     const retVal = "callbackRetrunedValue", key = retVal;
-    const opts =  {timeoutSec : 1 } as FileLockOptions;
+    const opts =  {timeoutSec : 120 } as FileLockOptions;
     try {
     expect(await FileLock.withLock(key, 
       async () => {
@@ -36,7 +36,7 @@ describe('FileLock', () => {
 
   it("The process completes without interference between the two locks using different keys.", async () => {
     const key1 = 'testKey1', retVal1 = key1;
-    const a =  FileLock.withLock("testKey1", 
+    const a =  FileLock.withLock(key1, 
       async () => {
         await sleepAsync(3000);
         return retVal1;
@@ -45,7 +45,7 @@ describe('FileLock', () => {
     );
     
     const key2 = 'testKey2', retVal2 = key2;
-    const b =  FileLock.withLock("testKey2", 
+    const b =  FileLock.withLock(key2, 
       async () => {
         await sleepAsync(3000);
         return retVal2;

@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { onExit } from 'signal-exit';
 import { Contracts, ENSURE_DEBUG, REQUIRE_DEBUG } from './Contracts.ts';
-import { LockError, DeadlockDetected, TTLExceeded } from './LockBaseErrors.ts';
+import { AlreadyLocked, LockError, DeadlockDetected, TTLExceeded } from './LockBaseErrors.ts';
 import { type AllOptions } from './AllOptions.ts';
 import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { type LockBaseInternalState } from './LockBaseInternalState.ts'
@@ -46,11 +46,17 @@ export type CallbackOnLock<T> = (monitor: Monitor) => MaybePromise<T>;
 
 /** 
  * @internal
+ * Value of ReentrantContext.
+ */
+type HeldLockValue = { queueId: string | number, monitor: Monitor };
+
+/** 
+ * @internal
  * Context object for reentrancy lock detection.
  */
-export interface ReentrantContext  {
+interface ReentrantContext  {
   /** Set of reentrant context ids */
-  heldLocks: Map<string, { monitor: Monitor }>;
+  heldLocks: Map<string, HeldLockValue>;
 }
 
 /**
@@ -118,8 +124,9 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @internal
    * Task queues.
    */
-  static #queues: Record<string, AsyncQueue> = {};
-
+  static #queues = new Map<string | number, AsyncQueue>();
+  //static getNormalQueues
+  
   /**
    * Static methods.
    */
@@ -183,10 +190,12 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @param key 
    * @returns Task queue for key.
    */
-  static #getQueue(key: string): AsyncQueue {
-    if (LockBase.#queues[key] === undefined)
-      LockBase.#queues[key] = new AsyncQueue(key);
-    return LockBase.#queues[key];
+  static #getQueue(id: string | number): AsyncQueue {
+    let q = LockBase.#queues.get(id);
+    if (q === undefined) {
+      LockBase.#queues.set(id, q = new AsyncQueue(id));
+    }
+    return q;
   }
 
   /**
@@ -289,10 +298,17 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
 
   /**
    * @internal
-   * Task queue.
+   * Task queue dedicated to a key. 
+   * When using this, ensure you use the queue obtained via #getDedicatedQueue().
    */
-  #queue: AsyncQueue;
+  #dedicatedQueue: AsyncQueue | undefined = undefined;
 
+  #getDedicatedQueue() {
+    if (this.#dedicatedQueue === undefined) {
+     this.#dedicatedQueue = LockBase.#getQueue(this.#key);
+    }
+    return this.#dedicatedQueue;
+  }
   /**
    *  Instance methods. 
    */
@@ -306,7 +322,6 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
   protected constructor(key: string/*, config: LockBaseConfig = LockBase.#config*/) {
     this.#key = key;
     this.#id  = crypto.randomUUID();
-    this.#queue = LockBase.#getQueue(key);
   }
 
   /**
@@ -489,7 +504,8 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
 
       // Exeute locking operations.
       const start = Date.now();
-      return this.#queue.enqueue(async (): Promise<T> => {
+      const timeout = options.timeoutMs;
+      const exec = () => {
         options._queueTimeSpent = Date.now() - start;
         return this.#execLockCommon<T>(
           onLockFn,
@@ -498,19 +514,61 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
           'Callback or Timer in withLock().',
           options,
         );
-      }, options.timeoutMs)
-      /*-*
-      return this.#execLockCommon<T>(
-        onLockFn,
-        async () => this._acquire(options),
-        async () => this._release(options),
-        'Callback or Timer in withLock().',
-        options
-      );
-      */
+      };
+      const queue = this.#selectQueue();
+      return queue === undefined
+      ? exec()
+      : queue.enqueue(async (): Promise<T> => {
+        options._queueId = queue.id;
+        return exec();
+      }, {
+        timeout,
+        reason: new AlreadyLocked('The `lock file` already exists.', {
+          timeoutMs: timeout, key: this.#key, props: { reason: 'ExistingLock' } 
+        })
+      });
     }
 
     return whithLockInContext();
+  }
+
+  #getQueues(): AsyncQueue[] {
+    const ret: AsyncQueue[] = [];
+    for(let i = 0; i < LockBase.#config.maxConcurrency; i++) {
+      ret.push(LockBase.#getQueue(i));
+    }
+    return ret;
+    // ★★★キューが0のときは、key専用キューを使うってことでOK。これにより、同キーのみ、キューされるので、混雑緩和にはつながるはず。
+  }
+
+  #selectQueue(): AsyncQueue | undefined {
+    if (!LockBase.#config.queue) return undefined;
+    // If nestedLock, then 祖先が積まれているキュー以外を選択。
+    // もし、どのキューも祖先が積まれているなら、key専用キューを利用する
+    const heldLocks = this.#getReentrantContext()?.heldLocks;
+    const queues = this.#getQueues();
+    const idxSet = new Set<number>(queues.map((_, i) => i));
+    if (heldLocks != null && heldLocks.size > 0) {
+      [...heldLocks.values()].forEach(value => {
+        if (typeof value.queueId == 'number') {
+          idxSet.delete(value.queueId);
+        }
+      });
+    }
+    let min = Number.MAX_SAFE_INTEGER;
+    let q: AsyncQueue | undefined = undefined;
+    [...idxSet].forEach(idx => {
+      if (min > queues[idx].size) {
+        min = queues[idx].size;
+        q = queues[idx];
+      }
+    })
+    if (q !== undefined) {
+      return q;
+    }
+    else {
+      return this.#getDedicatedQueue();
+    }
   }
 
   /**
@@ -551,7 +609,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     }
     else {
       child = { heldLocks: new Map(parent?.heldLocks) };
-      child.heldLocks.set(contextId, { monitor });
+      child.heldLocks.set(contextId, { queueId: options._queueId, monitor });
     }
 
     return LockBase.#als.run(child, async () => onLockFn(monitor));
@@ -674,7 +732,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @returns 
    */
   #runInNewContext<T>(fn: () => unknown): T {
-    const initialContext: ReentrantContext = { heldLocks: new Map() };
+    const initialContext: ReentrantContext = { heldLocks: new Map<string, HeldLockValue>() };
     return LockBase.#als.run(initialContext, () => fn()) as T;
   }
 

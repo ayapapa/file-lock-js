@@ -35,6 +35,8 @@ describe('FileLock.Config', () => {
       history?: boolean;
       maxHistoryEntries?: number;
       maxHistoryFiles?: number;
+      maxConcurrency?: number;
+      maxPending?: number;
      }>();
   });
 
@@ -74,6 +76,8 @@ describe('FileLock.Config', () => {
       heartbeatTtlMs:       -1,
       retriesOnIoErr:       -1,
       retryIoIntervalMs:    -1,
+      maxConcurrency:       -1,
+      maxPending:           -1,
     };
     const exp = {
       timeoutMs:            0,
@@ -83,6 +87,8 @@ describe('FileLock.Config', () => {
       heartbeatTtlMs:       5000,
       retriesOnIoErr:       0,
       retryIoIntervalMs:    100,
+      maxConcurrency:       0,
+      maxPending:           0, // ★★★指定値を超えたときにエラーを考えないとね！！
     };
     // Verify that the default option values ​​in the configuration settings are resolved.
     FileLock.setConfig({ defaultOptions: defaults });
