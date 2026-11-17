@@ -3,18 +3,17 @@ import fs from 'node:fs';
 import { Cache } from './Cache.ts';
 import { DateFormatter } from '@ayapapa-npm/date-formatter-js';
 import { ENSURE_DEBUG, REQUIRE, REQUIRE_DEBUG, VERIFY } from './Contracts.ts';
-import { defaultLockBaseOptions, minimumLockBaseOptions, LockBase, type CallbackOnLock, type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions, type MaybePromise } from './LockBase.ts';
+import { defaultLockBaseConfig, defaultLockBaseOptions, minimumLockBaseOptions, LockBase, type CallbackOnLock, type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions, type MaybePromise } from './LockBase.ts';
 import { type FileLockOptions } from './FileLockOptions.ts';
 import { type FileLockInternalState } from './FileLockInternalState.ts';
 import { FileLockOptionsResolver } from "./FileLockOptionsResolver.ts";
-import { FileLockError, LockCompromised, LockDirectoryCreationFailed, LockDirectoryStatFailed} from './FileLockErrors.ts';
+import { FileLockError, LockCompromised, LockDirectoryCreationFailed, LockDirectoryStatFailed, type FileLockErrorCode} from './FileLockErrors.ts';
 import { type AllOptions as AllOptionsT } from './AllOptions.ts';
 import { type FileLockConfig } from './FileLockConfig.ts';
-import { getCallStack, includesAllKeysOf/*, sleepAsync*/ } from './Util.ts'
+import { checkValuesType, getCallStack, includesAllKeysOf/*, sleepAsync*/ } from './Util.ts'
 import { type FileLockMeta } from './FileLockMeta.ts'
 import { AlreadyLocked, InvalidOptions, ReleaseFailed } from './LockBaseErrors.ts';
 import { ExponentialDelay, FixedDelay, retry  } from './RetryDelay.ts';
-import { defaultLockBaseConfig } from './LockBaseConfig.ts'
 
 /**
  * Definition of required properties for the FileLockOtions.
@@ -85,7 +84,7 @@ export const minimumFileLockOptions: Readonly<FileLockRequiredNumericOptions> = 
 export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
   ...defaultLockBaseConfig,
   cache:              true,
-  cacheMaxNum:        100,
+  maxCacheEntries:    100,
   cacheTtlMs:         10000,
   defaultOptions:     { ...defaultFileLockOptions },
   history:            false,
@@ -207,27 +206,29 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
    * @param config  Lock configurations. 
    */
   public static override setConfig(config: FileLockConfig): void {
+    checkValuesType(config, defaultFileLockConfig, 'configuration', FileLockError);
+
     super.setConfig(config);
 
     const dConf = Object.assign(FileLockInternal._copyConfig(config), LockBase._config);
     if (dConf.cacheTtlMs != null) dConf.cacheTtlMs = Math.max(dConf.cacheTtlMs, 10000);
-    if (dConf.cacheMaxNum != null) dConf.cacheMaxNum  = Math.max(dConf.cacheMaxNum, 0);
-    if (dConf.maxHistoryEntries != null) dConf.maxHistoryEntries = Math.max(dConf.maxHistoryEntries, 0);
-    if (dConf.maxHistoryFiles != null) dConf.maxHistoryFiles = Math.max(dConf.maxHistoryFiles, 0);
+    if (dConf.maxCacheEntries != null) dConf.maxCacheEntries  = Math.max(dConf.maxCacheEntries, 1);
+    if (dConf.maxHistoryEntries != null) dConf.maxHistoryEntries = Math.max(dConf.maxHistoryEntries, 1);
+    if (dConf.maxHistoryFiles != null) dConf.maxHistoryFiles = Math.max(dConf.maxHistoryFiles, 1);
 
     // If defaultOptions is specified, resolve it.
     if (dConf.defaultOptions) {
-      dConf.defaultOptions = new FileLockOptionsResolver(dConf.defaultOptions, minimumFileLockOptions).getOptions();
+      dConf.defaultOptions = new FileLockOptionsResolver(dConf.defaultOptions, minimumFileLockOptions, defaultFileLockOptions).getOptions();
     }
     FileLockInternal.#config = { ...FileLockInternal.getConfig(), ...dConf };
 
     // chache
     FileLockInternal.#cache?.clear();
-    if (FileLockInternal.#config.cacheMaxNum === 0) FileLockInternal.#config.cache = false;
+    if (FileLockInternal.#config.maxCacheEntries === 0) FileLockInternal.#config.cache = false;
     // If cache is enabled, (Re)create cache.
     if (FileLockInternal.#config.cache) {
       FileLockInternal.#cache = new Cache<string, FileLockInternal>({
-        max: FileLockInternal.#config.cacheMaxNum,
+        max: FileLockInternal.#config.maxCacheEntries,
         ttlMs: FileLockInternal.#config.cacheTtlMs,
       });
     }
@@ -282,12 +283,12 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
         const e = err as Error; // Type-cast because it has been verified.
         const code = 'code' in e && String(e.code);
         if (code === 'ENOENT') return false;
-        throw new LockDirectoryStatFailed(e.message, { path: name, props: { fsErrCode: code } } );
+        throw new LockDirectoryStatFailed(e.message, { path: name } );
       }
       
       if (stat.isDirectory()) return true
 
-      throw new FileLockError(`'${name}' is not a directory.`, { code: 'ENOTDIR', props: { path: name } });
+      throw new LockDirectoryCreationFailed(`'${name}' is not a directory.`, { path: name });
     }
 
     const mkdir = (name: string): void => {
@@ -297,10 +298,8 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
       catch (err) {
         const errIns = err instanceof Error;
         let msg = '';
-        let code = '';
         (errIns && 'message' in err) && (msg = err.message);
-        (errIns && 'code' in err)    && (code = String(err.code));
-        throw new LockDirectoryCreationFailed(msg, { path: name, props: { path: name, fsErrCode: code } }); 
+        throw new LockDirectoryCreationFailed(msg, { path: name }); 
       }
     }
 
@@ -560,7 +559,7 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
     }, (r) => r instanceof Error, { retries }, FixedDelay, { base: options.retryIoIntervalMs, jitterRatio: 0.2 });
     if (res instanceof Error) {
       throw new FileLockError(`${errMsg}(${res.message})`, {
-        code: ('code' in res && res.code) as string,
+        code: ('code' in res && res.code) as FileLockErrorCode,
         props: { path: name, causes: [res] } 
       });
     }
@@ -870,9 +869,9 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
                   FileLockError, { code: 'ENOENT', props: { key: this._key } }
               );
               // Write to a temporary file first.
-              await this.#writeFileSync(tmpLockFile , meta, options, "Failed to write the `temporary lock file`.");
+              await this.#writeFileSync(tmpLockFile, meta, options, "Failed to write the `temporary lock file`.");
               // Replace the target file path with the temporary file (if the file already exists, it is overwritten atomically).
-              await this.#renameSync(tmpLockFile , options._filePath, options, "Failed to rename the `temporary lock file`.");
+              await this.#renameSync(tmpLockFile, options._filePath, options, "Failed to rename the `temporary lock file`.");
               confirmed = true;
             }
           },

@@ -1,12 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { onExit } from 'signal-exit';
-import { Contracts, ENSURE_DEBUG, REQUIRE_DEBUG } from './Contracts.ts';
-import { AlreadyLocked, LockError, DeadlockDetected, TTLExceeded } from './LockBaseErrors.ts';
+import Contracts, { ENSURE, ENSURE_DEBUG, REQUIRE_DEBUG } from './Contracts.ts';
+import { AlreadyLocked, DeadlockDetected, LockError, PendingLocksExceeded, TTLExceeded } from './LockBaseErrors.ts';
 import { type AllOptions } from './AllOptions.ts';
 import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { type LockBaseInternalState } from './LockBaseInternalState.ts'
-import { defaultLockBaseConfig, type LockBaseConfig, type LogProvider } from './LockBaseConfig.ts'
-import { isEqualObjectType } from './Util.ts';
+import { type LockBaseConfig, type LogProvider } from './LockBaseConfig.ts'
+import { checkValuesType, isEqualObjectType } from './Util.ts';
 import { type Monitor } from './LockMonitor.ts';
 import { AsyncQueue } from './AsyncQueue .ts';
 
@@ -14,6 +14,18 @@ import { AsyncQueue } from './AsyncQueue .ts';
  * An internal options type consisting only of the required properties of LockBaseOptions.
  */
 export type LockBaseRequiredOptions = Required<Pick<LockBaseOptions, 'timeoutMs' | 'ttlMs' | 'allowReentry'>>;
+
+/**
+ * @internal
+ * Default values of LockBaseConfig.
+ */
+ export const defaultLockBaseConfig: Readonly<Required<LockBaseConfig>> = {
+  logger: console,
+  queue: true,
+  maxPending: 100,
+  maxConcurrency: 5,
+  _debug: false,
+}
 
 /**
  * Default values of LockBaseRequiredOptions.
@@ -165,10 +177,12 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     delete withoutLogger.logger;
     // Properties with `undefined` values ​​are removed for design reasons.
     for (const key in withoutLogger) {
-      if (withoutLogger[key] === undefined) delete withoutLogger[key];
+      if (withoutLogger[key] == null) delete withoutLogger[key];
     }
     // Adds `logger` to the copied object and returns it.
-    return Object.assign(structuredClone(withoutLogger), { logger });
+    const cloned = structuredClone(withoutLogger);
+    return logger ? Object.assign(cloned, { logger }) : cloned;
+    //return Object.assign(structuredClone(withoutLogger), { logger });
   }
 
   /**
@@ -177,11 +191,12 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @param config  Configurations. 
    */
   protected static setConfig(config: LockBaseConfig): void {
+    checkValuesType(config, defaultLockBaseConfig, 'configuration', LockError);
     LockBase.#config = LockBase.#resolveConfig(config);
     LockBase.#logger = LockBase.#resolveLogger(LockBase.#config);
 
     // Set configurations of `Contrats`.
-    Contracts.setConfig({ debug: LockBase.#config._debug, logger: LockBase._logger });
+    Contracts.setConfig({ debug: LockBase.#config._debug, logger: LockBase.#logger });
   }
 
   /**
@@ -198,27 +213,31 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     return q;
   }
 
+  /*
+  protected static _checkValuesType<T extends (LockBaseConfig | LockBaseOptions)>(target: T, reference: T, type: 'options' | 'configuration', ErrorClass: ErrorClassType) {
+    let badKeys = [] as string[];
+    const msg = `The specified ${type} contains values of invalid types.`;
+    const result = checkValuesType(target, reference, badKeys);
+    REQUIRE(result, msg, ErrorClass, { code: 'EINVAL', props: { names: badKeys } });
+  }
+  */
+
   /**
    * @interface
    * @param config  User-specified settings.
    * @returns A required object for configuration properties.
    */
   static #resolveConfig(config: LockBaseConfig): Required<LockBaseConfig> {
-    REQUIRE_DEBUG(() => isEqualObjectType(LockBase.#config, defaultLockBaseConfig),
-      'The current configuration is invalid.', LockError, { code: 'EINVAL' });
-
     const curConf = LockBase.#config as Record<string, unknown>;
-    const newConf = config as Record<string, unknown>;
+    const newConf = this._copyConfig(config) as Record<string, unknown>;
     const rConf = { ...curConf } as Record<string, unknown>;
     Object.keys(curConf).forEach(key => {
       if (key in newConf) rConf[key] = newConf[key];
     });
-    ENSURE_DEBUG(() => {
-      let ret = true;
-      const keys = Object.keys(defaultLockBaseConfig);
-      for (let i = 0; i < keys.length && (ret = keys[i] in rConf); i++);
-      return ret; 
-    }, "Some required keys are missing.", LockError, { code: 'EINVAL' });
+    if (rConf.maxPending != null) rConf.maxPending = Math.max(rConf.maxPending as number, 1);
+    if (rConf.maxConcurrency != null) rConf.maxConcurrency = Math.max(rConf.maxConcurrency as number, 1);
+    ENSURE_DEBUG(() => isEqualObjectType(rConf, defaultLockBaseConfig),
+      'The current configuration is invalid.', LockError, { code: 'EINVAL' });
     // Cast the value, as it has already been verified above.
     return rConf as Required<LockBaseConfig>;
   }
@@ -489,7 +508,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
       // Re-entry lock check.
       if (this.#isReentry(options)) {
         // Error if reentrant locks are not permitted.
-        if (!options.allowReentry) throw new DeadlockDetected(null, { key: this.#key });
+        if (!options.allowReentry) throw new DeadlockDetected(undefined, { key: this.#key });
 
         // Since re-entry is permitted, increment the lock count and then execute the callback.
         this._logger.trace(`Allow re-entry lock(key=${this.#key}) ` + "in accordance with `options.allowReentry`.");
@@ -504,8 +523,8 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
 
       // Exeute locking operations.
       const start = Date.now();
-      const timeout = options.timeoutMs;
-      const exec = () => {
+      //const timeout = options.timeoutMs;
+      const exec = async (): Promise<T> => {
         options._queueTimeSpent = Date.now() - start;
         return this.#execLockCommon<T>(
           onLockFn,
@@ -515,10 +534,11 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
           options,
         );
       };
-      const queue = this.#selectQueue();
-      return queue === undefined
+      //const queue = this.#selectQueue();
+      return LockBase.#config.queue === false
       ? exec()
-      : queue.enqueue(async (): Promise<T> => {
+      : this.#enqueue(exec, options);
+      /*queue.enqueue(async (): Promise<T> => {
         options._queueId = queue.id;
         return exec();
       }, {
@@ -527,24 +547,53 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
           timeoutMs: timeout, key: this.#key, props: { reason: 'ExistingLock' } 
         })
       });
+      */
     }
 
     return whithLockInContext();
   }
 
-  #getQueues(): AsyncQueue[] {
+  async #enqueue<T>(exec: () => Promise<T>, options : AllOptions<O, I>): Promise<T> {
+    if (this.#getNumberOfPending() >= LockBase.#config.maxPending) {
+      throw new PendingLocksExceeded(undefined, { maxPending: LockBase.#config.maxPending });
+    }
+    const timeout = options.timeoutMs
+    const queue = this.#selectQueue();
+    return queue.enqueue(async (): Promise<T> => {
+      options._queueId = queue.id;
+      return exec();
+    }, {
+      timeout,
+      reason: new AlreadyLocked('The `lock file` already exists.', {
+        timeoutMs: timeout, key: this.#key, props: { reason: 'ExistingLock' } 
+      })
+    });
+  }
+
+  #getQueues(withExtraQues: boolean = false): AsyncQueue[] {
     const ret: AsyncQueue[] = [];
+    // regular queues
     for(let i = 0; i < LockBase.#config.maxConcurrency; i++) {
       ret.push(LockBase.#getQueue(i));
     }
+    if (withExtraQues) {
+      LockBase.#queues.forEach((q, key) => {
+        if (typeof key === 'string') ret.push(q);
+      });
+    }
+    ENSURE(ret.length > 0, "No queues are available.", LockError, { code: 'ENOQUEUE' });
     return ret;
-    // ★★★キューが0のときは、key専用キューを使うってことでOK。これにより、同キーのみ、キューされるので、混雑緩和にはつながるはず。
   }
 
-  #selectQueue(): AsyncQueue | undefined {
-    if (!LockBase.#config.queue) return undefined;
-    // If nestedLock, then 祖先が積まれているキュー以外を選択。
-    // もし、どのキューも祖先が積まれているなら、key専用キューを利用する
+  #getNumberOfPending() {
+    let ret = 0;
+    [...LockBase.#queues.values()].forEach(q => {
+      ret += q.size;      
+    });
+    return ret;
+  }
+
+  #selectQueue(): AsyncQueue {
     const heldLocks = this.#getReentrantContext()?.heldLocks;
     const queues = this.#getQueues();
     const idxSet = new Set<number>(queues.map((_, i) => i));
@@ -581,7 +630,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     const ttlMs = options.ttlMs;
     const promise = new Promise((_, reject) => {
       id = setTimeout(() => {
-        reject(new TTLExceeded(null, { ttlMs, key: this.#key }));
+        reject(new TTLExceeded(undefined, { ttlMs, key: this.#key }));
       },
       ttlMs);
     });

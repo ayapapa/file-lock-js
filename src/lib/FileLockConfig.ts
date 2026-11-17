@@ -22,15 +22,16 @@ export interface FileLockConfig extends LockBaseConfig {
   cache?: boolean;
 
   /**
-   * Maximum number that can be cached. 
-   * `0` means `cache` is disabled, even if `cache` is true.
-   * Minimum is `0`; if a value lower than this is specified, this minimum value is used.
+   * Maximum number of cache entries. 
+   * Valid only when `cache` is `true`.
+   * Minimum is `1`; if a value lower than this is specified, this minimum value is used.
    * Default is `100`.
    */
-  cacheMaxNum?: number;
+  maxCacheEntries?: number;
 
   /**
    * Cache expiration time (milliseconds). 
+   * Valid only when `cache` is `true`.
    * Default and minimum `10000`.
    */
   cacheTtlMs?: number;

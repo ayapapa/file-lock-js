@@ -1,3 +1,8 @@
+//import type { LockBase } from "./LockBase.ts";
+import { type LockBaseConfig } from "./LockBaseConfig.ts";
+import { type LockBaseOptions } from "./LockBaseOptions.ts";
+import { REQUIRE, type ErrorClassType } from "./Contracts.ts";
+
 /** 
  * @internal
  * Types of time-based key.
@@ -77,6 +82,7 @@ export function includesAllKeysOf<T extends object, R extends object>(target: T,
       missings.push(String(key));
     }
   }
+  missings.sort();
   return ret;
 }
 
@@ -85,3 +91,37 @@ export function typedKeys<O extends object>(obj: O): Array<keyof O> {
   return Object.keys(obj) as Array<keyof O>;
 }
 
+export function checkValuesType<T extends (LockBaseConfig | LockBaseOptions)>(target: T, reference: T, type: 'options' | 'configuration', ErrorClass: ErrorClassType) {
+  const badKeys = [] as string[];
+  const msg = `The specified ${type} contains values of invalid types.`;
+  const t = target as Record<string, unknown>;
+  const r = reference as Record<string, unknown>
+  const dummyConsole = {trace:()=>{},debug:()=> {},log:()=>{},info:()=>{},warn:()=>{},error:()=>{}};
+  Object.keys(r).forEach(k => {
+    if (t[k] != null) {
+      if (typeof t[k] !== typeof r[k] || Array.isArray(t[k]) !== Array.isArray(r[k])) {
+        badKeys.push(k);
+      }
+      else if (k === 'logger') {
+        if (!includesAllKeysOf(t[k], dummyConsole))
+          badKeys.push(k);
+      }
+    }
+  });
+
+  REQUIRE(() => {
+    if (badKeys.length > 0) {
+      badKeys.sort();
+      return false;
+    }
+    else return true;
+  }, msg, ErrorClass, { code: 'EINVAL', props: badKeys.length === 1 ? { name: badKeys[0] } : { names: badKeys } });
+}
+/*
+export function checkValuesType<T extends (LockBaseConfig | LockBaseOptions)>(target: T, reference: T, type: 'options' | 'configuration', ErrorClass: ErrorClassType) {
+  let badKeys = [] as string[];
+  const msg = `The specified ${type} contains values of invalid types.`;
+  const result = checkValuesType(target, reference, badKeys);
+  REQUIRE(result, msg, ErrorClass, { code: 'EINVAL', props: { names: badKeys } });
+}
+*/

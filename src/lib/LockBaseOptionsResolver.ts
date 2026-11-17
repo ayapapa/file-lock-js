@@ -2,7 +2,7 @@ import { REQUIRE, REQUIRE_DEBUG, VERIFY_DEBUG } from './Contracts.ts';
 import { type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions } from './LockBase.ts';
 import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { InvalidOptions } from './LockBaseErrors.ts';
-import { includesAllKeysOf, typedKeys, type KeyTypeMap, type TimeBasedKey } from './Util.ts'
+import { checkValuesType, includesAllKeysOf, typedKeys, type KeyTypeMap, type TimeBasedKey } from './Util.ts'
 
 /**
  * @internal
@@ -21,22 +21,28 @@ type MsKey<T> = `${TimeBasedKey<T>}Ms`;
  * A class that resolves options.
  * Base class: Accepts a generic type O
  */
-export class LockBaseOptionsResolver <
+export abstract class LockBaseOptionsResolver <
   O extends LockBaseOptions = LockBaseOptions,
   M extends LockBaseRequiredNumericOptions = LockBaseRequiredNumericOptions,
   R extends LockBaseRequiredOptions = LockBaseRequiredOptions,
-  > {
+  >
+{
+  /** Options that include all properties */  
+  protected static _allBaseOptions: Required<LockBaseOptions> = {
+    allowReentry: false, ttlMs: 0, ttlSec: 0, timeoutMs: 0, timeoutSec: 0, 
+  }
 
-  /** Instance fields. */
+  /** Get Options that include all properties */
+  protected abstract get _allOptions(): Required<O>;
 
   /** Options. */
-  protected options: O;
+  #options: O;
 
   /** Default options. */
-  protected defaultOptions?: R | null;
+  readonly #defaultOptions: R;
 
   /** Minimum option values. */
-  protected minimumOptions: M;
+  readonly #minimumOptions: M;
 
   /** Instance methods. */
 
@@ -46,42 +52,46 @@ export class LockBaseOptionsResolver <
    * @param minimumOptions  Minimum option values.
    * @param defaultOptions  Default options.
    */
-  constructor(userOpts: O, minimumOptions: M, defaultOptions?: R) {
+  constructor(userOpts: O, minimumOptions: M, defaultOptions: R) {
     // Delete _resolvedOpts for tests, if exists.
     if ('_resolvedOpts' in userOpts) delete userOpts._resolvedOpts;
 
-    this.options = { ...userOpts };
-    this.minimumOptions = { ...minimumOptions };
-    this.defaultOptions = defaultOptions ? { ...defaultOptions } : null;
+    // copy options
+    this.#options = {} as O;
+    typedKeys(userOpts).forEach(k => {
+      if (userOpts[k] != null) this.#options[k] = userOpts[k]; 
+    });
+    this.#minimumOptions = { ...minimumOptions };
+    this.#defaultOptions = { ...defaultOptions };
 
     this.#resolveOptions();
 
     // Add _resolvedOpts for tests.
-    Object.assign(userOpts, { _resolvedOpts: this.options });
+    Object.assign(userOpts, { _resolvedOpts: this.#options });
   }
 
   /** Get options. */
   public getOptions(): O {
-    return this.options;
+    return this.#options;
   }
 
   /** 
    * Get an option consisting of required properties. Error if any properties are missing. 
    */
   public getRequiredOptions(): R {
-    REQUIRE(this.defaultOptions != null, 
+    REQUIRE(this.#defaultOptions != null, 
       "To generate required options, specify `defaultOptions` in the constructor.", 
       InvalidOptions, { name: 'this.defaultOptions' });
     
     const missings: string[] = [];
     // It has been verified that this.defaultOptions is non-null.
-    // Verify whether `this.options` contains the required keys.
-    if (includesAllKeysOf(this.options, this.defaultOptions!, missings)) {
+    // Verify whether `this.#options` contains the required keys.
+    if (includesAllKeysOf(this.#options, this.#defaultOptions!, missings)) {
       // Ok, so type-cast and return it.
-      return this.options as unknown as R;
+      return this.#options as unknown as R;
     }
     else { // Error
-      throw new InvalidOptions(`Missing required option: ${missings}`, { name: 'this.options', props: { options: this.options } })
+      throw new InvalidOptions(`Missing required option: ${missings}`, { name: missings })
     }
   }
 
@@ -115,14 +125,11 @@ export class LockBaseOptionsResolver <
    * @param defaultOptions  User default options
    * @protected
    */
-  protected _normalizeOptions(): void {
+  protected _normalizeOptions(_: O): O {
     this.#convSecToMs();
-
-    // Apply minimum value
     this.#applyMinimum();    
-
-    // Apply default values
     this.#applyDefaults();
+    return this.#options;
   } 
 
   /**
@@ -131,8 +138,8 @@ export class LockBaseOptionsResolver <
   #applyMinimum() {
     // Since property type inference does not work as expected, cast the object to Record<string, number>
     // and validate to ensure type safety.
-    const min = this.minimumOptions as Record<string, number>;
-    const opt = this.options as unknown as Record<string, number>;
+    const min = this.#minimumOptions as Record<string, number>;
+    const opt = this.#options as unknown as Record<string, number>;
 
     // To be certain, verify that all properties in the minor procedure set are numerical.
     // Since this function is not accessed directly from the outside, `_DEBUG` is used.
@@ -143,9 +150,9 @@ export class LockBaseOptionsResolver <
       { props: { minimumOptions: min } }
     );
 
-    const keys = Object.keys(this.minimumOptions);
+    const keys = Object.keys(this.#minimumOptions);
     keys.forEach(key => {
-      if (key in this.options) {
+      if (key in this.#options) {
         // To be certain, verify that typeof options[key] is numerical.
         // Since this function is not accessed directly from the outside, `_DEBUG` is used.
         VERIFY_DEBUG(
@@ -163,20 +170,29 @@ export class LockBaseOptionsResolver <
    * Apply the default values.
    */
   #applyDefaults() {
-    Object.assign(this.options, { ...this.defaultOptions,  ...this.options});
+    Object.assign(this.#options, { ...this.#defaultOptions,  ...this.#options});
   }
 
   /**
    * Check each option's property type.
    */
   #checkTypes() {
+    checkValuesType(this.#options, this._allOptions, 'options', InvalidOptions);
+/*
+    let badKeys = [] as string[];
+    const msg = `The specified options contains values of invalid types.`;
+    const result = checkValuesType(this.#options, this.#defaultOptions as unknown as O, badKeys);
+    REQUIRE(result, msg, InvalidOptions, { code: 'EINVAL', props: { names: badKeys } });
+*/
+/*
     const pairs = this._getCheckTypePairs();
     typedKeys(pairs).forEach(key => {
       const t = pairs[key];
-      const v = this.options[key];
-      REQUIRE(key in this.options === false || /*typeof t === 'function' && t(v) ||*/ typeof v === t, 
+      const v = this.#options[key];
+      REQUIRE(key in this.#options === false ||  typeof v === t, 
         `The type of option ${key} is incorrect.`, InvalidOptions, { name: key });
     });
+*/
   }
 
   /**
@@ -185,7 +201,7 @@ export class LockBaseOptionsResolver <
    */
   #resolveOptions() {
     this.#validateOptions();
-    this._normalizeOptions();
+    this.#options = this._normalizeOptions(this.#options);
   }
 
   /**
@@ -228,7 +244,7 @@ export class LockBaseOptionsResolver <
     keys.forEach(key => {
       const sec = secKeyMap[key];
       const ms  = msKeyMap[key];
-      const k1  = this.options[sec], k2 = this.options[ms];
+      const k1  = this.#options[sec], k2 = this.#options[ms];
       REQUIRE(!k1 || !k2, `Options ${String(sec)} and ${String(ms)} cannot be specified at the same time.`, 
         InvalidOptions, { props: {keys: [sec, ms]} });
     });
@@ -240,9 +256,9 @@ export class LockBaseOptionsResolver <
    */
   #convSecToMs() {
     const keys = this._getTimeKeys();
-    // Treat this.options as a type containing only the time key (type assertion)
+    // Treat this.#options as a type containing only the time key (type assertion)
     // Here, use 'as unknown as ...' to safely cast via unknown
-    const optionsAsNumbers = this.options as unknown as Partial<Record<SecKey<O> | MsKey<O>, number>>
+    const optionsAsNumbers = this.#options as unknown as Partial<Record<SecKey<O> | MsKey<O>, number>>
     
     keys.forEach(key => {
       const fromKey = `${key}Sec` as SecKey<O>;

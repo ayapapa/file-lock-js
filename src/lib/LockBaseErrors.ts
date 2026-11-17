@@ -1,17 +1,22 @@
 /** Type of LockeError proerties. */
 export type LockErrorProps = Record<string, unknown>;
 
+/** Error codes for LockBase */
+export type LockErrorCode = 'ELOCK' | 'EDEADLK' | 'ETTLEXCEEDED' | 'EALREADYLOCKED' | 'EINVAL' | 'ERELEASE' | 'EMAXPENDING';
+
 /**
  * Basic lock handling error. 
  */
-export class LockError extends Error {
+export class LockError<C extends string = LockErrorCode> extends Error {
   public code:string = 'ELOCK';
   /**
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
+   * - code: string  Error code. 
+   * - props: LockErrorProps  Additinal properties. 
    */
-  constructor(msg: string, params?: { code?: string, props?: LockErrorProps | null}) {
+  constructor(msg: string, params?: { code?: C, props?: LockErrorProps | null}) {
     super(msg);
     Object.defineProperty(this, 'message', {
       value: msg,
@@ -33,8 +38,10 @@ export class DeadlockDetected extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
+   * - key: string  `lock key`. 
+   * - props: LockErrorProps  Additinal properties. 
    */
-  constructor(msg: string | null, params?: { key: string, props?: LockErrorProps }) {
+  constructor(msg?: string, params?: { key: string, props?: LockErrorProps }) {
     msg = msg || 'A deadlock was detected.';
     const props = {...params?.props};
     params?.key && (props.key = params?.key);
@@ -50,8 +57,11 @@ export class TTLExceeded extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
+   * - ttlMs: number  The specified validity period (time to live) in milliseconds of the lock. 
+   * - key: string  `lock key`. 
+   * - props: LockErrorProps  Additinal properties. 
    */
-  constructor(msg: string | null, params?: { ttlMs: number, key: string, props?: LockErrorProps }) {
+  constructor(msg?: string, params?: { ttlMs: number, key: string, props?: LockErrorProps }) {
     const ttlMs = params?.ttlMs;
     msg = msg || `The maximum processing time(${ttlMs ?? "options.ttlMs"} milliseconds) while locked has been exceeded.`;
     const props = {...params?.props };
@@ -67,8 +77,10 @@ export class AlreadyLocked extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
+   * - key: string  `lock key`. 
+   * - props: LockErrorProps  Additinal properties. 
    */
-  constructor(msg: string, params?: { key: string, timeoutMs?: number, props?: LockErrorProps } ) {
+  constructor(msg?: string, params?: { key: string, timeoutMs?: number, props?: LockErrorProps } ) {
     const key = params?.key;
     msg = msg || `Failed to acquire the lock because the '${key ?? "key"}' is already locked.`;
     const props = {...params?.props};
@@ -77,19 +89,53 @@ export class AlreadyLocked extends LockError {
   }
 };
 
-/** Invalid options error. */
-export class InvalidOptions extends LockError {
+class InvalidObjectValueType extends LockError {
   /**
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
+   * - name: string | string[]  Invalid property's key or keys. 
+   * - props: LockErrorProps    Additinal properties. 
    */
-  constructor(msg: string, params?: { name?: string, props?: LockErrorProps } ) {
-    const name: string | null = params?.name ?? null;
-    msg = msg || `The value of the specified options${name ? '(' + name + ')' : ''} is invalid.`;
+  constructor(msg: string | undefined, type : 'options' | 'configuration', params?: { name?: string | string[], props?: LockErrorProps } ) {
+    const name: string | string[] | undefined = params?.name;
+    msg = msg || `The specified ${type} contains values of invalid types.`;
     const props = {...params?.props};
-    if (name) props.name = name;
+    if (name) {
+      if (typeof name === 'string') 
+        props.name = name;
+      else
+        props.names = name;
+    }
     super(msg, { code:'EINVAL' , props });
+  }
+};
+
+/** Invalid configuration error. */
+export class InvalidConfiguration extends InvalidObjectValueType {
+  /**
+   * Constructor.
+   * @param msg   Error message.
+   * @param params  Parameters.
+   * - name: string | string[]  Invalid property's key or keys. 
+   * - props: LockErrorProps    Additinal properties. 
+   */
+  constructor(msg?: string, params?: { name?: string | string[], props?: LockErrorProps } ) {
+    super(msg, 'configuration', params);
+  }
+};
+
+/** Invalid options error. */
+export class InvalidOptions extends InvalidObjectValueType {
+  /**
+   * Constructor.
+   * @param msg   Error message.
+   * @param params  Parameters.
+   * - name: string | string[]  Invalid property's key or keys. 
+   * - props: LockErrorProps    Additinal properties. 
+   */
+  constructor(msg?: string, params?: { name?: string | string[], props?: LockErrorProps } ) {
+    super(msg, 'options', params);
   }
 };
 
@@ -104,12 +150,33 @@ export class ReleaseFailed extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
+   * - key: string  `lock key`. 
+   * - props: LockErrorProps  Additinal properties. 
    */
-  constructor(msg: string, params?: { key: string, props?: LockErrorProps }) {
+  constructor(msg?: string, params?: { key: string, props?: LockErrorProps }) {
     msg = msg || "Processing is interrupted because the lock release or lock counter decrement failed.";
     const props = { ...params?.props };
     params?.key     && (props.key = params?.key);
     
     super(msg, { code: 'ERELEASE' , props });
+  }
+};
+
+/**
+ * An error that occurs when the maximum number of concurrent lock requests is exceeded.
+ */
+export class PendingLocksExceeded extends LockError {
+  /**
+   * Constructor.
+   * @param msg   Error message.
+   * @param params  Parameters.
+   * - maxPending: number  Specified max number of lock requests allowed at a time. 
+   * - props: LockErrorProps  Additinal properties. 
+   */
+  constructor(msg?: string, params?: { maxPending: number, props?: LockErrorProps }) {
+    msg = msg || "The number of pending lock requests exceeds the allowable limit.";
+    const props = { ...params?.props };
+    params && (props.maxPending = params?.maxPending);
+    super(msg, { code: 'EMAXPENDING' , props });
   }
 };

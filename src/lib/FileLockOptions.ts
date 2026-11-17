@@ -78,14 +78,14 @@ export interface FileLockOptions extends LockBaseOptions {
 
   /**
    * Interval in seconds between `lock file` operation retries.  <br>
-   * Internally converted to `retryIntervalMs`. Cannot be used together with `retryIntervalMs`. 
+   * Internally converted to `retryIoIntervalMs`. Cannot be used together with `retryIntervalMs`. 
    * The default and minimum values ​​are the same as those for `retryIntervalMs`.
    */
   retryIoIntervalSec?: number;
 
   /**
    * Interval in milliseconds between `lock file` operation retries.  <br>
-   * Cannot be used together with `retryIntervalSec`. 
+   * Cannot be used together with `retryIoIntervalSec`. 
    * Minimum is `100`; if a value lower than this is specified, this minimum value is used.
    * Default is `100`.
    */

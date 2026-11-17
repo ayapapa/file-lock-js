@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import { getLockMeta, getLockMetaPath, removeLockFiles, setLockMeta, sleepAsync, TestLock  } from './FileLockTestCommon.ts';
 import { AlreadyLocked, type FileLockConfig, DeadlockDetected, FileLock, FileLockError, LockDirectoryCreationFailed, 
-  LockDirectoryStatFailed, LockError, InvalidOptions, LockCompromised, ReleaseFailed, TTLExceeded, type LockMonitor } from '../src/index.ts';
+  LockDirectoryStatFailed, LockError, InvalidConfiguration, InvalidOptions, LockCompromised, PendingLocksExceeded, ReleaseFailed, TTLExceeded, type LockMonitor } from '../src/index.ts';
 
 let orgConfig: FileLockConfig;
 beforeEach(() => {
@@ -352,9 +352,13 @@ describe('FileLockError', () => {
   });
 
   it("Instantiating an error class without parameters results in the default message.(InvalidOptions).", () => {
-    testNoParamsError(InvalidOptions  , "The value of the specified options is invalid.");
+    testNoParamsError(InvalidOptions  , "The specified options contains values of invalid types.");
   });
   
+  it("Instantiating an error class without parameters results in the default message.(InvalidConfiguration).", () => {
+    testNoParamsError(InvalidConfiguration  , "The specified configuration contains values of invalid types.");
+  });
+
   it("Instantiating an error class without parameters results in the default message.(DeadlockDetected).", () => {
     testNoParamsError(DeadlockDetected  , "A deadlock was detected.");
   });
@@ -370,14 +374,18 @@ describe('FileLockError', () => {
 
   //LockCompromised 
   it("Instantiating an error class without parameters results in the default message.(LockCompromised).", () => {
-    testNoParamsError(LockCompromised  , "The lock was compromised during the locking process.");
+    testNoParamsError(LockCompromised, "The lock was compromised during the locking process.");
   });
 
-
+  
   it("If `InvalidOptions` has no message but a `param` is specified, the resulting message includes `'param.name'`.", () => {
-    testNoParamsError(InvalidOptions  , "The value of the specified options(PARAM) is invalid.", { name: "PARAM"});
+    testNoParamsError(InvalidOptions, "The specified options contains values of invalid types.", { name: "PARAM"});
   });
   
+  it("Instantiating an error class without parameters results in the default message.(PendingLocksExceeded).", () => {
+    testNoParamsError(PendingLocksExceeded, "The number of pending lock requests exceeds the allowable limit.");
+  });
+
   it("If an error occurs in the lock callback, that error can be caught.", async () => {
     const key = 'testKey_8131'
     let mon: LockMonitor = { cancelled: false };

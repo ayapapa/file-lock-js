@@ -1,15 +1,18 @@
-import { LockError, AlreadyLocked, DeadlockDetected, InvalidOptions, TTLExceeded, type LockErrorProps } from './LockBaseErrors.ts';
+import { LockError, AlreadyLocked, DeadlockDetected, InvalidOptions, TTLExceeded, type LockErrorCode, type LockErrorProps } from './LockBaseErrors.ts';
+
+/** Error codes for FileLock */
+export type FileLockErrorCode = LockErrorCode | 'EFILELOCK' | 'EINITIALIZING' | 'EIO' | 'EHISTORY' | 'ELOCKDIRSTAT' | 'ELOCKDIRCREATE' | 'ECOMPROMISED';
 
 /**
  * Basic lock handling error. 
  */
-export class FileLockError extends LockError {
+export class FileLockError extends LockError<FileLockErrorCode> {
   /**
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
    */
-  constructor(msg: string, params?: {code: string, props?: LockErrorProps }) {
+  constructor(msg: string, params?: {code: FileLockErrorCode, props?: LockErrorProps }) {
     const p = { ...params };
     // Avoided using `if` statements to ensure code coverage.
     p.code == null && (p.code = 'EFILELOCK');
@@ -61,11 +64,11 @@ class LockDirectoryAccessFailed extends FileLockError {
    * @param code  Error code string.
    * @param params  Parameters.
    */
-  protected constructor(fsErrMsg: string | null, operation: string, code: string, params?: {path?: string, props?: LockErrorProps }) {
+  protected constructor(reason: string | null, operation: string, code: FileLockErrorCode, params?: {path?: string, props?: LockErrorProps }) {
     const path = params?.path;
     const props = { ...params?.props };
     if (path != null) props.path = path;
-    if (fsErrMsg != null) props.fsErrMsg = fsErrMsg;
+    if (reason != null) props.reason = reason;
     super(`Failed to ${operation} the ${"`lock directory`"}${path ? '('+path+')' : ""}.`, { code , props });
   }
 }
@@ -79,8 +82,8 @@ export class LockDirectoryStatFailed extends LockDirectoryAccessFailed {
    * @param fsErrMsg  fs's error message.
    * @param params    Parameters.
    */
-  constructor(fsErrMsg: string | null, params?: {path?: string, props?: LockErrorProps }) {
-    super(fsErrMsg, 'check the status of', 'ELOCKDIRSTAT', params);
+  constructor(reason: string | null, params?: {path?: string, props?: LockErrorProps }) {
+    super(reason, 'check the status of', 'ELOCKDIRSTAT', params);
   }
 }
 
@@ -93,8 +96,8 @@ export class LockDirectoryCreationFailed extends LockDirectoryAccessFailed {
    * @param fsErrorMsg   fs's error message.
    * @param params  Parameters.
    */
-  constructor(fsErrorMsg: string | null, params?: {path?: string, props?: LockErrorProps }) {
-    super(fsErrorMsg, 'create', 'ELOCKDIRCREATE', params);
+  constructor(reason: string | null, params?: {path?: string, props?: LockErrorProps }) {
+    super(reason, 'create', 'ELOCKDIRCREATE', params);
   }
 }
 

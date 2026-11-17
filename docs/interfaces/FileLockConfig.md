@@ -27,9 +27,9 @@ Default is `true`.
 
 ***
 
-### cacheMaxNum?
+### maxCacheEntries?
 
-> `optional` **cacheMaxNum?**: `number`
+> `optional` **maxCacheEntries?**: `number`
 
 Defined in: [src/lib/FileLockConfig.ts:30](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockConfig.ts#L30)
 

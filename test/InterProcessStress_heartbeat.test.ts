@@ -25,7 +25,7 @@ afterAll(() => {
   report();
 });
 
-describe('Concurrent locking test that also accounts for heartbeats from multiple processes using the same key.', () => {
+describe('Test involving a single key, multiple processes, and approximately four heartbeats.', () => {
 
   it("2 processes.", async () => {
     await testMultiProcess(2, 'StressHeartbeat2', { sleep: 4500, timout: 10000, hbTtl: 10000 });
@@ -36,9 +36,44 @@ describe('Concurrent locking test that also accounts for heartbeats from multipl
   it("5 processes.", async () => {
     await testMultiProcess(5, 'StressHeartbeat5', { sleep: 4500, timout: 10000, hbTtl: 10000 });
   });
-
+/*
   it("10 processes.", async () => {
     await testMultiProcess(10, 'StressHeartbeat10', { sleep: 4500, timout: 10000, hbTtl: 10000 });
+  });
+
+ // Increasing the load any further will only result in more processes failing to release their locks, making it largely meaningless as a heartbeat test.
+  it("25 processes.", async () => {
+    await testMultiProcess(25, 'StressHeartbeat25', { sleep: 4500, timout: 1npm test0000, hbTtl: 10000 });
+  });
+  it("50 processes.", async () => {
+    await testMultiProcess(50, 'StressHeartbeat50', { sleep: 1500, timout: 10000, hbTtl: 10000 });
+  });
+
+  it("100 processes.", async () => {
+    await testMultiProcess(100, 'StressHeartbeat100', { sleep: 1500, timout: 10000, hbTtl: 10000 });
+  });
+  */
+});
+
+
+describe('Test involving each key, multiple processes, and approximately four heartbeats.', () => {
+
+  it("2 processes.", async () => {
+    await testMultiProcess(2, undefined, { sleep: 4500, timout: 10000, hbTtl: 10000 });
+  });
+
+  it("5 processes.", async () => {
+    await testMultiProcess(5, undefined, { sleep: 4500, timout: 10000, hbTtl: 10000 });
+  });
+
+  it("10 processes.", async () => {
+    await testMultiProcess(10, undefined, { sleep: 4500, timout: 10000, hbTtl: 10000 });
+  });
+
+  if (isCI) return;
+
+  it("25 processes.", async () => {
+    await testMultiProcess(25, undefined, { sleep: 4500, timout: 10000, hbTtl: 10000 });
   });
 
 /* Increasing the load any further will only result in more processes failing to release their locks, making it largely meaningless as a heartbeat test.

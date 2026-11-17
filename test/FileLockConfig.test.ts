@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PrettyConsole } from '@ayapapa-npm/pretty-console-js';
 
-import { type FileLockConfig, type FileLockOptions, type LogProvider, DeadlockDetected, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed } from '../src/index.ts';
+import { type FileLockConfig, type FileLockOptions, type LogProvider, 
+  DeadlockDetected, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError } from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
 
 type NumberKeys<T> = {
@@ -29,7 +30,7 @@ describe('FileLock.Config', () => {
       _debug?: boolean;
       lockDirectory?: string;
       cache?: boolean;
-      cacheMaxNum?: number;
+      maxCacheEntries?: number;
       cacheTtlMs?: number;
       defaultOptions?: FileLockOptions;
       history?: boolean;
@@ -37,6 +38,7 @@ describe('FileLock.Config', () => {
       maxHistoryFiles?: number;
       maxConcurrency?: number;
       maxPending?: number;
+      queue?: boolean;
      }>();
   });
 
@@ -68,31 +70,35 @@ describe('FileLock.Config', () => {
   it("In `setConfig()`, if a value lower than the minimum is specified " +
     "for a numeric property among the default options, " +
     "the minimum value is set.", () => {
-    const defaults = {
-      timeoutMs:            -1,
-      ttlMs:                -1,
-      pollIntervalMs:       -1,
-      heartbeatIntervalMs:  -1,
-      heartbeatTtlMs:       -1,
-      retriesOnIoErr:       -1,
-      retryIoIntervalMs:    -1,
-      maxConcurrency:       -1,
-      maxPending:           -1,
-    };
+      const conf = {
+        maxConcurrency:       -1,
+        maxPending:           -1,
+        defaultOptions: {
+          timeoutMs:            -1,
+          ttlMs:                -1,
+          pollIntervalMs:       -1,
+          heartbeatIntervalMs:  -1,
+          heartbeatTtlMs:       -1,
+          retriesOnIoErr:       -1,
+          retryIoIntervalMs:    -1,
+        }
+      }
     const exp = {
-      timeoutMs:            0,
-      ttlMs:                1000,
-      pollIntervalMs:       100,
-      heartbeatIntervalMs:  1000,
-      heartbeatTtlMs:       5000,
-      retriesOnIoErr:       0,
-      retryIoIntervalMs:    100,
-      maxConcurrency:       0,
-      maxPending:           0, // ★★★指定値を超えたときにエラーを考えないとね！！
+      maxConcurrency:       1,
+      maxPending:           1, // ★★★指定値を超えたときにエラーを考えないとね！！
+      defaultOptions: {
+        timeoutMs:            0,
+        ttlMs:                1000,
+        pollIntervalMs:       100,
+        heartbeatIntervalMs:  1000,
+        heartbeatTtlMs:       5000,
+        retriesOnIoErr:       0,
+        retryIoIntervalMs:    100,
+      }
     };
     // Verify that the default option values ​​in the configuration settings are resolved.
-    FileLock.setConfig({ defaultOptions: defaults });
-    expect(TestLock.getConfig().defaultOptions).toMatchObject(exp);
+    FileLock.setConfig(conf);
+    expect(FileLock.getConfig()).toMatchObject(exp);
   });
 
   it("`You can specify `console` as the logger, " +
@@ -128,8 +134,7 @@ describe('FileLock.Config', () => {
     expect(fs.statSync(dir).isDirectory()).toBeTruthy();
   });
 
-  it("If the user does not specify a `lock directory`, and an error occurs while attempting to create one based on `process.cwd()`," +
-    " a error is throwed.", () => {
+  it("The user has not specified a `lock directory`, and the default lock directory exists as a file.", () => {
     const dir = path.join(process.cwd(), '.lock');
     expect.assertions(2);
     try {
@@ -169,10 +174,9 @@ describe('FileLock.Config', () => {
       );
     }
     catch (err) {
-      expect(err instanceof ErrorClass).toBe(true);
+      expect(err).instanceOf(ErrorClass);
       expect(err).toMatchObject({
-        fsErrCode: eCode,
-        fsErrMsg: eMsg,
+        reason: eMsg,
       });
     }
     finally {
@@ -208,8 +212,8 @@ describe('FileLock.Config', () => {
       )
     }
     catch (err) {
-      expect(err).instanceOf(FileLockError);
-      expect(err).toMatchObject({ code: 'ENOTDIR' });
+      expect(err).instanceOf(LockDirectoryCreationFailed);
+      expect(err).toMatchObject({ code: 'ELOCKDIRCREATE' });
     }
     finally {
       fs.rmSync(dir, { force: true, recursive: true });
@@ -229,9 +233,7 @@ describe('FileLock.Config', () => {
     )).toBe(retVal);
   });
 
-  // これは、キーが同じでも、ディレクトリを変えてしまったら、allowReentryに関係なく、ロックできてしまうというストーリー
-  // ★★★これって、不具合では？？　つまり、あくまでの同Keyなので、デッドロックと判定されるべき
-  it("Changing the directory path while a lock is held and then locking again using the same key does not result in an error.", async () => {
+  it("Changing the directory path while a lock is held and subsequently acquiring another same-key lock.", async () => {
     const retVal = "changeDir2", key = retVal;
     FileLock.setConfig({ logger: console });
     expect.assertions(1);
@@ -255,11 +257,7 @@ describe('FileLock.Config', () => {
     }
   });
 
-  // これは、キーが同じでも、ディレクトリを変えてしまったら、allowReentryに関係なく、ロックできてしまうし、というストーリー
-  // ★★★これって、不具合では？？　つまり、あくまでの同Keyなので、デッドロックと判定されるべき
-  // ★★★つまり、このテストは、途中でディレクトリを変えてしまったので、ロックファイルの特定が出来ずに、エラーになるというシナリオでOK
-  it("Changing the directory path while a lock is held and subsequently acquiring another lock " +
-    "using the same key—while in reentrant lock permission mode—does not result in an error.", async () => {
+  it("Changing the directory path while a lock is held and subsequently acquiring another same-key lock.(allowReentry: true)", async () => {
     const retVal = "changeDir3", key = retVal;
     FileLock.setConfig({ logger: console });
     try {
@@ -329,20 +327,20 @@ describe('FileLock.Config', () => {
     if (additinalExp) additinalExp();
   }
 
-  it("cacheMaxNum: undefined", () => {
-    testConfigMinVal('cacheMaxNum', 100, undefined);
+  it("maxCacheEntries: undefined", () => {
+    testConfigMinVal('maxCacheEntries', 100, undefined);
   });
 
-  it("cacheMaxNum: 0", () => {
-    testConfigMinVal('cacheMaxNum', 0, 0, () => expect(FileLock.getConfig().cache).toBeFalsy());
+  it("maxCacheEntries: 0", () => {
+    testConfigMinVal('maxCacheEntries', 1, 0, () => expect(FileLock.getConfig().cache).toBeTruthy());
   });
 
-  it("cacheMaxNum: -1", () => {
-    testConfigMinVal('cacheMaxNum', 0, -1, () => expect(FileLock.getConfig().cache).toBeFalsy());
+  it("maxCacheEntries: -1", () => {
+    testConfigMinVal('maxCacheEntries', 1, -1, () => expect(FileLock.getConfig().cache).toBeTruthy());
   });
 
-  it("cacheMaxNum: 1", () => {
-    testConfigMinVal('cacheMaxNum', 1, 1);
+  it("maxCacheEntries: 1", () => {
+    testConfigMinVal('maxCacheEntries', 1, 1);
   });
 
   it("cacheTtlMs: undefined", () => {
@@ -366,11 +364,11 @@ describe('FileLock.Config', () => {
   });
 
   it("maxHistoryEntries: 0", () => {
-    testConfigMinVal('maxHistoryEntries', 0, 0);
+    testConfigMinVal('maxHistoryEntries', 1, 0);
   });
 
   it("maxHistoryEntries: -1", () => {
-    testConfigMinVal('maxHistoryEntries', 0, -1);
+    testConfigMinVal('maxHistoryEntries', 1, -1);
   });
 
   it("maxHistoryEntries: 99", () => {
@@ -386,11 +384,11 @@ describe('FileLock.Config', () => {
   });
 
   it("maxHistoryFiles: 0", () => {
-    testConfigMinVal('maxHistoryFiles', 0, 0);
+    testConfigMinVal('maxHistoryFiles', 1, 0);
   });
 
   it("maxHistoryFiles: -1", () => {
-    testConfigMinVal('maxHistoryFiles', 0, -1);
+    testConfigMinVal('maxHistoryFiles', 1, -1);
   });
 
   it("maxHistoryFiles: 99", () => {
@@ -401,11 +399,215 @@ describe('FileLock.Config', () => {
     testConfigMinVal('maxHistoryFiles', 101, 101);
   });
 
+  it("maxPending: undefined", () => {
+    testConfigMinVal('maxPending', 100, undefined);
+  });
+
+  it("maxPending: 0", () => {
+    testConfigMinVal('maxPending', 1, 0);
+  });
+
+  it("maxPending: -1", () => {
+    testConfigMinVal('maxPending', 1, -1);
+  });
+
+  it("maxPending: 99", () => {
+    testConfigMinVal('maxPending', 99, 99);
+  });
+
+  it("maxPending: 101", () => {
+    testConfigMinVal('maxPending', 101, 101);
+  });
+  
+  it("maxConcurrency: undefined", () => {
+    testConfigMinVal('maxConcurrency', 5, undefined);
+  });
+
+  it("maxConcurrency: 0", () => {
+    testConfigMinVal('maxConcurrency', 1, 0);
+  });
+
+  it("maxConcurrency: -1", () => {
+    testConfigMinVal('maxConcurrency', 1, -1);
+  });
+
+  it("maxConcurrency: 99", () => {
+    testConfigMinVal('maxConcurrency', 99, 99);
+  });
+
+  it("maxConcurrency: 101", () => {
+    testConfigMinVal('maxConcurrency', 101, 101);
+  });
+
+  function testTypeErrorConfig(name: string | string[], value: unknown | unknown[], eMsg: string) {
+    const conf =  {} as Record<string, unknown>;
+    if (typeof name === 'string') {
+      conf[name] = value;
+    }
+    else {
+      name.forEach((n, idx) => { conf[n] = (value as unknown[])[idx]; })
+    }
+
+    try {
+      FileLock.setConfig(conf);
+      expect.assert(false, "到達してはいけない");
+    }
+    catch(err) {
+      expect(err).instanceOf(FileLockError);
+      expect(err).toMatchObject({
+        code: 'EINVAL',
+        message: eMsg
+      });
+      if (err instanceof FileLockError) {
+        if (typeof name === 'string') expect(err).toMatchObject({ name });
+        else expect(err).toMatchObject({ names : name.sort() });
+      }
+    }
+  }
+
+  it("An error occurs when an config value of a different type is specified(logger).", () => {
+    testTypeErrorConfig('logger', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('logger', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('logger', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('logger', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('logger', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('logger', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('logger', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(queue).", () => {
+    //testTypeErrorConfig('queue', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('queue', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('queue', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('queue', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('queue', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('queue', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('queue', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(maxPending).", () => {
+    testTypeErrorConfig('maxPending', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxPending', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('maxPending', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxPending', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxPending', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxPending', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxPending', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(maxConcurrency).", () => {
+    testTypeErrorConfig('maxConcurrency', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxConcurrency', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('maxConcurrency', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxConcurrency', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxConcurrency', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxConcurrency', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxConcurrency', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(_debug).", () => {
+    //testTypeErrorConfig('_debug', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('_debug', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('_debug', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('_debug', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('_debug', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('_debug', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('_debug', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(lockDirectory).", () => {
+    testTypeErrorConfig('lockDirectory', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('lockDirectory', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('lockDirectory', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('lockDirectory', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('lockDirectory', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('lockDirectory', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('lockDirectory', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(cache).", () => {
+    //testTypeErrorConfig('cache', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cache', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cache', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cache', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cache', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cache', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cache', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(maxCacheEntries).", () => {
+    testTypeErrorConfig('maxCacheEntries', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxCacheEntries', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('maxCacheEntries', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxCacheEntries', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxCacheEntries', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxCacheEntries', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxCacheEntries', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(cacheTtlMs).", () => {
+    testTypeErrorConfig('cacheTtlMs', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cacheTtlMs', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('cacheTtlMs', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cacheTtlMs', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cacheTtlMs', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cacheTtlMs', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cacheTtlMs', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(defaultOptions).", () => {
+    testTypeErrorConfig('defaultOptions', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('defaultOptions', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('defaultOptions', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('defaultOptions', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('defaultOptions', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('defaultOptions', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('defaultOptions', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(history).", () => {
+    //testTypeErrorConfig('history', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('history', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('history', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('history', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('history', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('history', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('history', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+ 
+  it("An error occurs when an config value of a different type is specified(maxHistoryEntries).", () => {
+    testTypeErrorConfig('maxHistoryEntries', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryEntries', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('maxHistoryEntries', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryEntries', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryEntries', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryEntries', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryEntries', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when an config value of a different type is specified(maxHistoryFiles).", () => {
+    testTypeErrorConfig('maxHistoryFiles', true, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryFiles', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('maxHistoryFiles', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryFiles', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryFiles', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryFiles', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryFiles', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
+  it("An error occurs when some config values of a different type is specified.", () => {
+    testTypeErrorConfig(
+      ['logger', 'queue', 'maxPending', 'maxConcurrency', '_debug', 'lockDirectory', 'cache', 'maxCacheEntries', 'cacheTtlMs', 'defaultOptions', 'history', 'maxHistoryEntries', 'maxHistoryFiles', ], 
+      [true, 'string', {}, [], 1234, ()=>{}, new LockError(""), true, 'string', [], 1234, ()=>{}, new LockError(""), ], 
+      "[REQUIRE] The specified configuration contains values of invalid types.");
+  });
+
   it("Set the maximum number of history files to 0.", async () => {
     const key = "MaxHisFiles_0";
-    FileLock.setConfig({ maxHistoryFiles: 0 });
+    // Even if maxHistoryFiles is set to 0, it is adjusted to 1, so the history file remains.
+    FileLock.setConfig({ maxHistoryFiles: 0, history: false, _debug: false });
     await FileLock.withLock(key, () => {});
-    expect(fs.existsSync(getHistoryPath())).toBeFalsy();
+    expect(fs.existsSync(getHistoryPath())).toBeTruthy();
   });
 
   it ("Setting { cache: false } results in a new instance being created each time.", () => {
@@ -419,4 +621,8 @@ describe('FileLock.Config', () => {
     FileLock.setConfig({ cache: true });
     expect(TestLock.getFileLock(key)).toBe(TestLock.getFileLock(key));
   });
+
+
+  // ★★★キューがらみのテストを追加せよ！！
+  
 });

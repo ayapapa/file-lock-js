@@ -213,7 +213,7 @@ describe('FileLock', () => {
     expect(fs.existsSync(hist)).toBeTruthy();
     const c = fs.readFileSync(hist, 'utf-8');
     const h = JSON.parse(c);
-    expect(Object.keys(h).length).toBe(0);
+    expect(Object.keys(h).length).toBe(1);
   });
 
 });

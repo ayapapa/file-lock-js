@@ -20,14 +20,14 @@ export interface LockBaseConfig {
   /**
    * The max number of lock requests allowed at a time.
    * Valid only when `queue` is `true`.
-   * Default is 500.
+   * Default is 500.　Min is 1.
    */
   maxPending?: number;
 
   /**
    * The number of lock requests that can be processed concurrently.
-   * Valid only when `queue` is `true`.
-   * Default is 5. Min is 1. Max is 
+   * Valid only when `queue` is `true`. Therefore, this corresponds to the number of queues.
+   * Default is 5. Min is 1. 
    */
   maxConcurrency?: number;
 
@@ -44,16 +44,4 @@ export interface LockBaseConfig {
    * Default is `false`.
    */
   _debug?: boolean;
-}
-
-/**
- * @internal
- * Default values of LockBaseConfig.
- */
- export const defaultLockBaseConfig: Readonly<Required<LockBaseConfig>> = {
-  logger: console,
-  queue: true,
-  maxPending: 100,
-  maxConcurrency: 5,
-  _debug: false,
 }

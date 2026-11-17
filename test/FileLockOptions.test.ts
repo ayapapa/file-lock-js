@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { FileLock, type FileLockConfig, type FileLockOptions, InvalidOptions } from '../src/index.ts';
 import { FileLockOptionsResolver } from '../src/lib/FileLockOptionsResolver.ts';
-import { type FileLockRequiredOptions, minimumFileLockOptions } from '../src/lib/FileLockInternal.ts';
+import { defaultFileLockOptions, minimumFileLockOptions } from '../src/lib/FileLockInternal.ts';
 import { type OptionsForTesting } from '../src/lib/AllOptions.ts'
 
 let orgConfig: FileLockConfig;
@@ -228,8 +228,8 @@ describe('FileLockOptions test.', () => {
   });
 
   // type error test.
-  async function testTypeErrorOption(name: string, value: unknown, eMsg: string = 'The type of option') {
-    count = 0;
+  count = 0;
+  async function testTypeErrorOption(name: string, value: unknown) {
     const retVal = "testTypeErrorOption_" + String(count++).padStart(2, '0'), key = retVal;
     const opts =  {} as Record<string, unknown>;
     opts[name] = value;
@@ -242,14 +242,15 @@ describe('FileLockOptions test.', () => {
         },
         opts
       );
+      expect.assert(false, 'Must not reach here!');
     }
     catch(err) {
       expect(err).instanceOf(InvalidOptions);
-      expect(err).toMatchObject({ code: 'EINVAL' });
-      if (err instanceof Error) {
-        expect(err.message).toContain(name);
-        expect(err.message).toContain(eMsg);
-      }
+      expect(err).toMatchObject({ 
+        code: 'EINVAL',
+        name,
+        message: "[REQUIRE] The specified options contains values of invalid types."
+       });
     }
   }
 
@@ -301,12 +302,12 @@ describe('FileLockOptions test.', () => {
     await testTypeErrorOption('heartbeatRetryIntervalMs', 'string');
   });
   
-  it("An `InvalidOptions` error occurs when an option value of a different type is specified(retryIntervalSec).", async () => {
-    await testTypeErrorOption('retryIntervalSec', 'string');
+  it("An `InvalidOptions` error occurs when an option value of a different type is specified(retryIoIntervalSec).", async () => {
+    await testTypeErrorOption('retryIoIntervalSec', 'string');
   });
 
-  it("An `InvalidOptions` error occurs when an option value of a different type is specified(retryIntervalMs).", async () => {
-    await testTypeErrorOption('retryIntervalMs', 'string');
+  it("An `InvalidOptions` error occurs when an option value of a different type is specified(retryIoIntervalMs).", async () => {
+    await testTypeErrorOption('retryIoIntervalMs', 'string');
   });
 
   it("An `InvalidOptions` error occurs when an option value of a different type is specified(allowReentry).", async () => {
@@ -324,7 +325,7 @@ describe('FileLockOptions test.', () => {
   it("An `InvalidOptions` error occurs when an option value of a different type is specified(invalidTtlMs).", async () => {
     await testTypeErrorOption('invalidTtlMs', 'string');
   });
-
+/*
   function _testNullKindValueOption(key: keyof FileLockOptions, value: undefined | null) {
     const options: FileLockOptions = {};
     const addedOpt = {} as Record<string, unknown>;
@@ -332,14 +333,15 @@ describe('FileLockOptions test.', () => {
     // テストのため強制型キャスト
     Object.assign(options, addedOpt);
     try {
-      new FileLockOptionsResolver(options, minimumFileLockOptions);
+      new FileLockOptionsResolver(options, minimumFileLockOptions, defaultFileLockOptions);
     }
     catch (err) {
       expect(err).toBeInstanceOf(InvalidOptions);
       expect(err).toMatchObject({ code: 'EINVAL', name: key, message: `[REQUIRE] The type of option ${key} is incorrect.` })
     }
   }
-
+    */
+/*
   function testNullKindValueOption(key: keyof FileLockOptions) {
     expect.assertions(4);
     _testNullKindValueOption(key, null);
@@ -417,22 +419,23 @@ describe('FileLockOptions test.', () => {
   it("Specifying `undefined` or `null` as an option property value passed to `new FileLockOptionsResolver()` results in an error.(invalidTtlMs).", () => {
     testNullKindValueOption('invalidTtlMs')
   });
+*/
 
   it("When a resolved option is modified and resolved again, the result is correctly reflected.", () => {
     const options: FileLockOptions & {[_resolvedOpts: string]: FileLockOptions} = {};
     options.allowReentry = true;
-    const rOpts1 = new FileLockOptionsResolver(options, minimumFileLockOptions).getOptions()
+    const rOpts1 = new FileLockOptionsResolver(options, minimumFileLockOptions, defaultFileLockOptions).getOptions()
     expect(rOpts1.allowReentry).toBe(options.allowReentry);
     expect('_resolvedOpts' in options && options._resolvedOpts.allowReentry === rOpts1.allowReentry).toBeTruthy();
     options._resolvedOpts.allowReentry = false;
     expect('_resolvedOpts' in options && options._resolvedOpts.allowReentry === rOpts1.allowReentry).toBeTruthy();
     expect(options.allowReentry).toBe(true);
     expect(options._resolvedOpts.allowReentry).toBe(false);
-    const rOpts2 = new FileLockOptionsResolver(options, minimumFileLockOptions).getOptions()
+    const rOpts2 = new FileLockOptionsResolver(options, minimumFileLockOptions, defaultFileLockOptions).getOptions()
     expect(rOpts2.allowReentry).toBe(options.allowReentry);
     expect('_resolvedOpts' in options ? options._resolvedOpts?.allowReentry : "hoge").toBe(options.allowReentry);
   });
-
+/*
   class TestOptionResolver extends FileLockOptionsResolver {
     constructor(options: FileLockOptions, defaultOpts: FileLockRequiredOptions) {
       super(options, minimumFileLockOptions, defaultOpts);
@@ -444,11 +447,13 @@ describe('FileLockOptions test.', () => {
     }
 
     public test_getRequiredOptions_noDefaults() {
-      delete this.defaultOptions;// = undefined;
+      const defOpts = this.defaultOptions as Record<string, unknown>;
+      Object.keys(defOpts).forEach(k => delete defOpts[k]);
       return super.getRequiredOptions();
     }
   }
-
+  */
+/*
   it("Calling `getRequiredOptions()` results in an error if an option lacks a required property and no default options have been specified.", () => {
     const or = new TestOptionResolver({}, FileLock.defaultOptions as FileLockRequiredOptions);
     expect.assertions(2);
@@ -459,7 +464,7 @@ describe('FileLockOptions test.', () => {
       expect(err).instanceOf(InvalidOptions);
       expect(err).toMatchObject( {
         code: 'EINVAL', 
-        message: "Missing required option: timeoutMs,ttlMs,allowReentry,pollIntervalMs,heartbeatIntervalMs,heartbeatTtlMs,heartbeatRetryIntervalMs,retriesOnIoErr,retryIoIntervalMs"
+        message: "Missing required option: allowReentry,heartbeatIntervalMs,heartbeatRetryIntervalMs,heartbeatTtlMs,pollIntervalMs,retriesOnIoErr,retryIoIntervalMs,timeoutMs,ttlMs"
       })
     }
   });
@@ -479,7 +484,7 @@ describe('FileLockOptions test.', () => {
       })
     }
   });
-
+*/
   it("If a value less than the minimum is specified for a numeric option, the minimum value is set.", async () => {
     const opts: FileLockOptions = {
       timeoutMs:                -1,

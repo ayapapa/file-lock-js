@@ -1,21 +1,21 @@
-/** Queueに登録するタスク */
+/** Task definition to be registered in a queue. */
 export type QueueTask<T> = () => Promise<T>;
 
-/** Queueに登録するデータ構造 */
+/** Data structure to be added to a queue. */
 interface QueueItem<T> {
-    /** 実際に実行するタスク（非同期処理） */
+    /** The task to be executed (asynchronous operation). */
     task: QueueTask<T>;
-    /** 処理成功時にPromiseを完了させる */
+    /** Resolve the Promise upon successful processing. */
     resolve: (value: T) => void;
-    /** 処理失敗時にPromiseを拒否する */
+    /**Reject the Promise if the operation fails. */
     reject: (reason: unknown) => void;
-    /** Queueへの登録時刻 */
+    /** Time of registration to the queue. */
     enqueuedAt: number;
 		/** timeout timer */
 		timer: NodeJS.Timeout;
 }
 
-/** 非同期タスクキュー */
+/** Asynchronous task queue. */
 export class AsyncQueue {
 	#queue: QueueItem<unknown>[] = [];
 	#running = false;
@@ -26,13 +26,12 @@ export class AsyncQueue {
 	}
 
 	/** 
-	 * キューにタスクを追加する
-	 * 追加されたタスクは、順次実行される。
-	 * @param task キューに追加するタスク。
-	 * @param timerInfo 
+	 * Add a task to the queue. 
+	 * Added tasks are executed sequentially.
+	 * @param task Task to add to the queue.
+	 * @param timerInfo Information on the maximum wait time for tasks.
 	 */
 	public async enqueue<T>(task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }): Promise<T> {
-		console.log("enqueue");
 		const start = Date.now();
 		return new Promise<T>((resolve, reject) => {
 			const item = {
@@ -49,23 +48,23 @@ export class AsyncQueue {
 				}, timerInfo.timeout),
 			}
 			this.#push(item);
-			this.#processNext();
+			void this.#processNext();
 		});
 	}
 
+	/** Id of this queue. */
 	public get id(): string | number { return this.#id; }
 
+	/** Queue size, including tasks currently being executed. */
 	public get size(): number { 
 		return this.#running 
 		? this.#queue.length + 1 
 		: this.#queue.length;
 	}
 
+	/** Execute the following task. */
 	async #processNext(): Promise<void> {
 		if (this.#running) return;
-
-		console.log("processNext");
-
 		const item = this.#queue.shift();
 		if (!item) return;
 
@@ -79,18 +78,19 @@ export class AsyncQueue {
 			item.reject(error);
 		} finally {
 			this.#running = false;
-			this.#processNext();
+			void this.#processNext();
 		}
 	}
 
-	#max: number = 0;
+	//#max: number = 0;
 
 	#push(item: QueueItem<unknown>) {
 		this.#queue.push(item);
 		// for debug
+		/*
 		if (this.#max < this.size) {
 			this.#max = this.size;
-			console.log("AsyncQueue's id =", this.#id, "size =", this.#max)
 		}
+		*/
 	}
 }
