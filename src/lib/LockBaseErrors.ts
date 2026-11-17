@@ -13,8 +13,8 @@ export class LockError<C extends string = LockErrorCode> extends Error {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - code: string  Error code. 
-   * - props: LockErrorProps  Additinal properties. 
+   * - code: `string`  Error code. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(msg: string, params?: { code?: C, props?: LockErrorProps | null}) {
     super(msg);
@@ -38,8 +38,8 @@ export class DeadlockDetected extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - key: string  `lock key`. 
-   * - props: LockErrorProps  Additinal properties. 
+   * - key: `string`  `lock key`. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(msg?: string, params?: { key: string, props?: LockErrorProps }) {
     msg = msg || 'A deadlock was detected.';
@@ -57,9 +57,9 @@ export class TTLExceeded extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - ttlMs: number  The specified validity period (time to live) in milliseconds of the lock. 
-   * - key: string  `lock key`. 
-   * - props: LockErrorProps  Additinal properties. 
+   * - ttlMs: `number`  The specified validity period (time to live) in milliseconds of the lock. 
+   * - key: `string`  `lock key`. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(msg?: string, params?: { ttlMs: number, key: string, props?: LockErrorProps }) {
     const ttlMs = params?.ttlMs;
@@ -77,8 +77,8 @@ export class AlreadyLocked extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - key: string  `lock key`. 
-   * - props: LockErrorProps  Additinal properties. 
+   * - key: `string`  `lock key`. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(msg?: string, params?: { key: string, timeoutMs?: number, props?: LockErrorProps } ) {
     const key = params?.key;
@@ -94,8 +94,8 @@ class InvalidObjectValueType extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - name: string | string[]  Invalid property's key or keys. 
-   * - props: LockErrorProps    Additinal properties. 
+   * - name: `string` | `string`[]  Invalid property's key or keys. 
+   * - props: `LockErrorProps`    Additinal properties. 
    */
   constructor(msg: string | undefined, type : 'options' | 'configuration', params?: { name?: string | string[], props?: LockErrorProps } ) {
     const name: string | string[] | undefined = params?.name;
@@ -117,8 +117,8 @@ export class InvalidConfiguration extends InvalidObjectValueType {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - name: string | string[]  Invalid property's key or keys. 
-   * - props: LockErrorProps    Additinal properties. 
+   * - name: `string` | `string`[]  Invalid property's key or keys. 
+   * - props: `LockErrorProps`    Additinal properties. 
    */
   constructor(msg?: string, params?: { name?: string | string[], props?: LockErrorProps } ) {
     super(msg, 'configuration', params);
@@ -131,8 +131,8 @@ export class InvalidOptions extends InvalidObjectValueType {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - name: string | string[]  Invalid property's key or keys. 
-   * - props: LockErrorProps    Additinal properties. 
+   * - name: `string` | `string`[]  Invalid property's key or keys. 
+   * - props: `LockErrorProps`    Additinal properties. 
    */
   constructor(msg?: string, params?: { name?: string | string[], props?: LockErrorProps } ) {
     super(msg, 'options', params);
@@ -150,8 +150,8 @@ export class ReleaseFailed extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - key: string  `lock key`. 
-   * - props: LockErrorProps  Additinal properties. 
+   * - key: `string`  `lock key`. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(msg?: string, params?: { key: string, props?: LockErrorProps }) {
     msg = msg || "Processing is interrupted because the lock release or lock counter decrement failed.";
@@ -170,8 +170,8 @@ export class PendingLocksExceeded extends LockError {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
-   * - maxPending: number  Specified max number of lock requests allowed at a time. 
-   * - props: LockErrorProps  Additinal properties. 
+   * - maxPending: `number`  Specified max number of lock requests allowed at a time. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(msg?: string, params?: { maxPending: number, props?: LockErrorProps }) {
     msg = msg || "The number of pending lock requests exceeds the allowable limit.";

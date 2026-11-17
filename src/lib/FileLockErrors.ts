@@ -11,6 +11,8 @@ export class FileLockError extends LockError<FileLockErrorCode> {
    * Constructor.
    * @param msg   Error message.
    * @param params  Parameters.
+   * - code: `FileLockErrorCode` Error code.
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(msg: string, params?: {code: FileLockErrorCode, props?: LockErrorProps }) {
     const p = { ...params };
@@ -63,6 +65,8 @@ class LockDirectoryAccessFailed extends FileLockError {
    * @param operation   Operation on the `lock directory`.
    * @param code  Error code string.
    * @param params  Parameters.
+   * - path: `string`  `lock directory` path. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   protected constructor(reason: string | null, operation: string, code: FileLockErrorCode, params?: {path?: string, props?: LockErrorProps }) {
     const path = params?.path;
@@ -81,6 +85,8 @@ export class LockDirectoryStatFailed extends LockDirectoryAccessFailed {
    * Constructor.
    * @param fsErrMsg  fs's error message.
    * @param params    Parameters.
+   * - path: `string`  `lock directory` path. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(reason: string | null, params?: {path?: string, props?: LockErrorProps }) {
     super(reason, 'check the status of', 'ELOCKDIRSTAT', params);
@@ -95,6 +101,8 @@ export class LockDirectoryCreationFailed extends LockDirectoryAccessFailed {
    * Constructor.
    * @param fsErrorMsg   fs's error message.
    * @param params  Parameters.
+   * - path: `string`  `lock directory` path. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(reason: string | null, params?: {path?: string, props?: LockErrorProps }) {
     super(reason, 'create', 'ELOCKDIRCREATE', params);
@@ -109,6 +117,8 @@ export class LockCompromised extends FileLockError {
    * Constructor.
    * @param reason Reason for the error.
    * @param params  Parameters.
+   * - key: `string`  `lock key`. 
+   * - props: `LockErrorProps`  Additinal properties. 
    */
   constructor(reason: string | null, params?: { key: string, props?: LockErrorProps }) {
     const key: string | null = params?.key ?? null;

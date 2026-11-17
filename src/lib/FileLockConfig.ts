@@ -7,11 +7,7 @@ import { type LockBaseConfig } from './LockBaseConfig.ts'
 export interface FileLockConfig extends LockBaseConfig {
   /**
    * Specifies the directory path to stored locking imformations.
-   * If it has been specified, use this as the top priority.
-   * The directory is determined based on the following order of priority:<br>
-   *  1. Specified via an `Config` (user's explicit intent)
-   *  2. `${process.cwd()}/.lock` ('.lock' under the current working directory at runtime.)
-   * Note: In cases where the directory is explicitly specified (1 above), an error occurs if the specified directory does not exist and its creation fails.
+   * Default is `${process.cwd()}/.lock` ('.lock' under the current working directory at runtime.)
    */
   lockDirectory?: string;
 

@@ -224,7 +224,6 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
 
     // chache
     FileLockInternal.#cache?.clear();
-    if (FileLockInternal.#config.maxCacheEntries === 0) FileLockInternal.#config.cache = false;
     // If cache is enabled, (Re)create cache.
     if (FileLockInternal.#config.cache) {
       FileLockInternal.#cache = new Cache<string, FileLockInternal>({
@@ -303,32 +302,10 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
       }
     }
 
-    const candidates = [
-      [FileLockInternal.#config.lockDirectory, true],
-      [path.join(process.cwd(), '.lock'), false],
-    ] as const;
-
     // Create a `lock directory`.
-    let attempted: string = '';
-    for (const [dir, required] of candidates) {
-      if (!dir) continue;
-      attempted += "\n" + `- ${dir}`;
-      try {
-        if (existsDir(dir) === false) mkdir(dir);
-        return dir;
-      }
-      catch (err) {
-        if (required) throw err;
-        continue;
-      }
-    };
-    // Failed to create `lock directory`.
-    throw new LockDirectoryCreationFailed(
-      "Failed to create the `lock directory`." +
-      "\nAttempted to locate and create it in the following order:" +
-      attempted,
-      { props: { candidates: attempted } }
-    );
+    const dir = FileLockInternal.#config.lockDirectory;
+    if (existsDir(dir) === false) mkdir(dir);
+    return dir;
   }
 
   /**

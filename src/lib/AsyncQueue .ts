@@ -17,7 +17,7 @@ interface QueueItem<T> {
 
 /** Asynchronous task queue. */
 export class AsyncQueue {
-	#queue: QueueItem<unknown>[] = [];
+	readonly #queue: QueueItem<unknown>[] = [];
 	#running = false;
 	readonly #id: string | number;
 
@@ -41,9 +41,7 @@ export class AsyncQueue {
 				enqueuedAt: start,
 				timer: setTimeout(() => {
 					const index = this.#queue.indexOf(item);
-					if (index !== -1) {
-							this.#queue.splice(index, 1);
-					}
+					(index !== -1) &&	this.#queue.splice(index, 1);
 					reject(timerInfo.reason);
 				}, timerInfo.timeout),
 			}
@@ -62,7 +60,10 @@ export class AsyncQueue {
 		: this.#queue.length;
 	}
 
-	/** Execute the following task. */
+	/**
+	 * @internal 
+	 * Execute the following task. 
+	 */
 	async #processNext(): Promise<void> {
 		if (this.#running) return;
 		const item = this.#queue.shift();
@@ -82,15 +83,11 @@ export class AsyncQueue {
 		}
 	}
 
-	//#max: number = 0;
-
-	#push(item: QueueItem<unknown>) {
+	/**
+	 * @internal
+	 * @param item	An item to be queued. 
+	 */
+	#push(item: QueueItem<unknown>): void {
 		this.#queue.push(item);
-		// for debug
-		/*
-		if (this.#max < this.size) {
-			this.#max = this.size;
-		}
-		*/
 	}
 }

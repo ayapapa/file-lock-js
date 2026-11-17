@@ -450,7 +450,7 @@ describe('FileLock.Config', () => {
 
     try {
       FileLock.setConfig(conf);
-      expect.assert(false, "到達してはいけない");
+      expect.assert(false, "Must not reach here!");
     }
     catch(err) {
       expect(err).instanceOf(FileLockError);

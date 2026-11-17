@@ -2,7 +2,7 @@ import { REQUIRE, REQUIRE_DEBUG, VERIFY_DEBUG } from './Contracts.ts';
 import { type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions } from './LockBase.ts';
 import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { InvalidOptions } from './LockBaseErrors.ts';
-import { checkValuesType, includesAllKeysOf, typedKeys, type KeyTypeMap, type TimeBasedKey } from './Util.ts'
+import { checkValuesType, includesAllKeysOf, typedKeys, type TimeBasedKey } from './Util.ts'
 
 /**
  * @internal
@@ -36,7 +36,7 @@ export abstract class LockBaseOptionsResolver <
   protected abstract get _allOptions(): Required<O>;
 
   /** Options. */
-  #options: O;
+  readonly #options: O;
 
   /** Default options. */
   readonly #defaultOptions: R;
@@ -93,20 +93,6 @@ export abstract class LockBaseOptionsResolver <
     else { // Error
       throw new InvalidOptions(`Missing required option: ${missings}`, { name: missings })
     }
-  }
-
-  /**
-   * @internal
-   *  Get the Key-Type map for type checking. 
-   */
-  protected _getCheckTypePairs(): KeyTypeMap<LockBaseOptions> {
-    return {
-      timeoutSec:   `number`,
-      timeoutMs:    `number`,
-      ttlSec:       `number`,
-      ttlMs:        `number`,
-      allowReentry: `boolean`,
-   };
   }
 
   /**
@@ -178,21 +164,6 @@ export abstract class LockBaseOptionsResolver <
    */
   #checkTypes() {
     checkValuesType(this.#options, this._allOptions, 'options', InvalidOptions);
-/*
-    let badKeys = [] as string[];
-    const msg = `The specified options contains values of invalid types.`;
-    const result = checkValuesType(this.#options, this.#defaultOptions as unknown as O, badKeys);
-    REQUIRE(result, msg, InvalidOptions, { code: 'EINVAL', props: { names: badKeys } });
-*/
-/*
-    const pairs = this._getCheckTypePairs();
-    typedKeys(pairs).forEach(key => {
-      const t = pairs[key];
-      const v = this.#options[key];
-      REQUIRE(key in this.#options === false ||  typeof v === t, 
-        `The type of option ${key} is incorrect.`, InvalidOptions, { name: key });
-    });
-*/
   }
 
   /**
@@ -201,7 +172,7 @@ export abstract class LockBaseOptionsResolver <
    */
   #resolveOptions() {
     this.#validateOptions();
-    this.#options = this._normalizeOptions(this.#options);
+    Object.assign(this.#options, this._normalizeOptions(this.#options));
   }
 
   /**

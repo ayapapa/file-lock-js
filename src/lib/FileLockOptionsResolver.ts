@@ -1,9 +1,7 @@
 import { LockBaseOptionsResolver } from './LockBaseOptionsResolver.ts';
 import { type FileLockRequiredNumericOptions, type FileLockRequiredOptions } from './FileLockInternal.ts';
 import { type FileLockOptions } from './FileLockOptions.ts';
-import { type KeyTypeMap, type TimeBasedKey } from './Util.ts';
-//import { VERIFY_DEBUG } from './Contracts.ts';
-//import { InvalidOptions } from './LockBaseErrors.ts';
+import { type TimeBasedKey } from './Util.ts';
 
 /**
  * @internal
@@ -31,27 +29,6 @@ export class FileLockOptionsResolver extends LockBaseOptionsResolver<FileLockOpt
     return FileLockOptionsResolver.#allOptions;
   }
 
-  /** Get the type-checking pairs `{'property name': 'value type'}` for the optional properties. */
-  protected override _getCheckTypePairs(): KeyTypeMap<FileLockOptions> {
-    const basics = super._getCheckTypePairs();
-    return {
-      ...basics,
-      pollIntervalSec:            "number",
-      pollIntervalMs:             "number",
-      heartbeatIntervalSec:       "number",
-      heartbeatIntervalMs:        "number",
-      heartbeatTtlSec:            "number",
-      heartbeatTtlMs:             "number",
-      retriesOnIoErr:             "number",
-      retryIoIntervalSec:         "number",
-      retryIoIntervalMs:          "number",
-      heartbeatRetryIntervalSec:  "number",
-      heartbeatRetryIntervalMs:   "number",
-      invalidTtlSec:              "number",
-      invalidTtlMs:               "number",
-    };
-  }
-  
   /** Get an array of time-related base names (keys) from the option properties. */
   protected override _getTimeKeys(): TimeBasedKey<FileLockOptions>[] {
     const bases = super._getTimeKeys();
@@ -67,8 +44,6 @@ export class FileLockOptionsResolver extends LockBaseOptionsResolver<FileLockOpt
   protected override _normalizeOptions(options: FileLockOptions): FileLockOptions {
     options = super._normalizeOptions(options);
     if (options.heartbeatTtlMs != null && 'invalidTtlMs' in options) {
-      // Since the existence of `heartbeatTtlMs` has already been verified above, 
-      // it is used as a confirmed value.
       options.invalidTtlMs = Math.max(options.invalidTtlMs, options.heartbeatTtlMs!);
     }
     return options;
