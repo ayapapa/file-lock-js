@@ -115,7 +115,7 @@ export abstract class LockBaseOptionsResolver <
     this.#convSecToMs();
     this.#applyMinimum();    
     this.#applyDefaults();
-    return this.#options;
+    return { ...this.#options };
   } 
 
   /**
