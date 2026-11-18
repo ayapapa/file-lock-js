@@ -583,5 +583,28 @@ describe('FileLockError', () => {
     expect(TestLock.isReleasedState(key)).toBeTruthy();
   });
 
+  it("timout in queue", async ()=> {
+    const key = "timout_in_queue";
+    FileLock.setConfig({ maxConcurrency: 1 });
+    const pr = [] as Promise<unknown>[];
+    try {
+      pr.push(FileLock.withLock(key, async () => {
+        await sleepAsync(500);
+      }));
+      pr.push(FileLock.withLock(key, async () => {
+        await sleepAsync(500);
+      }, { timeoutMs: 100 }));
+      await Promise.all(pr);
+    }
+    catch (err) {
+      expect(err).toMatchObject({
+        code: "EALREADYLOCKED",
+        key,
+        message: "The `lock file` already exists.",
+        reason: "ExistingLock"
+      })
+    }
+  });
+
 });
 

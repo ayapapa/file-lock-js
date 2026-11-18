@@ -76,6 +76,7 @@ describe('Testing for conflicts with other processes.', () => {
     const parentSleep = 100;
     const start = Date.now();
     const child = await execChild('lock', { key, sleep: childSleep, waitAquired: true });
+    FileLock.setConfig({ maxHistoryFiles: 1 });
     await FileLock.withLock(key, async () => {
       await sleepAsync(parentSleep);
     })
