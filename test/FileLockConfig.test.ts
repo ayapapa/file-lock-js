@@ -4,7 +4,7 @@ import path from 'node:path';
 import { PrettyConsole } from '@ayapapa-npm/pretty-console-js';
 
 import { type FileLockConfig, type FileLockOptions, type LogProvider, 
-  DeadlockDetected, FileLock, FileLockError, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError } from '../src/index.ts';
+  DeadlockDetected, FileLock, FileLockError, InvalidConfiguration, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError } from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
 
 type NumberKeys<T> = {
@@ -439,7 +439,7 @@ describe('FileLock.Config', () => {
     testConfigMinVal('maxConcurrency', 101, 101);
   });
 
-  function testTypeErrorConfig(name: string | string[], value: unknown | unknown[], eMsg: string) {
+  function testTypeErrorConfig(name: string | string[], value: unknown | unknown[]) {
     const conf =  {} as Record<string, unknown>;
     if (typeof name === 'string') {
       conf[name] = value;
@@ -453,12 +453,12 @@ describe('FileLock.Config', () => {
       expect.assert(false, "Must not reach here!");
     }
     catch(err) {
-      expect(err).instanceOf(FileLockError);
+      expect(err).instanceOf(InvalidConfiguration);
       expect(err).toMatchObject({
         code: 'EINVAL',
-        message: eMsg
+        message: "[REQUIRE] The specified configuration contains values of invalid types."
       });
-      if (err instanceof FileLockError) {
+      if (err instanceof InvalidConfiguration) {
         if (typeof name === 'string') expect(err).toMatchObject({ name });
         else expect(err).toMatchObject({ names : name.sort() });
       }
@@ -466,140 +466,140 @@ describe('FileLock.Config', () => {
   }
 
   it("An error occurs when an config value of a different type is specified(logger).", () => {
-    testTypeErrorConfig('logger', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('logger', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('logger', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('logger', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('logger', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('logger', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('logger', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('logger', true, );
+    testTypeErrorConfig('logger', 'string', );
+    testTypeErrorConfig('logger', 1234, );
+    testTypeErrorConfig('logger', {},  );
+    testTypeErrorConfig('logger', [],  );
+    testTypeErrorConfig('logger', ()=>{},  );
+    testTypeErrorConfig('logger', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(queue).", () => {
-    //testTypeErrorConfig('queue', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('queue', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('queue', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('queue', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('queue', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('queue', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('queue', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('queue', true, );
+    testTypeErrorConfig('queue', 'string', );
+    testTypeErrorConfig('queue', 1234, );
+    testTypeErrorConfig('queue', {},  );
+    testTypeErrorConfig('queue', [],  );
+    testTypeErrorConfig('queue', ()=>{},  );
+    testTypeErrorConfig('queue', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(maxPending).", () => {
-    testTypeErrorConfig('maxPending', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxPending', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('maxPending', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxPending', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxPending', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxPending', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxPending', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxPending', true, );
+    testTypeErrorConfig('maxPending', 'string', );
+    //testTypeErrorConfig('maxPending', 1234, );
+    testTypeErrorConfig('maxPending', {},  );
+    testTypeErrorConfig('maxPending', [],  );
+    testTypeErrorConfig('maxPending', ()=>{},  );
+    testTypeErrorConfig('maxPending', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(maxConcurrency).", () => {
-    testTypeErrorConfig('maxConcurrency', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxConcurrency', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('maxConcurrency', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxConcurrency', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxConcurrency', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxConcurrency', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxConcurrency', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxConcurrency', true, );
+    testTypeErrorConfig('maxConcurrency', 'string', );
+    //testTypeErrorConfig('maxConcurrency', 1234, );
+    testTypeErrorConfig('maxConcurrency', {},  );
+    testTypeErrorConfig('maxConcurrency', [],  );
+    testTypeErrorConfig('maxConcurrency', ()=>{},  );
+    testTypeErrorConfig('maxConcurrency', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(_debug).", () => {
-    //testTypeErrorConfig('_debug', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('_debug', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('_debug', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('_debug', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('_debug', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('_debug', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('_debug', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('_debug', true, );
+    testTypeErrorConfig('_debug', 'string', );
+    testTypeErrorConfig('_debug', 1234, );
+    testTypeErrorConfig('_debug', {},  );
+    testTypeErrorConfig('_debug', [],  );
+    testTypeErrorConfig('_debug', ()=>{},  );
+    testTypeErrorConfig('_debug', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(lockDirectory).", () => {
-    testTypeErrorConfig('lockDirectory', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('lockDirectory', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('lockDirectory', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('lockDirectory', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('lockDirectory', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('lockDirectory', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('lockDirectory', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('lockDirectory', true, );
+    //testTypeErrorConfig('lockDirectory', 'string', );
+    testTypeErrorConfig('lockDirectory', 1234, );
+    testTypeErrorConfig('lockDirectory', {},  );
+    testTypeErrorConfig('lockDirectory', [],  );
+    testTypeErrorConfig('lockDirectory', ()=>{},  );
+    testTypeErrorConfig('lockDirectory', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(cache).", () => {
-    //testTypeErrorConfig('cache', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cache', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cache', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cache', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cache', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cache', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cache', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('cache', true, );
+    testTypeErrorConfig('cache', 'string', );
+    testTypeErrorConfig('cache', 1234, );
+    testTypeErrorConfig('cache', {},  );
+    testTypeErrorConfig('cache', [],  );
+    testTypeErrorConfig('cache', ()=>{},  );
+    testTypeErrorConfig('cache', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(maxCacheEntries).", () => {
-    testTypeErrorConfig('maxCacheEntries', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxCacheEntries', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('maxCacheEntries', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxCacheEntries', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxCacheEntries', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxCacheEntries', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxCacheEntries', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxCacheEntries', true, );
+    testTypeErrorConfig('maxCacheEntries', 'string', );
+    //testTypeErrorConfig('maxCacheEntries', 1234, );
+    testTypeErrorConfig('maxCacheEntries', {},  );
+    testTypeErrorConfig('maxCacheEntries', [],  );
+    testTypeErrorConfig('maxCacheEntries', ()=>{},  );
+    testTypeErrorConfig('maxCacheEntries', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(cacheTtlMs).", () => {
-    testTypeErrorConfig('cacheTtlMs', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cacheTtlMs', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('cacheTtlMs', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cacheTtlMs', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cacheTtlMs', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cacheTtlMs', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('cacheTtlMs', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('cacheTtlMs', true, );
+    testTypeErrorConfig('cacheTtlMs', 'string', );
+    //testTypeErrorConfig('cacheTtlMs', 1234, );
+    testTypeErrorConfig('cacheTtlMs', {},  );
+    testTypeErrorConfig('cacheTtlMs', [],  );
+    testTypeErrorConfig('cacheTtlMs', ()=>{},  );
+    testTypeErrorConfig('cacheTtlMs', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(defaultOptions).", () => {
-    testTypeErrorConfig('defaultOptions', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('defaultOptions', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('defaultOptions', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('defaultOptions', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('defaultOptions', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('defaultOptions', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('defaultOptions', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('defaultOptions', true, );
+    testTypeErrorConfig('defaultOptions', 'string', );
+    testTypeErrorConfig('defaultOptions', 1234, );
+    //testTypeErrorConfig('defaultOptions', {},  );
+    testTypeErrorConfig('defaultOptions', [],  );
+    testTypeErrorConfig('defaultOptions', ()=>{},  );
+    //testTypeErrorConfig('defaultOptions', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(history).", () => {
-    //testTypeErrorConfig('history', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('history', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('history', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('history', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('history', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('history', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('history', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    //testTypeErrorConfig('history', true, );
+    testTypeErrorConfig('history', 'string', );
+    testTypeErrorConfig('history', 1234, );
+    testTypeErrorConfig('history', {},  );
+    testTypeErrorConfig('history', [],  );
+    testTypeErrorConfig('history', ()=>{},  );
+    testTypeErrorConfig('history', new LockError(""),  );
   });
  
   it("An error occurs when an config value of a different type is specified(maxHistoryEntries).", () => {
-    testTypeErrorConfig('maxHistoryEntries', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryEntries', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('maxHistoryEntries', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryEntries', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryEntries', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryEntries', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryEntries', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryEntries', true, );
+    testTypeErrorConfig('maxHistoryEntries', 'string', );
+    //testTypeErrorConfig('maxHistoryEntries', 1234, );
+    testTypeErrorConfig('maxHistoryEntries', {},  );
+    testTypeErrorConfig('maxHistoryEntries', [],  );
+    testTypeErrorConfig('maxHistoryEntries', ()=>{},  );
+    testTypeErrorConfig('maxHistoryEntries', new LockError(""),  );
   });
 
   it("An error occurs when an config value of a different type is specified(maxHistoryFiles).", () => {
-    testTypeErrorConfig('maxHistoryFiles', true, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryFiles', 'string', "[REQUIRE] The specified configuration contains values of invalid types.");
-    //testTypeErrorConfig('maxHistoryFiles', 1234, "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryFiles', {},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryFiles', [],  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryFiles', ()=>{},  "[REQUIRE] The specified configuration contains values of invalid types.");
-    testTypeErrorConfig('maxHistoryFiles', new LockError(""),  "[REQUIRE] The specified configuration contains values of invalid types.");
+    testTypeErrorConfig('maxHistoryFiles', true, );
+    testTypeErrorConfig('maxHistoryFiles', 'string', );
+    //testTypeErrorConfig('maxHistoryFiles', 1234, );
+    testTypeErrorConfig('maxHistoryFiles', {},  );
+    testTypeErrorConfig('maxHistoryFiles', [],  );
+    testTypeErrorConfig('maxHistoryFiles', ()=>{},  );
+    testTypeErrorConfig('maxHistoryFiles', new LockError(""),  );
   });
 
   it("An error occurs when some config values of a different type is specified.", () => {
     testTypeErrorConfig(
       ['logger', 'queue', 'maxPending', 'maxConcurrency', '_debug', 'lockDirectory', 'cache', 'maxCacheEntries', 'cacheTtlMs', 'defaultOptions', 'history', 'maxHistoryEntries', 'maxHistoryFiles', ], 
       [true, 'string', {}, [], 1234, ()=>{}, new LockError(""), true, 'string', [], 1234, ()=>{}, new LockError(""), ], 
-      "[REQUIRE] The specified configuration contains values of invalid types.");
+      );
   });
 
   it("Set the maximum number of history files to 0.", async () => {

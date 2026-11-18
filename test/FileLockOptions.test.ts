@@ -229,11 +229,19 @@ describe('FileLockOptions test.', () => {
 
   // type error test.
   count = 0;
-  async function testTypeErrorOption(name: string, value: unknown) {
+  async function testTypeErrorOption(name: string | string[], value: unknown | unknown[]) {
     const retVal = "testTypeErrorOption_" + String(count++).padStart(2, '0'), key = retVal;
     const opts =  {} as Record<string, unknown>;
+    if (typeof name === 'string') {
+      opts[name] = value;
+    }
+    else {
+      name.forEach((n, idx) => { opts[n] = (value as unknown[])[idx]; })
+    }
+/*
+    const opts =  {} as Record<string, unknown>;
     opts[name] = value;
-    
+*/    
     try {
       await FileLock.withLock(key, 
         async () => {
@@ -246,11 +254,22 @@ describe('FileLockOptions test.', () => {
     }
     catch(err) {
       expect(err).instanceOf(InvalidOptions);
+      expect(err).toMatchObject({
+        code: 'EINVAL',
+        message: "[REQUIRE] The specified options contains values of invalid types."
+      });
+      if (err instanceof InvalidOptions) {
+        if (typeof name === 'string') expect(err).toMatchObject({ name });
+        else expect(err).toMatchObject({ names : name.sort() });
+      }
+      /*
+      expect(err).instanceOf(InvalidOptions);
       expect(err).toMatchObject({ 
         code: 'EINVAL',
         name,
         message: "[REQUIRE] The specified options contains values of invalid types."
        });
+      */
     }
   }
 
@@ -325,23 +344,31 @@ describe('FileLockOptions test.', () => {
   it("An `InvalidOptions` error occurs when an option value of a different type is specified(invalidTtlMs).", async () => {
     await testTypeErrorOption('invalidTtlMs', 'string');
   });
-/*
+  
+  it("An `InvalidOptions` error occurs when an option value of a different type is specified(all properties).", async () => {
+    await testTypeErrorOption([
+      'timeoutSec', 'timeoutMs', 'ttlSec', 'ttlMs', 'pollIntervalSec', 'pollIntervalMs', 
+      'heartbeatIntervalSec', 'heartbeatIntervalMs', 'heartbeatTtlSec', 'heartbeatTtlMs', 
+      'heartbeatRetryIntervalSec', 'heartbeatRetryIntervalMs', 'retryIoIntervalSec', 'retryIoIntervalMs',
+      'allowReentry', 'retriesOnIoErr', 'invalidTtlSec', 'invalidTtlMs'
+    ], [
+      "string", false, [], {}, ()=>{}, new Error(''), '12345', "string", true, 
+      [0], {h: 123}, console.log, Error, '999', "hogehoge", false, [], {}
+    ]);
+  });
+
+
   function _testNullKindValueOption(key: keyof FileLockOptions, value: undefined | null) {
     const options: FileLockOptions = {};
     const addedOpt = {} as Record<string, unknown>;
     addedOpt[key] = value;
     // テストのため強制型キャスト
     Object.assign(options, addedOpt);
-    try {
-      new FileLockOptionsResolver(options, minimumFileLockOptions, defaultFileLockOptions);
-    }
-    catch (err) {
-      expect(err).toBeInstanceOf(InvalidOptions);
-      expect(err).toMatchObject({ code: 'EINVAL', name: key, message: `[REQUIRE] The type of option ${key} is incorrect.` })
-    }
+    const or = new FileLockOptionsResolver(options, minimumFileLockOptions, defaultFileLockOptions);
+    expect(or).toBeDefined();
+    expect(or.options).toMatchObject(defaultFileLockOptions);
   }
-    */
-/*
+
   function testNullKindValueOption(key: keyof FileLockOptions) {
     expect.assertions(4);
     _testNullKindValueOption(key, null);
@@ -419,7 +446,6 @@ describe('FileLockOptions test.', () => {
   it("Specifying `undefined` or `null` as an option property value passed to `new FileLockOptionsResolver()` results in an error.(invalidTtlMs).", () => {
     testNullKindValueOption('invalidTtlMs')
   });
-*/
 
   it("When a resolved option is modified and resolved again, the result is correctly reflected.", () => {
     const options: FileLockOptions & {[_resolvedOpts: string]: FileLockOptions} = {};

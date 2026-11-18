@@ -1,4 +1,4 @@
-import { REQUIRE, REQUIRE_DEBUG, VERIFY_DEBUG } from './Contracts.ts';
+import { ENSURE_DEBUG, REQUIRE, REQUIRE_DEBUG, VERIFY_DEBUG } from './Contracts.ts';
 import { type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions } from './LockBase.ts';
 import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { InvalidOptions } from './LockBaseErrors.ts';
@@ -32,9 +32,6 @@ export abstract class LockBaseOptionsResolver <
     allowReentry: false, ttlMs: 0, ttlSec: 0, timeoutMs: 0, timeoutSec: 0, 
   }
 
-  /** Get Options that include all properties */
-  protected abstract get _allOptions(): Required<O>;
-
   /** Options. */
   readonly #options: O;
 
@@ -44,7 +41,11 @@ export abstract class LockBaseOptionsResolver <
   /** Minimum option values. */
   readonly #minimumOptions: M;
 
-  /** Instance methods. */
+  /** Get Options that include all properties */
+  public get options(): O { return { ...this.#options }; };
+
+  /** Get Options that include all properties */
+  protected abstract get _allOptions(): Required<O>;
 
   /**
    * Constructor
@@ -79,20 +80,20 @@ export abstract class LockBaseOptionsResolver <
    * Get an option consisting of required properties. Error if any properties are missing. 
    */
   public getRequiredOptions(): R {
-    REQUIRE(this.#defaultOptions != null, 
-      "To generate required options, specify `defaultOptions` in the constructor.", 
-      InvalidOptions, { name: 'this.defaultOptions' });
-    
     const missings: string[] = [];
-    // It has been verified that this.defaultOptions is non-null.
     // Verify whether `this.#options` contains the required keys.
-    if (includesAllKeysOf(this.#options, this.#defaultOptions!, missings)) {
+    ENSURE_DEBUG(includesAllKeysOf(this.#options, this.#defaultOptions, missings),
+      `Missing required option: ${missings}`, InvalidOptions, { name: missings });
+    return this.#options as unknown as R;
+    /*
+    if (includesAllKeysOf(this.#options, this.#defaultOptions, missings) {
       // Ok, so type-cast and return it.
       return this.#options as unknown as R;
     }
     else { // Error
       throw new InvalidOptions(`Missing required option: ${missings}`, { name: missings })
     }
+      */
   }
 
   /**

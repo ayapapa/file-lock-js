@@ -216,4 +216,66 @@ describe('FileLock', () => {
     expect(Object.keys(h).length).toBe(1);
   });
 
+  it("queue: false", async () => {
+    const key = "queue_false";
+    FileLock.setConfig({ queue: false });
+    await FileLock.withLock(key, 
+      async () => {
+        await sleepAsync(100);
+      },
+    );
+    expect(TestLock.isReleasedState(key)).toBeTruthy();
+  });
+
+  it("queue", async () => {
+    const key1 = "queue_1";
+    const key2 = "queue_2";
+    const key3 = "queue_3";
+    FileLock.setConfig({ maxConcurrency: 1 });
+    await FileLock.withLock(key1, 
+      async () => {
+        await FileLock.withLock(key2, 
+          async () => {
+            await FileLock.withLock(key3, 
+              async () => {
+                await sleepAsync(500);
+              },
+            );
+            await sleepAsync(500);
+          },
+        );
+        await sleepAsync(500);
+      },
+    );
+    expect(TestLock.isReleasedState(key1)).toBeTruthy();
+    expect(TestLock.isReleasedState(key2)).toBeTruthy();
+    expect(TestLock.isReleasedState(key3)).toBeTruthy();
+  });
+
+  it("extra queue", async () => {
+    const key1 = "extra_queue_1";
+    const key2 = "extra_queue_2";
+    FileLock.setConfig({ maxConcurrency: 1 });
+    await FileLock.withLock(key1, 
+      async () => {
+        // one normal queue, beause of {maxConcurrency: 1}
+        expect(FileLock.numberOfQueues).toBe(1);
+        await FileLock.withLock(key2, async () => {
+          // `extra queue` for key2 has been created.
+          expect(FileLock.numberOfQueues).toBe(2);
+          await sleepAsync(100);
+        });
+        // once more
+        await FileLock.withLock(key2, async () => {
+          // `extra queue` for key2 has been created.
+          expect(FileLock.numberOfQueues).toBe(2);
+          await sleepAsync(100);
+        });
+        await sleepAsync(100);
+      },
+    );
+    expect(TestLock.isReleasedState(key1)).toBeTruthy();
+    expect(TestLock.isReleasedState(key2)).toBeTruthy();
+  });
+
 });

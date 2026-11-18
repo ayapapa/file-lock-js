@@ -1,7 +1,8 @@
 //import type { LockBase } from "./LockBase.ts";
 import { type LockBaseConfig } from "./LockBaseConfig.ts";
 import { type LockBaseOptions } from "./LockBaseOptions.ts";
-import { REQUIRE, type ErrorClassType } from "./Contracts.ts";
+import { REQUIRE, REQUIRE_DEBUG, type ErrorClassType } from "./Contracts.ts";
+import { LockError } from "./LockBaseErrors.ts";
 
 /** 
  * @internal
@@ -73,8 +74,8 @@ export function isEqualObjectType(o1: Record<string, unknown>, o2: Record<string
  * @param missings 
  * @returns If `target` has all keys of the `reference`, true;
  */
-export function includesAllKeysOf<T extends object, R extends object>(target: T, reference: R, missings: string[] = []): boolean {
-  const keys = Object.keys(reference) as (keyof T)[];
+export function includesAllKeysOf<T extends object, R extends object>(target: T, reference: R | (keyof T)[], missings: string[] = []): boolean {
+  const keys = (Array.isArray(reference) ? reference : Object.keys(reference)) as (keyof T)[];
   let ret = true;
   for (const key of keys) {
     if (target[key] == null) {
@@ -92,18 +93,20 @@ export function typedKeys<O extends object>(obj: O): Array<keyof O> {
 }
 
 export function checkValuesType<T extends (LockBaseConfig | LockBaseOptions)>(target: T, reference: T, type: 'options' | 'configuration', ErrorClass: ErrorClassType) {
+  REQUIRE_DEBUG(ErrorClass.name === 'InvalidConfiguration' || ErrorClass.name === 'InvalidOptions',
+    "Invalid param.", LockError, { code: 'EINVAL', props: { name: 'ErrorClass' }}
+  )
   const badKeys = [] as string[];
   const msg = `The specified ${type} contains values of invalid types.`;
   const t = target as Record<string, unknown>;
   const r = reference as Record<string, unknown>
-  const dummyConsole = {trace:()=>{},debug:()=> {},log:()=>{},info:()=>{},warn:()=>{},error:()=>{}};
   Object.keys(r).forEach(k => {
     if (t[k] != null) {
       if (typeof t[k] !== typeof r[k] || Array.isArray(t[k]) !== Array.isArray(r[k])) {
         badKeys.push(k);
       }
       else if (k === 'logger') {
-        if (!includesAllKeysOf(t[k], dummyConsole))
+        if (!includesAllKeysOf(t[k], ['trace', 'debug', 'log', 'info', 'warn', 'error']))
           badKeys.push(k);
       }
     }
@@ -115,7 +118,7 @@ export function checkValuesType<T extends (LockBaseConfig | LockBaseOptions)>(ta
       return false;
     }
     else return true;
-  }, msg, ErrorClass, { code: 'EINVAL', props: badKeys.length === 1 ? { name: badKeys[0] } : { names: badKeys } });
+  }, msg, ErrorClass, { name: badKeys.length === 1 ? badKeys[0] : badKeys });
 }
 /*
 export function checkValuesType<T extends (LockBaseConfig | LockBaseOptions)>(target: T, reference: T, type: 'options' | 'configuration', ErrorClass: ErrorClassType) {

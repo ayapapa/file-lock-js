@@ -12,7 +12,7 @@ import { type AllOptions as AllOptionsT } from './AllOptions.ts';
 import { type FileLockConfig } from './FileLockConfig.ts';
 import { checkValuesType, getCallStack, includesAllKeysOf/*, sleepAsync*/ } from './Util.ts'
 import { type FileLockMeta } from './FileLockMeta.ts'
-import { AlreadyLocked, InvalidOptions, ReleaseFailed } from './LockBaseErrors.ts';
+import { AlreadyLocked, InvalidConfiguration, InvalidOptions, ReleaseFailed } from './LockBaseErrors.ts';
 import { ExponentialDelay, FixedDelay, retry  } from './RetryDelay.ts';
 
 /**
@@ -206,7 +206,7 @@ export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInter
    * @param config  Lock configurations. 
    */
   public static override setConfig(config: FileLockConfig): void {
-    checkValuesType(config, defaultFileLockConfig, 'configuration', FileLockError);
+    checkValuesType(config, defaultFileLockConfig, 'configuration', InvalidConfiguration);
 
     super.setConfig(config);
 

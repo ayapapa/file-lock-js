@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { onExit } from 'signal-exit';
 import Contracts, { ENSURE, ENSURE_DEBUG, REQUIRE_DEBUG } from './Contracts.ts';
-import { AlreadyLocked, DeadlockDetected, LockError, PendingLocksExceeded, TTLExceeded } from './LockBaseErrors.ts';
+import { AlreadyLocked, DeadlockDetected, InvalidConfiguration, LockError, PendingLocksExceeded, TTLExceeded } from './LockBaseErrors.ts';
 import { type AllOptions } from './AllOptions.ts';
 import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { type LockBaseInternalState } from './LockBaseInternalState.ts'
@@ -86,6 +86,13 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
   /** 
    * Static fieilds. 
    */
+
+  /**
+   * Number of queues.
+   */
+  public static get numberOfQueues() {
+    return LockBase.#queues.size;
+  }
   
   /** 
    * @internal
@@ -137,7 +144,6 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * Task queues.
    */
   static #queues = new Map<string | number, AsyncQueue>();
-  //static getNormalQueues
   
   /**
    * Static methods.
@@ -191,9 +197,13 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @param config  Configurations. 
    */
   protected static setConfig(config: LockBaseConfig): void {
-    checkValuesType(config, defaultLockBaseConfig, 'configuration', LockError);
+    checkValuesType(config, defaultLockBaseConfig, 'configuration', InvalidConfiguration);
     LockBase.#config = LockBase.#resolveConfig(config);
     LockBase.#logger = LockBase.#resolveLogger(LockBase.#config);
+
+    // reset queues
+    LockBase.#queues.clear();
+    for (let i = 0; i < LockBase.#config.maxConcurrency; i++) void LockBase.#getQueue(i);
 
     // Set configurations of `Contrats`.
     Contracts.setConfig({ debug: LockBase.#config._debug, logger: LockBase.#logger });
@@ -234,8 +244,8 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     Object.keys(curConf).forEach(key => {
       if (key in newConf) rConf[key] = newConf[key];
     });
-    if (rConf.maxPending != null) rConf.maxPending = Math.max(rConf.maxPending as number, 1);
-    if (rConf.maxConcurrency != null) rConf.maxConcurrency = Math.max(rConf.maxConcurrency as number, 1);
+    rConf.maxPending != null && (rConf.maxPending = Math.max(rConf.maxPending as number, 1));
+    rConf.maxConcurrency != null && (rConf.maxConcurrency = Math.max(rConf.maxConcurrency as number, 1));
     ENSURE_DEBUG(() => isEqualObjectType(rConf, defaultLockBaseConfig),
       'The current configuration is invalid.', LockError, { code: 'EINVAL' });
     // Cast the value, as it has already been verified above.
@@ -570,17 +580,19 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     });
   }
 
-  #getQueues(withExtraQues: boolean = false): AsyncQueue[] {
+  #getQueues(/*withExtraQues: boolean = false*/): AsyncQueue[] {
     const ret: AsyncQueue[] = [];
     // regular queues
     for(let i = 0; i < LockBase.#config.maxConcurrency; i++) {
       ret.push(LockBase.#getQueue(i));
     }
+    /*
     if (withExtraQues) {
       LockBase.#queues.forEach((q, key) => {
         if (typeof key === 'string') ret.push(q);
       });
     }
+    */
     ENSURE(ret.length > 0, "No queues are available.", LockError, { code: 'ENOQUEUE' });
     return ret;
   }
@@ -590,6 +602,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     [...LockBase.#queues.values()].forEach(q => {
       ret += q.size;      
     });
+    //console.log(ret);
     return ret;
   }
 
@@ -599,7 +612,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     const idxSet = new Set<number>(queues.map((_, i) => i));
     if (heldLocks != null && heldLocks.size > 0) {
       [...heldLocks.values()].forEach(value => {
-        if (typeof value.queueId == 'number') {
+        if (typeof value.queueId === 'number') {
           idxSet.delete(value.queueId);
         }
       });

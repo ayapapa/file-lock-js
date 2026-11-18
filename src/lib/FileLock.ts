@@ -50,6 +50,13 @@ export class FileLock {
   /** Get `lock directory` */
   public static get lockDir() { return FileLockInternal.lockDir; }
 
+  /** 
+   * get number of queues.
+   * The initial value matches `maxConcurrency`. 
+   * If any `extra queue`s are created, their count is also included.
+   */
+  public static get numberOfQueues() { return FileLockInternal.numberOfQueues; }
+
   /** Resets the current settings to their default values. */
   public static resetConfig(): void {
     FileLockInternal.resetConfig();
