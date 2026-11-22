@@ -41,6 +41,6 @@ export interface LockBaseInternalState {
   /** Time spent in the queue. */
   _queueTimeSpent: number;
 
-  _queueId: string | number;
+  _queueId: unknown;
 }
 

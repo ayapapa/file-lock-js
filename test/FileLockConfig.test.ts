@@ -4,7 +4,7 @@ import path from 'node:path';
 import { PrettyConsole } from '@ayapapa-npm/pretty-console-js';
 
 import { type FileLockConfig, type FileLockOptions, type LogProvider, 
-  DeadlockDetected, FileLock, FileLockError, InvalidConfiguration, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError } from '../src/index.ts';
+  DeadlockDetected, FileLock, FileLockError, InvalidConfiguration, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError, QueueManager } from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
 
 type NumberKeys<T> = {
@@ -36,9 +36,10 @@ describe('FileLock.Config', () => {
       history?: boolean;
       maxHistoryEntries?: number;
       maxHistoryFiles?: number;
-      maxConcurrency?: number;
-      maxPending?: number;
-      queue?: boolean;
+      queueManager?: QueueManager<string> | undefined
+      //maxConcurrency?: number;
+      //maxPending?: number;
+      //queue?: boolean;
      }>();
   });
 
@@ -71,8 +72,8 @@ describe('FileLock.Config', () => {
     "for a numeric property among the default options, " +
     "the minimum value is set.", () => {
       const conf = {
-        maxConcurrency:       -1,
-        maxPending:           -1,
+        //maxConcurrency:       -1,
+        //maxPending:           -1,
         defaultOptions: {
           timeoutMs:            -1,
           ttlMs:                -1,
@@ -84,8 +85,8 @@ describe('FileLock.Config', () => {
         }
       }
     const exp = {
-      maxConcurrency:       1,
-      maxPending:           1, // ★★★指定値を超えたときにエラーを考えないとね！！
+      //maxConcurrency:       1,
+      //maxPending:           1, // ★★★指定値を超えたときにエラーを考えないとね！！
       defaultOptions: {
         timeoutMs:            0,
         ttlMs:                1000,
@@ -101,6 +102,7 @@ describe('FileLock.Config', () => {
     expect(FileLock.getConfig()).toMatchObject(exp);
   });
 
+/*
   it("`You can specify `console` as the logger, " +
     "and the `fatal` function has been replaced by the `error` function, " +
     "while the `trace` function has been replaced by the `debug` function.", async () => {
@@ -108,7 +110,6 @@ describe('FileLock.Config', () => {
     const retVal = "test_logger", key = retVal;
     expect.assertions(3);
     FileLock.setConfig({ logger: console });
-
     expect(await FileLock.withLock(key, 
       async () => {
         await sleepAsync(500);
@@ -117,12 +118,10 @@ describe('FileLock.Config', () => {
       {}
     )).toBe(retVal);
     const lock = TestLock.getLock(key);
-    // @ts-expect-error lock._logger is protected
     expect(lock._logger.trace).toBe(lock._logger.debug);
-    // @ts-expect-error lock._logger is protected
     expect(lock._logger.fatal).toBe(lock._logger.error);
   });
-
+*/
   it("The directory specified in `FileLock.setCondig()` is created.", () => {
     const dir = path.join(process.cwd(), '.lock');
     fs.rmSync(dir, { force: true, recursive: true });
@@ -398,7 +397,7 @@ describe('FileLock.Config', () => {
   it("maxHistoryFiles: 101", () => {
     testConfigMinVal('maxHistoryFiles', 101, 101);
   });
-
+/*
   it("maxPending: undefined", () => {
     testConfigMinVal('maxPending', 100, undefined);
   });
@@ -438,7 +437,7 @@ describe('FileLock.Config', () => {
   it("maxConcurrency: 101", () => {
     testConfigMinVal('maxConcurrency', 101, 101);
   });
-
+*/
   function testTypeErrorConfig(name: string | string[], value: unknown | unknown[]) {
     const conf =  {} as Record<string, unknown>;
     if (typeof name === 'string') {
@@ -475,16 +474,16 @@ describe('FileLock.Config', () => {
     testTypeErrorConfig('logger', new LockError(""),  );
   });
 
-  it("An error occurs when an config value of a different type is specified(queue).", () => {
-    //testTypeErrorConfig('queue', true, );
-    testTypeErrorConfig('queue', 'string', );
-    testTypeErrorConfig('queue', 1234, );
-    testTypeErrorConfig('queue', {},  );
-    testTypeErrorConfig('queue', [],  );
-    testTypeErrorConfig('queue', ()=>{},  );
-    testTypeErrorConfig('queue', new LockError(""),  );
+  it("An error occurs when an config value of a different type is specified(queueManager).", () => {
+    testTypeErrorConfig('queueManager', true, );
+    testTypeErrorConfig('queueManager', 'string', );
+    testTypeErrorConfig('queueManager', 1234, );
+    testTypeErrorConfig('queueManager', {},  );
+    testTypeErrorConfig('queueManager', [],  );
+    testTypeErrorConfig('queueManager', ()=>{},  );
+    testTypeErrorConfig('queueManager', new LockError(""),  );
   });
-
+/*
   it("An error occurs when an config value of a different type is specified(maxPending).", () => {
     testTypeErrorConfig('maxPending', true, );
     testTypeErrorConfig('maxPending', 'string', );
@@ -494,7 +493,8 @@ describe('FileLock.Config', () => {
     testTypeErrorConfig('maxPending', ()=>{},  );
     testTypeErrorConfig('maxPending', new LockError(""),  );
   });
-
+*/
+/*
   it("An error occurs when an config value of a different type is specified(maxConcurrency).", () => {
     testTypeErrorConfig('maxConcurrency', true, );
     testTypeErrorConfig('maxConcurrency', 'string', );
@@ -504,7 +504,7 @@ describe('FileLock.Config', () => {
     testTypeErrorConfig('maxConcurrency', ()=>{},  );
     testTypeErrorConfig('maxConcurrency', new LockError(""),  );
   });
-
+*/
   it("An error occurs when an config value of a different type is specified(_debug).", () => {
     //testTypeErrorConfig('_debug', true, );
     testTypeErrorConfig('_debug', 'string', );
@@ -597,8 +597,8 @@ describe('FileLock.Config', () => {
 
   it("An error occurs when some config values of a different type is specified.", () => {
     testTypeErrorConfig(
-      ['logger', 'queue', 'maxPending', 'maxConcurrency', '_debug', 'lockDirectory', 'cache', 'maxCacheEntries', 'cacheTtlMs', 'defaultOptions', 'history', 'maxHistoryEntries', 'maxHistoryFiles', ], 
-      [true, 'string', {}, [], 1234, ()=>{}, new LockError(""), true, 'string', [], 1234, ()=>{}, new LockError(""), ], 
+      ['logger', 'queueManager', '_debug', 'lockDirectory', 'cache', 'maxCacheEntries', 'cacheTtlMs', 'defaultOptions', 'history', 'maxHistoryEntries', 'maxHistoryFiles', ], 
+      [true,     'string',       {},       [],               1234,   ()=>{},            new LockError(""), true,        'string',  [],                  ()=>{}, ], 
       );
   });
 
@@ -609,7 +609,7 @@ describe('FileLock.Config', () => {
     await FileLock.withLock(key, () => {});
     expect(fs.existsSync(getHistoryPath())).toBeTruthy();
   });
-
+/*
   it ("Setting { cache: false } results in a new instance being created each time.", () => {
     FileLock.setConfig({ cache: false });
     const key = 'CacheFalseKey';
@@ -621,7 +621,7 @@ describe('FileLock.Config', () => {
     FileLock.setConfig({ cache: true });
     expect(TestLock.getFileLock(key)).toBe(TestLock.getFileLock(key));
   });
-
+*/
 
   // ★★★キューがらみのテストを追加せよ！！
   

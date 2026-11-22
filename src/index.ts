@@ -6,6 +6,7 @@
 	import { type FileLockOptions } from './lib/FileLockOptions.ts';
 	import { type FileLockConfig } from './lib/FileLockConfig.ts';
 	import { type Monitor as LockMonitor } from './lib/LockMonitor.ts';
+	import { QueueManager, type QueueMgrConfig } from './lib/QueueManager.ts';
 	export { 
 		AlreadyLocked,
 		DeadlockDetected, 
@@ -18,6 +19,7 @@
 		LockDirectoryStatFailed,
 		LockError,
 		PendingLocksExceeded,
+		QueueManager,
 		ReleaseFailed,
 		TTLExceeded,
 		type CallbackOnLock,
@@ -27,5 +29,6 @@
 		type LockMonitor,
 		type LogProvider,
 		type MaybePromise,
+		type QueueMgrConfig,
 	}
 	export default FileLock;

@@ -1,9 +1,9 @@
-import { REQUIRE } from './Contracts.ts';
+//import { REQUIRE } from './Contracts.ts';
 import { type FileLockOptions } from './FileLockOptions.ts';
-import { FileLockInternal, minimumFileLockOptions, type CallbackOnLock, type FileLockRequiredOptions } from './FileLockInternal.ts';
-import { FileLockOptionsResolver } from "./FileLockOptionsResolver.ts";
+import { FileLockInternal, /*minimumFileLockOptions, */type CallbackOnLock, /*type FileLockRequiredOptions*/ } from './FileLockInternal.ts';
+//import { FileLockOptionsResolver } from "./FileLockOptionsResolver.ts";
 import { type FileLockConfig } from './FileLockConfig.ts';
-import { InvalidOptions } from './LockBaseErrors.ts';
+//import { InvalidOptions } from './LockBaseErrors.ts';
 
 /**
 * File-based lock class. 
@@ -92,11 +92,14 @@ export class FileLock {
    * @throws {@link LockCompromised} The lock was compromised during the locking process.
    */
   public static async withLock<T>(key: string, onLockFn: CallbackOnLock<T>, options: FileLockOptions  = {}): Promise<T> {
+    return FileLockInternal.withLock(key, onLockFn, options);
+    /*
     REQUIRE(typeof key === 'string' && key !== '', '`key` must be specified as a non-empty string.', InvalidOptions, { name: 'key' });
     // If defaultOptions is specified in the config, it will be used as the default options.
     const defaultOpts = { ...FileLockInternal.defaultOptions, ...FileLockInternal.getConfig().defaultOptions } as FileLockRequiredOptions;
     // Resolve options.
     const rOpt = new FileLockOptionsResolver(options, minimumFileLockOptions, defaultOpts).getRequiredOptions();
     return FileLockInternal._getLock(key)._withLock(onLockFn, rOpt);
+    */
   }
 }

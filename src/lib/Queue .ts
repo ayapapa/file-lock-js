@@ -16,12 +16,12 @@ interface QueueItem<T> {
 }
 
 /** Asynchronous task queue. */
-export class AsyncQueue {
+export class AsyncQueue<I> {
 	readonly #queue: QueueItem<unknown>[] = [];
 	#running = false;
-	readonly #id: string | number;
+	readonly #id: I;
 
-	public constructor(id: string | number) {
+	public constructor(id: I) {
 		this.#id = id;
 	}
 
@@ -51,7 +51,7 @@ export class AsyncQueue {
 	}
 
 	/** Id of this queue. */
-	public get id(): string | number { return this.#id; }
+	public get id(): I { return this.#id; }
 
 	/** Queue size, including tasks currently being executed. */
 	public get size(): number { 

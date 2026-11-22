@@ -1,3 +1,5 @@
+import { QueueManager } from './QueueManager.ts';
+
 /** Type of the log output object. */
 export type LogProvider = Pick<Console, 'log' | 'trace' | 'debug' | 'info' | 'warn' | 'error' > & {fatal?: (...args: any[]) => void};
 
@@ -12,24 +14,31 @@ export interface LockBaseConfig {
   logger?: LogProvider;
 
   /**
+   * Queue manager.
+   * Specifying a `QueueManager` instance enables a lock request queuing system that operates according to the configured settings.
+   * If `undefined`, disable a lock request queuing system.
+   * Default is `QueueManager`({ maxConcurrency: 5, maxPending: 500 }).
+   */
+  queueManager?: QueueManager<string> | undefined;
+  /**
    * Whether or not to use a lock request queue.
    * Default is true.
    */
-  queue?: boolean;
+  //queue?: boolean;
 
   /**
    * The max number of lock requests allowed at a time.
    * Valid only when `queue` is `true`.
    * Default is 500.　Min is 1.
    */
-  maxPending?: number;
+  //maxPending?: number;
 
   /**
    * The number of lock requests that can be processed concurrently.
    * Valid only when `queue` is `true`. Therefore, this corresponds to the number of queues.
    * Default is 5. Min is 1. 
    */
-  maxConcurrency?: number;
+  //maxConcurrency?: number;
 
   /**
    * @internal

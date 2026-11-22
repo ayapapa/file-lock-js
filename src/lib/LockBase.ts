@@ -1,14 +1,14 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { onExit } from 'signal-exit';
-import Contracts, { ENSURE, ENSURE_DEBUG, REQUIRE_DEBUG } from './Contracts.ts';
-import { AlreadyLocked, DeadlockDetected, InvalidConfiguration, LockError, PendingLocksExceeded, TTLExceeded } from './LockBaseErrors.ts';
+import Contracts, { ENSURE_DEBUG, REQUIRE, REQUIRE_DEBUG } from './Contracts.ts';
+import { AlreadyLocked, DeadlockDetected, InvalidConfiguration, LockError, TTLExceeded } from './LockBaseErrors.ts';
 import { type AllOptions } from './AllOptions.ts';
 import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { type LockBaseInternalState } from './LockBaseInternalState.ts'
 import { type LockBaseConfig, type LogProvider } from './LockBaseConfig.ts'
-import { checkValuesType, isEqualObjectType } from './Util.ts';
+import { checkValuesType, includesAllKeysOf, isEqualObjectType } from './Util.ts';
 import { type Monitor } from './LockMonitor.ts';
-import { AsyncQueue } from './AsyncQueue .ts';
+import { QueueManager, type Queue } from './QueueManager.ts';
 
 /**
  * An internal options type consisting only of the required properties of LockBaseOptions.
@@ -20,10 +20,10 @@ export type LockBaseRequiredOptions = Required<Pick<LockBaseOptions, 'timeoutMs'
  * Default values of LockBaseConfig.
  */
  export const defaultLockBaseConfig: Readonly<Required<LockBaseConfig>> = {
-  logger: console,
-  queue: true,
-  maxPending: 100,
-  maxConcurrency: 5,
+  logger: _resolveLogger(console),
+  queueManager: new QueueManager<string>({ maxConcurrency: 5, maxPending: 500 }),
+  //maxPending: 100,
+  //maxConcurrency: 5,
   _debug: false,
 }
 
@@ -55,12 +55,11 @@ export type MaybePromise<T> = T | PromiseLike<T>;
 /** Definition of the callback function to be executed after acquiring the lock. */
 export type CallbackOnLock<T> = (monitor: Monitor) => MaybePromise<T>;
 
-
 /** 
  * @internal
  * Value of ReentrantContext.
  */
-type HeldLockValue = { queueId: string | number, monitor: Monitor };
+type HeldLockValue = { queueId: unknown, monitor: Monitor };
 
 /** 
  * @internal
@@ -72,6 +71,51 @@ interface ReentrantContext  {
 }
 
 /**
+ * @internal
+ * Copy config. 
+ * ★★　copyはこれでよいかも。。ただ、getCongfigや、config getterで返すのConfigViewとするこのViewは、
+ * 　loggerConfigured: boolean, queueManagerConfigured: booleanだけ返しインスタンスや返さない。
+ *   後に、実態が必要になったなら、状態変更させないメソッドのみを持つラッパーを返す。ラッパーを返すことで、logger.trace = logger.info みたいな変更も無効化できる！！
+ * このメソッドは、toConfigViewとする、返すConfigViewは、logger, queueManager以外をPickした型 & {loggerConfigured: boolean, queueManagerConfigured: boolean} 
+ * @param config Configurations.
+ */
+function _copyConfig<T extends LockBaseConfig>(config: T): T {
+  const withoutInstance  = { ...config };
+  // Since function objects cannot be copied via `structuredClone`, they are excluded for the time being.
+  const { logger, queueManager } = withoutInstance;
+  delete withoutInstance.logger;
+  delete withoutInstance.queueManager;
+  // Properties with `undefined` values ​​are removed for design reasons.
+  for (const key in withoutInstance) {
+    if (withoutInstance[key] == null) delete withoutInstance[key];
+  }
+  // Adds `logger` to the copied object and returns it.
+  const cloned = structuredClone(withoutInstance);
+  Object.assign(cloned, { queueManager/* undefniend available */ });
+  return logger ? Object.assign(cloned, { logger }) : cloned;
+}
+
+  /**
+ * @internal
+ * Get a logger where all methods are mandatory.
+ * @param config 
+ * @returns A logger where all methods are mandatory.
+ */
+function _resolveLogger(logger: LogProvider): Readonly<Required<LogProvider>> {
+  let ret = logger;
+  if (ret === console) {
+    ret = { ...console as LogProvider };
+    const orgDebug = ret.debug;
+    ret.debug = (...args:unknown[]) => { if (LockBase.config._debug) orgDebug(...args); }
+    ret.trace = ret.error;
+  }
+  // There are cases where 'fatal' is not present; in such instances, use 'error'.
+  if (!ret.fatal) ret.fatal = ret.error;
+  // Make `fatal` mandatory.
+  return Object.freeze(ret as Required<LogProvider>);
+}
+
+  /**
  * Base class for implementing mutual exclusion (locking). 
  * Uses AsyncLocalStorage to prevent re-entrant locking issues. 
  *
@@ -91,14 +135,17 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * Number of queues.
    */
   public static get numberOfQueues() {
-    return LockBase.#queues.size;
+    //return LockBase.#queues.size;
+    return LockBase.#config.queueManager?.numberOfTotalQueues ?? 0;
   }
   
   /** 
    * @internal
    * Current basic configurations.
    */
-  protected static get _config() { return { ...LockBase.#config } };
+  protected static get _config(): Readonly<LockBaseConfig> { 
+    return LockBase._copyConfig(LockBase.#config);
+  }
 
   /** 
    * @internal
@@ -127,11 +174,13 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    */
   static #config: Required<LockBaseConfig> = { ...defaultLockBaseConfig };
 
+  static get config(): Readonly<LockBaseConfig> { return LockBase._config }
+
   /** 
    * @internal
    * Logger.
    */
-  static #logger = LockBase.#resolveLogger(LockBase.#config);
+  static get #logger(): LogProvider { return LockBase.#config.logger };
 
   /** 
    * @internal
@@ -143,7 +192,8 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @internal
    * Task queues.
    */
-  static #queues = new Map<string | number, AsyncQueue>();
+  //static #queues = new Map<string | number, AsyncQueue>();
+  static get #queueMgr() { return LockBase.#config.queueManager; }
   
   /**
    * Static methods.
@@ -177,6 +227,8 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @param config Configurations.
    */
   protected static _copyConfig<T extends LockBaseConfig>(config: T): T {
+    return _copyConfig(config);
+/*
     const withoutLogger  = { ...config };
     // Since function objects cannot be copied via `structuredClone`, they are excluded for the time being.
     const logger = withoutLogger.logger;
@@ -187,8 +239,23 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     }
     // Adds `logger` to the copied object and returns it.
     const cloned = structuredClone(withoutLogger);
-    return logger ? Object.assign(cloned, { logger }) : cloned;
+    return logger ? Object.assign(cloned, { logger: { ...logger } }) : cloned;
     //return Object.assign(structuredClone(withoutLogger), { logger });
+*/
+  }
+
+  static #checkValuesType(config: LockBaseConfig) {
+    checkValuesType(config, defaultLockBaseConfig, 'configuration', InvalidConfiguration);
+    const msg = 'The specified configuration contains values of invalid types.';
+    if (config.logger) {
+      REQUIRE(includesAllKeysOf(config.logger, ['trace', 'debug', 'log', 'info', 'warn', 'error']),
+        msg, InvalidConfiguration, { name: 'logger' });
+    }
+    if (config.queueManager) {
+      REQUIRE(config.queueManager instanceof QueueManager, 
+        msg, 
+        InvalidConfiguration, { name: 'queueManager' });
+    }
   }
 
   /**
@@ -197,13 +264,13 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @param config  Configurations. 
    */
   protected static setConfig(config: LockBaseConfig): void {
-    checkValuesType(config, defaultLockBaseConfig, 'configuration', InvalidConfiguration);
+    LockBase.#checkValuesType(config);
     LockBase.#config = LockBase.#resolveConfig(config);
-    LockBase.#logger = LockBase.#resolveLogger(LockBase.#config);
+    //LockBase.#logger = LockBase.#resolveLogger(LockBase.#config);
 
     // reset queues
-    LockBase.#queues.clear();
-    for (let i = 0; i < LockBase.#config.maxConcurrency; i++) void LockBase.#getQueue(i);
+    //LockBase.#queues.clear();
+    //for (let i = 0; i < LockBase.#config.maxConcurrency; i++) void LockBase.#getQueue(i);
 
     // Set configurations of `Contrats`.
     Contracts.setConfig({ debug: LockBase.#config._debug, logger: LockBase.#logger });
@@ -215,6 +282,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @param key 
    * @returns Task queue for key.
    */
+  /*
   static #getQueue(id: string | number): AsyncQueue {
     let q = LockBase.#queues.get(id);
     if (q === undefined) {
@@ -222,7 +290,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     }
     return q;
   }
-
+*/
   /*
   protected static _checkValuesType<T extends (LockBaseConfig | LockBaseOptions)>(target: T, reference: T, type: 'options' | 'configuration', ErrorClass: ErrorClassType) {
     let badKeys = [] as string[];
@@ -241,35 +309,20 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     const curConf = LockBase.#config as Record<string, unknown>;
     const newConf = this._copyConfig(config) as Record<string, unknown>;
     const rConf = { ...curConf } as Record<string, unknown>;
+    const orgLogger = LockBase.#config.logger;
     Object.keys(curConf).forEach(key => {
-      if (key in newConf) rConf[key] = newConf[key];
+      if (newConf[key] != null) rConf[key] = newConf[key];
     });
-    rConf.maxPending != null && (rConf.maxPending = Math.max(rConf.maxPending as number, 1));
-    rConf.maxConcurrency != null && (rConf.maxConcurrency = Math.max(rConf.maxConcurrency as number, 1));
+    //rConf.maxPending != null && (rConf.maxPending = Math.max(rConf.maxPending as number, 1));
+    //rConf.maxConcurrency != null && (rConf.maxConcurrency = Math.max(rConf.maxConcurrency as number, 1));
+    if (orgLogger != rConf.logger) rConf.logger = _resolveLogger(rConf.logger as LogProvider);
     ENSURE_DEBUG(() => isEqualObjectType(rConf, defaultLockBaseConfig),
       'The current configuration is invalid.', LockError, { code: 'EINVAL' });
+    // queueManagerは、undefinedも許容するため、上記チェックの後に、再設定。
+    if ('queueManager' in config && config.queueManager === undefined)
+      rConf.queueManager = undefined;
     // Cast the value, as it has already been verified above.
     return rConf as Required<LockBaseConfig>;
-  }
-
-  /**
-   * @internal
-   * Get a logger where all methods are mandatory.
-   * @param config 
-   * @returns A logger where all methods are mandatory.
-   */
-  static #resolveLogger(config: Required<LockBaseConfig>): Required<LogProvider> {
-    let logger: LogProvider = config.logger;
-    if (logger === console) {
-      logger = {...console as LogProvider};
-      const orgDebug = logger.debug;
-      logger.debug = (...args:unknown[]) => { if (LockBase.#config._debug) orgDebug(...args); }
-      logger.trace = logger.debug;
-    }
-    // There are cases where 'fatal' is not present; in such instances, use 'error'.
-    if (!logger.fatal) logger.fatal = logger.error;
-    // Make `fatal` mandatory.
-    return logger as Required<LogProvider>;
   }
 
   /** 
@@ -330,14 +383,15 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * Task queue dedicated to a key. 
    * When using this, ensure you use the queue obtained via #getDedicatedQueue().
    */
-  #dedicatedQueue: AsyncQueue | undefined = undefined;
+  //#dedicatedQueue: AsyncQueue | undefined = undefined;
 
-  #getDedicatedQueue() {
+/*  #getDedicatedQueue() {
     if (this.#dedicatedQueue === undefined) {
      this.#dedicatedQueue = LockBase.#getQueue(this.#key);
     }
-    return this.#dedicatedQueue;
+    return this.#dedicatedQueue!;
   }
+    */
   /**
    *  Instance methods. 
    */
@@ -544,10 +598,16 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
           options,
         );
       };
-      //const queue = this.#selectQueue();
-      return LockBase.#config.queue === false
+      const queue = this.#selectQueue(options);
+      const timeout = options.timeoutMs;
+      return queue === undefined
       ? exec()
-      : this.#enqueue(exec, options);
+      : queue.enqueue<T>(exec, {
+        timeout,
+        reason: new AlreadyLocked('The `lock file` already exists.', {
+          timeoutMs: timeout, key: this.#key, props: { reason: 'ExistingLock' } 
+        })
+      });
       /*queue.enqueue(async (): Promise<T> => {
         options._queueId = queue.id;
         return exec();
@@ -562,7 +622,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
 
     return whithLockInContext();
   }
-
+/*
   async #enqueue<T>(exec: () => Promise<T>, options : AllOptions<O, I>): Promise<T> {
     if (this.#getNumberOfPending() >= LockBase.#config.maxPending) {
       throw new PendingLocksExceeded(undefined, { maxPending: LockBase.#config.maxPending });
@@ -579,25 +639,28 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
       })
     });
   }
-
-  #getQueues(/*withExtraQues: boolean = false*/): AsyncQueue[] {
+*/
+  /*
+  #getQueues(): AsyncQueue[] {
     const ret: AsyncQueue[] = [];
     // regular queues
     for(let i = 0; i < LockBase.#config.maxConcurrency; i++) {
       ret.push(LockBase.#getQueue(i));
     }
-    /*
+    //
     if (withExtraQues) {
       LockBase.#queues.forEach((q, key) => {
         if (typeof key === 'string') ret.push(q);
       });
     }
-    */
+    //
     ENSURE(ret.length > 0, "No queues are available.", LockError, { code: 'ENOQUEUE' });
     return ret;
   }
-
+*/
+/*
   #getNumberOfPending() {
+    /*
     let ret = 0;
     [...LockBase.#queues.values()].forEach(q => {
       ret += q.size;      
@@ -605,9 +668,31 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     //console.log(ret);
     return ret;
   }
+*/
+  #selectQueue(options: AllOptions): Queue<string> | undefined {
+    if (!LockBase.#queueMgr) return undefined;
+    let selected = undefined;
+    try {
+      const queues = LockBase.#queueMgr.getCandidates();
+      const heldLocks = this.#getReentrantContext()?.heldLocks;
+      if (heldLocks == null || heldLocks.size === 0)
+        return selected = queues[0];
+      const hla = [...heldLocks.values()];
+      for(const q of queues) {
+        if (hla.findIndex(hl => hl.queueId === q.id) === undefined) {
+          return selected = q;
+        }
+      };
+      return selected = LockBase.#queueMgr.getDedicatedQueue(this._key);
+    }
+    finally {
+      ENSURE_DEBUG(selected !== undefined, "Failed to select queue.", LockError, {
+        code: 'EINVAL', props: { name: 'selected' }
+      });
+      options._queueId = selected?.id;
+    }
 
-  #selectQueue(): AsyncQueue {
-    const heldLocks = this.#getReentrantContext()?.heldLocks;
+    /*
     const queues = this.#getQueues();
     const idxSet = new Set<number>(queues.map((_, i) => i));
     if (heldLocks != null && heldLocks.size > 0) {
@@ -631,6 +716,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     else {
       return this.#getDedicatedQueue();
     }
+    */
   }
 
   /**

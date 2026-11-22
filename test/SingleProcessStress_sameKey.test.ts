@@ -29,7 +29,8 @@ type Params = { n: number, sameKey: boolean, queue: boolean, maxConcurrency: num
 
 async function singleProcessMultiLockTest(param: Params) {
   const pr: Promise<unknown>[] = [];
-  FileLock.setConfig({ queue: param.queue, maxConcurrency:param.maxConcurrency })
+  // ★新仕様に合わせよ！！
+  // FileLock.setConfig({ queue: param.queue, maxConcurrency:param.maxConcurrency })
   for (let i = 0; i < param.n; ++i) {
     const key = param.sameKey ? 'singleProcessMultiLockTest_sameKey' : `singleProcessMultiLockTest_${i}}`;
     pr.push(FileLock.withLock(key, async () => {

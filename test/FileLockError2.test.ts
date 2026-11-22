@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getHistoryPath,  getLockMetaPath, getLockSharerDir, removeLockFiles, setLockMeta, sleepAsync, TestLock  } from './FileLockTestCommon.ts';
-import { AlreadyLocked, type FileLockConfig,  FileLock, FileLockError, ReleaseFailed, type LockMonitor, type FileLockOptions, PendingLocksExceeded } from '../src/index.ts';
+import { AlreadyLocked, type FileLockConfig,  FileLock, FileLockError, PendingLocksExceeded, QueueManager, ReleaseFailed, type LockMonitor, type FileLockOptions } from '../src/index.ts';
 import { FileLockInternal } from '../src/lib/FileLockInternal.ts';
 
 let orgConfig: FileLockConfig;
@@ -878,12 +878,12 @@ it("Deliberately create an invalid lock file and verify that it results in an er
     const keys = ['PendingLocksExceeded_Error1', 'PendingLocksExceeded_Error2', 'PendingLocksExceeded_Error3'];
     const pr = [] as Promise<unknown>[];
     try {
-      FileLock.setConfig({ maxConcurrency: 1, maxPending: 1 });
+      FileLock.setConfig({ queueManager: new QueueManager({ maxConcurrency: 1, maxPending: 1 }) });
       expect(FileLock.numberOfQueues).toBe(1);
       pr.push(FileLock.withLock(keys[0], async () => { await sleepAsync(100); }));
       pr.push(FileLock.withLock(keys[1], async () => { await sleepAsync(100); }));
       pr.push(FileLock.withLock(keys[2], async () => { await sleepAsync(100); }));
-      /*const result = */await Promise.all(pr);
+      await Promise.all(pr);
       //console.log(result)
     }
     catch (err) {

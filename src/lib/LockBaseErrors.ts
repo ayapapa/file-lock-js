@@ -107,7 +107,7 @@ class InvalidObjectValueType extends LockError {
       else
         props.names = name;
     }
-    super(msg, { code:'EINVAL' , props });
+    super(msg, { code: 'EINVAL' , props });
   }
 };
 

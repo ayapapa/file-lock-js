@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import { getLockMeta, getLockMetaPath, removeLockFiles, setLockMeta, sleepAsync, TestLock  } from './FileLockTestCommon.ts';
 import { AlreadyLocked, type FileLockConfig, DeadlockDetected, FileLock, FileLockError, LockDirectoryCreationFailed, 
-  LockDirectoryStatFailed, LockError, InvalidConfiguration, InvalidOptions, LockCompromised, PendingLocksExceeded, ReleaseFailed, TTLExceeded, type LockMonitor } from '../src/index.ts';
+  LockDirectoryStatFailed, LockError, InvalidConfiguration, InvalidOptions, LockCompromised, PendingLocksExceeded, 
+  QueueManager, ReleaseFailed, TTLExceeded, type LockMonitor } from '../src/index.ts';
 
 let orgConfig: FileLockConfig;
 beforeEach(() => {
@@ -585,7 +586,7 @@ describe('FileLockError', () => {
 
   it("timout in queue", async ()=> {
     const key = "timout_in_queue";
-    FileLock.setConfig({ maxConcurrency: 1 });
+    FileLock.setConfig({ queueManager: new QueueManager({ maxConcurrency: 1 }) });
     const pr = [] as Promise<unknown>[];
     try {
       pr.push(FileLock.withLock(key, async () => {
