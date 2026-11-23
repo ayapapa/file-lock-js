@@ -46,12 +46,12 @@ describe('FileLock.Config', () => {
   it("`FileLock.setConfig()` works correctly.", () => {
     expect.assertions(3);
     FileLock.setConfig(FileLock.defaultConfig);
-    expect(JSON.stringify(FileLock.defaultConfig)).toBe(JSON.stringify(FileLock.getConfig()));
-    const lockDirectory = 'hogehoge';
-    let config: FileLockConfig = {...FileLock.defaultConfig, lockDirectory, cache: false, logger: new PrettyConsole() };
+    expect(FileLock.defaultConfig).toMatchObject(FileLock.getConfig());
+    //const lockDirectory = 'hogehoge';
+    let config: FileLockConfig = {...FileLock.defaultConfig, /*lockDirectory, */cache: false, logger: new PrettyConsole() };
     FileLock.setConfig(config);
     const newConf = FileLock.getConfig();
-    expect(JSON.stringify(newConf)).toBe(JSON.stringify(config));
+    expect(newConf).toMatchObject(config);
     config = {...FileLock.defaultConfig, defaultOptions: { ...FileLock.defaultOptions, allowReentry: true } };
     FileLock.setConfig(config);
     expect(JSON.stringify(FileLock.getConfig())).toBe(JSON.stringify(config));
@@ -623,6 +623,113 @@ describe('FileLock.Config', () => {
   });
 */
 
-  // ★★★キューがらみのテストを追加せよ！！
-  
+// ★★★
+/*
+ロックディレクトリ再設定禁止のテスト
+- １度設定⇒２度目エラー
+- １度設定⇒ロック　⇒　２度目エラー
+- １度設定⇒２度目　同じディレクトリ　エラーなし
+- １度設定⇒ロックー＞２度目　同じディレクトリ　エラーなし
+- 未指定　⇒　ロック　⇒　設定でエラー
+*/
+  it("update `lock directory`.", () => {
+    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    expect.assertions(1);
+    try {
+      FileLock.setConfig({ lockDirectory: '.lock_test2' });
+    }
+    catch (err) {
+      expect(err).instanceOf(InvalidConfiguration);
+      expect(err).toMatchObject({
+        code: "EINVAL",
+        message: "[REQUIRE] Updating the `lock directory` is prohibited.",
+        name: "lockDirectory",
+      });
+    }
+  });
+
+  it("lock and update `lock directory`.", async () => {
+    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    const key = 'update_lock_directory1';
+    await FileLock.withLock(key, () => {});
+    expect.assertions(2);
+    try {
+      FileLock.setConfig({ lockDirectory: '.lock_test2' });
+    }
+    catch (err) {
+      expect(err).instanceOf(InvalidConfiguration);
+      expect(err).toMatchObject({
+        code: "EINVAL",
+        message: "[REQUIRE] Updating the `lock directory` is prohibited.",
+        name: "lockDirectory",
+      });
+    }
+    expect(TestLock.isReleasedState(key))
+  });
+
+  it("update `lock directory` but same path.", async () => {
+    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    const key = 'update_lock_directory2';
+    expect.assertions(1);
+    await FileLock.withLock(key, () => {});
+    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    expect(TestLock.isReleasedState(key))
+  });
+
+  it("no specfied `lock directory`, lock and update.", async () => {
+    const key = 'update_lock_directory3';
+    await FileLock.withLock(key, () => {});
+    expect.assertions(2);
+    try {
+      FileLock.setConfig({ lockDirectory: '.lock_test' });
+    }
+    catch (err) {
+      expect(err).instanceOf(InvalidConfiguration);
+      expect(err).toMatchObject({
+        code: "EINVAL",
+        message: "[REQUIRE] Updating the `lock directory` is prohibited.",
+        name: "lockDirectory",
+      });
+    }
+    expect(TestLock.isReleasedState(key))
+  });
+
+/*
+  it("update `lock directory`, lock, reest and update.", async () => {
+    const key = 'update_lock_directory4';
+    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    await FileLock.withLock(key, () => {});
+    expect.assertions(2);
+    FileLock.resetConfig();
+    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    try {
+      FileLock.setConfig({ lockDirectory: '.lock_test2' });
+    }
+    catch (err) {
+      expect(err).instanceOf(Error);
+    }
+    expect(TestLock.isReleasedState(key))
+  });
+
+  it("no specfied `lock directory`, lock, reest and update.", async () => {
+    const key = 'update_lock_directory5';
+    await FileLock.withLock(key, () => {});
+    expect.assertions(2);
+    FileLock.resetConfig();
+    try {
+      FileLock.setConfig({ lockDirectory: '.lock_test' });
+    }
+    catch (err) {
+      expect(err).instanceOf(Error);
+    }
+    expect(TestLock.isReleasedState(key))
+  });
+*/
+  // ★★★キューManagerfテストを追加せよ！！
+/*（Successあたりが怪しいから）
+- キューの数設定
+- キューのエントリー数取得と最大数設定
+*/
+
 });

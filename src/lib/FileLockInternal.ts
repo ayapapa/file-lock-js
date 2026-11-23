@@ -77,18 +77,19 @@ export const minimumFileLockOptions: Readonly<FileLockRequiredNumericOptions> = 
   retryIoIntervalMs:        100,
 }
 
+export type FileLockConfigRequired = Required<Omit<FileLockConfig, 'lockDirectory'>> & Pick<FileLockConfig, 'lockDirectory'>
+
 /**
  * @internal
  * Default values ​​for FileLockConfig. 
  */
-export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
+export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
   ...defaultLockBaseConfig,
   cache:              true,
   maxCacheEntries:    100,
   cacheTtlMs:         10000,
   defaultOptions:     { ...defaultFileLockOptions },
   history:            false,
-  lockDirectory:      path.join(process.cwd(), '.lock'),
   maxHistoryEntries:  100,
   maxHistoryFiles:    100,
 };
@@ -126,19 +127,25 @@ export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
      * @internal
      * Current configurations.
      */
-    static #config: Required<FileLockConfig> = FileLockInternal._copyConfig(defaultFileLockConfig);
-
+    static #config: FileLockConfigRequired = FileLockInternal._copyConfig(defaultFileLockConfig);
+  
     /**
      * @internal
      * The `lock directory`
      */
-    static #lockDir = FileLockInternal.#getLockDirPath();
-
+    static #lockDir: string = FileLockInternal.#getLockDirPath();
+/*
+    static get #lockDir(): string {
+      return FileLockInternal.#getLockDirPath();
+    }
+*/
     /**
      * @internal
      * The history directory path.
      */
-    static #historyDir = path.join(FileLockInternal.#lockDir, 'history');
+    static get #historyDir(): string {
+      return path.join(FileLockInternal.#lockDir, 'history');
+    }
 
     /**
      * @internal
@@ -156,7 +163,9 @@ export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
      * @internal
      * The history file path.
      */
-    static #historyPath = path.join(FileLockInternal.#historyDir, FileLockInternal.#historyName);
+    static get #historyPath(): string {
+      return path.join(FileLockInternal.#historyDir, FileLockInternal.#historyName);
+    };
 
     /** 
      * Static methods
@@ -172,12 +181,12 @@ export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
     }
 
     /** Get current configurations. */
-    public static getConfig(): Required<FileLockConfig> {
+    public static getConfig(): FileLockConfigRequired {
       return FileLockInternal._copyConfig(FileLockInternal.#config);
     }
 
     /** Get default configurations. */
-    public static get defaultConfig(): Required<FileLockConfig> {
+    public static get defaultConfig(): FileLockConfigRequired {
       return FileLockInternal._copyConfig(defaultFileLockConfig);
     }
 
@@ -217,7 +226,13 @@ export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
      * @param config  Lock configurations. 
      */
     public static override setConfig(config: FileLockConfig): void {
-      checkValuesType(config, defaultFileLockConfig, 'configuration', InvalidConfiguration);
+      checkValuesType(config, { ...defaultFileLockConfig, lockDirectory: 'string' }, 'configuration', InvalidConfiguration);
+      REQUIRE(config.lockDirectory == null 
+        || FileLockInternal.#config.lockDirectory == null 
+        || path.resolve(FileLockInternal.#config.lockDirectory) === path.resolve(config.lockDirectory),
+        "Updating the `lock directory` is prohibited.",
+        InvalidConfiguration, { name: 'lockDirectory' }
+      )
 
       super.setConfig(config);
 
@@ -252,14 +267,14 @@ export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
 
       // history
       if (FileLockInternal.#config.history || FileLockInternal.#config._debug) {
-        FileLockInternal.#historyDir =  path.join(FileLockInternal.#lockDir, 'history');
+        //FileLockInternal.#historyDir =  path.join(FileLockInternal.#lockDir, 'history');
         try {
           fs.mkdirSync(FileLockInternal.#historyDir, { recursive: true });
         }
         catch (err) {
           throw new FileLockError('Failed to create the directory for storing history files.', { code: 'EIO', props: { causes: [err] }})
         }
-        FileLockInternal.#historyPath =  path.join(FileLockInternal.#historyDir, FileLockInternal.#historyName);
+        //FileLockInternal.#historyPath =  path.join(FileLockInternal.#historyDir, FileLockInternal.#historyName);
       }
     }
 
@@ -335,7 +350,10 @@ export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
       }
 
       // Create a `lock directory`.
-      const dir = FileLockInternal.#config.lockDirectory;
+      const dir = FileLockInternal.#config.lockDirectory 
+      ? path.resolve(FileLockInternal.#config.lockDirectory) 
+      : path.join(process.cwd(), '.lock');
+      
       if (existsDir(dir) === false) mkdir(dir);
       return dir;
     }
@@ -507,6 +525,9 @@ export const defaultFileLockConfig: Readonly<Required<FileLockConfig>> = {
     protected override _prepare(options: AllOptions): void {
       super._prepare(options);
       const dirPath       = FileLockInternal.#lockDir;
+      // If a lock directory has not been specified, it is determined here.
+      if (FileLockInternal.#config.lockDirectory == null)
+        FileLockInternal.#config.lockDirectory = dirPath;
       const encodedKey    = this._key.replace(/[<>:/\\|?*]/g, () => '_').replace(/"/g, () => '');
       options._filePath   = path.join(dirPath, encodedKey + '.json');
       options._sharerDir  = path.join(dirPath, encodedKey + '.sharer');

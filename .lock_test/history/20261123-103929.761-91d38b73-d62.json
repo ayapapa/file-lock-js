@@ -1,0 +1,80 @@
+{
+  "2026/11/23 10:39:31.651": {
+    "key": "update_lock_directory1",
+    "meta": {
+      "ownerId": "61730fe0-1f70-4b14-a81a-e54b9f80d8bf",
+      "expiresAt": 1795397976650,
+      "heartbeatExpiresAt": 1795397976650,
+      "processId": 23008,
+      "parentProcessId": 3088,
+      "processArgv": [
+        "D:\\Program Files\\nodejs\\node.exe",
+        "D:\\dev\\file-lock-js\\node_modules\\vitest\\dist\\workers\\forks.js"
+      ],
+      "callStack": "Call stack: \n    at FileLockInternal.#updateInfo (D:/dev/file-lock-js/src/lib/FileLockInternal.ts:1275:25)\n    at FileLockInternal.#createLockFile (D:/dev/file-lock-js/src/lib/FileLockInternal.ts:726:18)\n    at FileLockInternal.#tryLock (D:/dev/file-lock-js/src/lib/FileLockInternal.ts:1188:20)\n    at D:/dev/file-lock-js/src/lib/FileLockInternal.ts:399:21\n    at retry (D:/dev/file-lock-js/src/lib/RetryDelay.ts:125:32)\n    at FileLockInternal._acquire (D:/dev/file-lock-js/src/lib/FileLockInternal.ts:398:22)\n    at FileLockInternal.#execLockCommon (D:/dev/file-lock-js/src/lib/LockBase.ts:778:5)\n    at AsyncQueue.#processNext (D:/dev/file-lock-js/src/lib/Queue .ts:76:19)"
+    },
+    "options": {
+      "timeoutMs": 5000,
+      "ttlMs": 5000,
+      "allowReentry": false,
+      "pollIntervalMs": 100,
+      "heartbeatIntervalMs": 1000,
+      "heartbeatTtlMs": 5000,
+      "heartbeatRetryIntervalMs": 100,
+      "retriesOnIoErr": 1,
+      "retryIoIntervalMs": 100,
+      "_monitor": {
+        "cancelled": false,
+        "id": "bxrq4klhkr"
+      },
+      "_contextId": "update_lock_directory1",
+      "_sharerId": "61730fe0-1f70-4b14-a81a-e54b9f80d8bf",
+      "_filePath": ".lock_test\\update_lock_directory1.json",
+      "_sharerDir": ".lock_test\\update_lock_directory1.sharer",
+      "_sharerLockIntervalMs": 100,
+      "_sharerLocktimeoutMs": 5000,
+      "_queueId": "4vd1q1hiyfs",
+      "_queueTimeSpent": 1,
+      "_ownerId": "61730fe0-1f70-4b14-a81a-e54b9f80d8bf"
+    }
+  },
+  "2026/11/23 10:39:31.662": {
+    "key": "update_lock_directory2",
+    "meta": {
+      "ownerId": "6e5b4df9-eee7-4ed6-acc1-d00c4ae25d8d",
+      "expiresAt": 1795397976661,
+      "heartbeatExpiresAt": 1795397976661,
+      "processId": 23008,
+      "parentProcessId": 3088,
+      "processArgv": [
+        "D:\\Program Files\\nodejs\\node.exe",
+        "D:\\dev\\file-lock-js\\node_modules\\vitest\\dist\\workers\\forks.js"
+      ],
+      "callStack": "Call stack: \n    at FileLockInternal.#updateInfo (D:/dev/file-lock-js/src/lib/FileLockInternal.ts:1275:25)\n    at FileLockInternal.#createLockFile (D:/dev/file-lock-js/src/lib/FileLockInternal.ts:726:18)\n    at FileLockInternal.#tryLock (D:/dev/file-lock-js/src/lib/FileLockInternal.ts:1188:20)\n    at D:/dev/file-lock-js/src/lib/FileLockInternal.ts:399:21\n    at retry (D:/dev/file-lock-js/src/lib/RetryDelay.ts:125:32)\n    at FileLockInternal._acquire (D:/dev/file-lock-js/src/lib/FileLockInternal.ts:398:22)\n    at FileLockInternal.#execLockCommon (D:/dev/file-lock-js/src/lib/LockBase.ts:778:5)\n    at AsyncQueue.#processNext (D:/dev/file-lock-js/src/lib/Queue .ts:76:19)"
+    },
+    "options": {
+      "timeoutMs": 5000,
+      "ttlMs": 5000,
+      "allowReentry": false,
+      "pollIntervalMs": 100,
+      "heartbeatIntervalMs": 1000,
+      "heartbeatTtlMs": 5000,
+      "heartbeatRetryIntervalMs": 100,
+      "retriesOnIoErr": 1,
+      "retryIoIntervalMs": 100,
+      "_monitor": {
+        "cancelled": false,
+        "id": "7j6h94cya93"
+      },
+      "_contextId": "update_lock_directory2",
+      "_sharerId": "6e5b4df9-eee7-4ed6-acc1-d00c4ae25d8d",
+      "_filePath": ".lock_test\\update_lock_directory2.json",
+      "_sharerDir": ".lock_test\\update_lock_directory2.sharer",
+      "_sharerLockIntervalMs": 100,
+      "_sharerLocktimeoutMs": 5000,
+      "_queueId": "4vd1q1hiyfs",
+      "_queueTimeSpent": 0,
+      "_ownerId": "6e5b4df9-eee7-4ed6-acc1-d00c4ae25d8d"
+    }
+  }
+}
