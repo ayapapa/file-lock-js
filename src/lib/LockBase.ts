@@ -562,7 +562,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    */
   async #enqueue<T>(queue: Queue, cb: () => Promise<T>, options: AllOptions<O, I>): Promise<T> {
     try {
-      return queue.enqueue<T>(cb, {
+      return await queue.enqueue<T>(cb, {
         timeout: options.timeoutMs,
         reason: new QueueWaitTimeout(undefined, {
           timeoutMs: options.timeoutMs,

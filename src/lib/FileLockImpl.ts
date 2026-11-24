@@ -18,6 +18,59 @@ import { AlreadyLocked, InvalidConfiguration, InvalidOptions, ReleaseFailed } fr
 import { ExponentialDelay, FixedDelay, retry  } from './RetryDelay.ts';
 
 /**
+ * Interface of FileLock.
+ */
+export interface FileLockClass {
+  /** Get current configurations. */
+  getConfig(): Readonly<FileLockConfig>;
+  /** Get default configurations. */
+  get defaultConfig(): FileLockConfig;
+  /** Get default options. */
+  get defaultOptions(): FileLockOptions;
+  /**Get the history informations. */
+  get historyInfo(): Readonly<HistoryInfo>;
+  /** Get `lock directory` */
+  get lockDir(): string;
+  /** 
+   * get number of queues.
+   * The initial value matches `maxConcurrency`. 
+   * If any `extra queue`s are created, their count is also included.
+   */
+  get numberOfQueues(): number;
+  /** Resets the current settings to their default values. */
+  resetConfig(): void;
+  /** Set configurations. Overwrite part of the current settings.
+   * At the same time, the cache is cleared.
+   */
+  setConfig(config: FileLockConfig): void;
+  /**
+   * Acquires a lock for the specified key, executes the function `onLockFn` under exclusive control, 
+   * and returns a Promise that resolves with the return value of `onLockFn` after the lock is released. 
+   *
+   * @param key       Lock key.
+   * If the specified key contains characters that are invalid for a file path, 
+   * it is converted into a valid file path by replacing those characters with underscores 
+   * and removing double quotation marks.
+   * @param onLockFn  Callback function to execute while the lock is held.
+   *                  Both synchronous and asynchronous functions can be specified.
+   * @param options   Lock options.
+   * @return A Promise that resolves with the return value of onLockFn.
+   * @throws {@link InvalidOptions} Invalid options.
+   * @throws {@link AlreadyLocked}  Failed to acquire the lock within the specified time. See {@link FileLockOptions}'s `timeoutMs`.
+   * @throws {@link TTLExceeded}  Failed to release the lock within the specified time. See {@link FileLockOptions}'s`ttlMs`.
+   * @throws {@link DeadlockDetected} A deadlock has been detected. See {@link FileLockOptions}'s `allowReentry`.
+   * @throws {@link LockDirectoryCreationFailed} Failed to create the `lock directory`.
+   * @throws {@link LockCompromised} The lock was compromised during the locking process.
+   */
+  withLock<T>(key: string, onLockFn: CallbackOnLock<T>, options?: FileLockOptions): Promise<T>;
+};
+
+/**
+ * Definition of required properties for the FileLockConfig.
+ */
+export type FileLockRequiredConfig = Required<Omit<FileLockConfig, 'lockDirectory'>> & Pick<FileLockConfig, 'lockDirectory'>
+
+/**
  * Definition of required properties for the FileLockOtions.
  */
 export type FileLockRequiredOptions = Required<Pick<FileLockOptions, 
@@ -29,8 +82,15 @@ export type FileLockRequiredOptions = Required<Pick<FileLockOptions,
 export type FileLockRequiredNumericOptions = Pick<FileLockRequiredOptions, 
   'pollIntervalMs' | 'heartbeatIntervalMs' | 'heartbeatTtlMs' | 'heartbeatRetryIntervalMs' | 'retriesOnIoErr' | 'retryIoIntervalMs'> & LockBaseRequiredNumericOptions;
 
-/** History information. */
-export type HistoryInfo = { historyEnabled: boolean, historyId: string, historyPath: string, processId: number };
+/**
+ * History informations.
+ */
+export interface HistoryInfo {
+  historyEnabled: boolean; 
+  historyId: string;
+  historyPath: string;
+  processId: number;
+}
 
 /** 
  * @ internal
@@ -42,7 +102,7 @@ type AllOptions = AllOptionsT<FileLockAllOptions, FileLockImplState>;
  * @ internal
  * The options actually used within FileLockOptions. 
  */
-type FileLockAllOptions = FileLockRequiredOptions & Pick<FileLockOptions, 'invalidTtlMs'>
+type FileLockAllOptions = FileLockRequiredOptions & Pick<FileLockOptions, 'invalidTtlMs'>;
 
 /** @internal */
 type RetryMode = 'normal' | 'no-retry' | 'double';
@@ -77,15 +137,12 @@ export const minimumFileLockOptions: Readonly<FileLockRequiredNumericOptions> = 
   heartbeatRetryIntervalMs: 100,
   retriesOnIoErr:           0,
   retryIoIntervalMs:        100,
-}
-
-export type FileLockConfigRequired = Required<Omit<FileLockConfig, 'lockDirectory'>> & Pick<FileLockConfig, 'lockDirectory'>
+};
 
 /**
- * @internal
  * Default values ​​for FileLockConfig. 
  */
-export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
+export const defaultFileLockConfig: Readonly<FileLockRequiredConfig> = {
   ...defaultLockBaseConfig,
   cache:              true,
   maxCacheEntries:    100,
@@ -96,16 +153,12 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
   maxHistoryFiles:    100,
 };
 
-//export const FileLockImpl = createContracts();
-
 /**
- * Create a `FileLockImpl` object that does not share static fields with other `FileLockImpl` objects. 
+ * Create a `FileLockImpl` class object that does not share static fields with other `FileLockImpl` objects. 
  * @param config Configurations.
- * @returns A contract class object. Please refer to `See` for the definition of this object..
- * @see [ContractsAPI](https://github.com/ayapapa/contracts-js/blob/main/docs/api/ContractsImpl.md).
+ * @returns A FileLockImpl class object. Please refer to `See` for the definition of this object.
  */
-//export function createContracts(config: FileLockConfig = defaultFileLockConfig) {
-
+export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfig): FileLockClass {
   /**
    * @internal
    * File locking. 
@@ -113,8 +166,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
    * While the file exists, no other lock can be acquired for the same key. 
    * Settings such as `timeoutMs` allow for waiting until an unreleased lock is freed. 
    */
-  export class FileLockImpl extends LockBase<FileLockAllOptions, FileLockImplState> {
-
+  class FileLockImpl extends LockBase<FileLockAllOptions, FileLockImplState> {
     /** 
      * Static fields 
      */
@@ -129,8 +181,10 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * @internal
      * Current configurations.
      */
-    static #config: FileLockConfigRequired = FileLockImpl._copyConfig(defaultFileLockConfig);
+    static #config: FileLockRequiredConfig = FileLockImpl._copyConfig(defaultFileLockConfig);
   
+    static #initialized: boolean = false;
+
     /**
      * @internal
      * The `lock directory`
@@ -173,22 +227,13 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * Static methods
      */
 
-    /** 
-     * @internal
-     * Initialize.
-     */
-    public static _initialize() {
-      FileLockImpl.resetConfig();
-      FileLockImpl._addOnExit(FileLockImpl.#onExitFn);
-    }
-
     /** Get current configurations. */
-    public static getConfig(): FileLockConfigRequired {
+    public static getConfig(): FileLockRequiredConfig {
       return FileLockImpl._copyConfig(FileLockImpl.#config);
     }
 
     /** Get default configurations. */
-    public static get defaultConfig(): FileLockConfigRequired {
+    public static get defaultConfig(): FileLockRequiredConfig {
       return FileLockImpl._copyConfig(defaultFileLockConfig);
     }
 
@@ -220,7 +265,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * @internal
      * Current configurations.
      */
-    protected static get _config(): Readonly<FileLockConfigRequired> { 
+    protected static get _config(): Readonly<FileLockRequiredConfig> { 
       return this._copyConfig(this.#config);
     }
 
@@ -369,6 +414,15 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
       return dir;
     }
 
+    /** 
+     * @internal
+     * Initialize.
+     */
+    static #initialize(): void {
+      //FileLockImpl.resetConfig();
+      FileLockImpl._addOnExit(FileLockImpl.#onExitFn);
+    }
+
     /**
      * @internal
      * Termination processing. 
@@ -385,7 +439,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * @internal
      * Current configurations.
      */
-    protected override get _config(): Readonly<FileLockConfigRequired> { 
+    protected override get _config(): Readonly<FileLockRequiredConfig> { 
       return FileLockImpl._config;
     }
 
@@ -414,6 +468,10 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      */
     private constructor(key: string) {
       super(key);
+      if (!FileLockImpl.#initialized) {
+        FileLockImpl.#initialize();
+        FileLockImpl.#initialized = true;
+      } 
     }
 
     /**
@@ -1379,12 +1437,10 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
 
   //　以下、initとsetを融合させよ！
 
-  // Initialize
-  FileLockImpl._initialize();  
+  FileLockImpl.setConfig(config);
 
-//  FileLockImpl.setConfig(config);
-//  return FileLockImpl;
-//}
+  return FileLockImpl;
+}
 
 
 export { type CallbackOnLock };

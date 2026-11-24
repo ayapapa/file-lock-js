@@ -7,7 +7,9 @@ import { pino } from 'pino'
 import { createStream } from 'rotating-file-stream'
 import { AlreadyLocked, FileLock, type FileLockOptions } from '../src/index.ts';
 //import { type FileLockRequiredOptions } from '../src/lib/FileLockImpl.ts';
-import { FileLockImpl } from '../src/lib/FileLockImpl.ts';
+import { createFileLockImpl } from '../src/lib/FileLockImpl.ts';
+
+export const FileLockImpl = createFileLockImpl();
 
 export async function sleepAsync(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -307,11 +309,11 @@ export async function testMultiProcess(n: number, oneKey?: string, opts?: { slee
 /**
  * Lock for testing
  */
-// @ts-expect-error constructor of `FileLock` is private.
-export class TestLock extends FileLockImpl {
+export class TestLock  {
 
+  static Impl = FileLockImpl as any;
   static getExitFuncs() {
-    return super["_onExitFns"];
+    return this.Impl._onExitFns;
   }
 /*
   // Get a `TestLock` instance.
@@ -353,20 +355,22 @@ export class TestLock extends FileLockImpl {
 
 
   static testAddOnExit(fn: (code: unknown, signal: unknown)=>void): void {
-    super._addOnExit(fn);
+    this.Impl._addOnExit(fn);
   }
 
+  /*
   constructor(lock?: FileLockImpl) {
-    super("TestLock_Key");
+    //super("TestLock_Key");
     Object.assign(this, lock);
   }
+    */
 /*
   async testWithLockEmptyOptions(cb: () => unknown): Promise<unknown> {
     return super["_withLock"](cb, {} as FileLockRequiredOptions);
   }
   */  
   debugLog(...args: unknown[]) {
-    this._debugLog(...args);
+    TestLock.Impl._debugLog(...args);
   }
 
 }

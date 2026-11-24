@@ -1,59 +1,6 @@
 import { type FileLockOptions } from './FileLockOptions.ts';
-import { defaultFileLockConfig, /*defaultFileLockOptions, */FileLockImpl, /*minimumFileLockOptions, */type CallbackOnLock, /*type FileLockRequiredOptions*/ } from './FileLockImpl.ts';
+import { createFileLockImpl, defaultFileLockConfig, /*defaultFileLockOptions, minimumFileLockOptions, */type CallbackOnLock, type FileLockClass, /*type FileLockRequiredOptions*/ } from './FileLockImpl.ts';
 import { type FileLockConfig } from './FileLockConfig.ts';
-
-/**
- * Interface of FileLock.
- */
-export interface FileLockClass {
-  /** Get current configurations. */
-  getConfig(): Readonly<FileLockConfig>;
-  /** Get default configurations. */
-  get defaultConfig(): FileLockConfig;
-  /** Get default options. */
-  get defaultOptions(): FileLockOptions;
-  /**Get the history informations. */
-  get historyInfo(): Readonly<{
-    historyEnabled: boolean, 
-    historyId: string, 
-    historyPath: string, 
-    processId: number 
-  }>;
-  /** Get `lock directory` */
-  get lockDir(): string;
-  /** 
-   * get number of queues.
-   * The initial value matches `maxConcurrency`. 
-   * If any `extra queue`s are created, their count is also included.
-   */
-  get numberOfQueues(): number;
-  /** Resets the current settings to their default values. */
-  resetConfig(): void;
-  /** Set configurations. Overwrite part of the current settings.
-   * At the same time, the cache is cleared.
-   */
-  setConfig(config: FileLockConfig): void;
-  /**
-   * Acquires a lock for the specified key, executes the function `onLockFn` under exclusive control, 
-   * and returns a Promise that resolves with the return value of `onLockFn` after the lock is released. 
-   *
-   * @param key       Lock key.
-   * If the specified key contains characters that are invalid for a file path, 
-   * it is converted into a valid file path by replacing those characters with underscores 
-   * and removing double quotation marks.
-   * @param onLockFn  Callback function to execute while the lock is held.
-   *                  Both synchronous and asynchronous functions can be specified.
-   * @param options   Lock options.
-   * @return A Promise that resolves with the return value of onLockFn.
-   * @throws {@link InvalidOptions} Invalid options.
-   * @throws {@link AlreadyLocked}  Failed to acquire the lock within the specified time. See {@link FileLockOptions}'s `timeoutMs`.
-   * @throws {@link TTLExceeded}  Failed to release the lock within the specified time. See {@link FileLockOptions}'s`ttlMs`.
-   * @throws {@link DeadlockDetected} A deadlock has been detected. See {@link FileLockOptions}'s `allowReentry`.
-   * @throws {@link LockDirectoryCreationFailed} Failed to create the `lock directory`.
-   * @throws {@link LockCompromised} The lock was compromised during the locking process.
-   */
-  withLock<T>(key: string, onLockFn: CallbackOnLock<T>, options?: FileLockOptions): Promise<T>;
-};
 
 /**
 * A global file-lock object. 
@@ -62,12 +9,15 @@ export interface FileLockClass {
 export const FileLock = createFileLock();
 
 /**
- * Creates a file lock object. 
+ * Create a FileLock class object. 
  * Objects created by this function do not share their settings with other objects.  
- * @param config 
+ * @param config User configuration, {@link FileLockConfig}
  * @returns Implementation class of FileLockClass.
  */
 export function createFileLock(config: FileLockConfig = defaultFileLockConfig): FileLockClass {
+
+  /** create FileLockImpl. */
+  const FileLockImpl = createFileLockImpl(config);
 
   /**
   * File-based lock class. 
@@ -165,4 +115,4 @@ export function createFileLock(config: FileLockConfig = defaultFileLockConfig): 
   return FileLock;
 }
 
-export { defaultFileLockConfig };
+export { defaultFileLockConfig, type FileLockClass };
