@@ -5,7 +5,7 @@ import { type FileLockConfig } from './FileLockConfig.ts';
 /**
  * Interface of FileLock.
  */
-export interface FileLockInterface {
+export interface FileLockClass {
   /** Get current configurations. */
   getConfig(): Readonly<FileLockConfig>;
   /** Get default configurations. */
@@ -65,9 +65,9 @@ export const FileLock = createFileLock();
  * Creates a file lock object. 
  * Objects created by this function do not share their settings with other objects.  
  * @param config 
- * @returns 
+ * @returns Implementation class of FileLockClass.
  */
-export function createFileLock(config: FileLockConfig = defaultFileLockConfig): FileLockInterface {
+export function createFileLock(config: FileLockConfig = defaultFileLockConfig): FileLockClass {
 
   /**
   * File-based lock class. 
@@ -164,3 +164,5 @@ export function createFileLock(config: FileLockConfig = defaultFileLockConfig): 
 
   return FileLock;
 }
+
+export { defaultFileLockConfig };

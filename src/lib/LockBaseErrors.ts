@@ -199,7 +199,7 @@ export class QueueWaitTimeout extends LockError {
   constructor(msg?: string, params?: { timeoutMs: number, key: string, props?: LockErrorProps }) {
     msg = msg || "Queue wait timeout.";
     const props = { ...params?.props };
-    params && (props.maxPending = params?.timeoutMs);
+    params && (props.timeoutMs = params?.timeoutMs) && (props.key = params.key);
     super(msg, { code: 'EQUEUETIMEOUT' , props });
   }
 };

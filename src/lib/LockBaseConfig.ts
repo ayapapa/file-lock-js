@@ -19,7 +19,7 @@ export interface LockBaseConfig {
    * If `undefined` is specified, disable a lock request queuing system.
    * * The default value is the process-wide default queue manager (`QueueManager({ maxConcurrency: 5, maxPending: 500 })`).
    */
-  queueManager?: QueueManager<string> | undefined;
+  queueManager?: QueueManager | undefined;
   /**
    * Whether or not to use a lock request queue.
    * Default is true.

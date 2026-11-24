@@ -1,6 +1,6 @@
 	import { type LogProvider } from './lib/LockBaseConfig.ts';
-	import { type CallbackOnLock, type MaybePromise } from './lib/LockBase.ts';
-	import { FileLock, type FileLockInterface } from './lib/FileLock.ts';
+	import { defaultQueueManager, type CallbackOnLock, type MaybePromise } from './lib/LockBase.ts';
+	import { defaultFileLockConfig, FileLock, type FileLockClass } from './lib/FileLock.ts';
 	import { FileLockError, LockCompromised, LockDirectoryCreationFailed, LockDirectoryStatFailed, type FileLockErrorCode } from './lib/FileLockErrors.ts';
 	import { AlreadyLocked, DeadlockDetected, InvalidConfiguration, InvalidOptions, LockError, 
 		PendingLocksExceeded, ReleaseFailed, TTLExceeded, type LockErrorCode, type LockErrorProps } from './lib/LockBaseErrors.ts'
@@ -8,7 +8,9 @@
 	import { type FileLockConfig } from './lib/FileLockConfig.ts';
 	import { type Monitor as LockMonitor } from './lib/LockMonitor.ts';
 	import { QueueManager, type Queue, type QueueMgrConfig, type QueueTask } from './lib/QueueManager.ts';
-	export { 
+	export {
+		defaultFileLockConfig,
+		defaultQueueManager,
 		AlreadyLocked,
 		DeadlockDetected, 
 		FileLock,
@@ -24,9 +26,9 @@
 		ReleaseFailed,
 		TTLExceeded,
 		type CallbackOnLock,
+		type FileLockClass,
 		type FileLockConfig,
 		type FileLockErrorCode,
-		type FileLockInterface,
 		type FileLockOptions,
 		type LockErrorCode,
 		type LockErrorProps,

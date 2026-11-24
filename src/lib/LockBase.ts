@@ -16,10 +16,10 @@ import { QueueManager, QueueMaxPendingExceeded, type Queue } from './QueueManage
 export type LockBaseRequiredOptions = Required<Pick<LockBaseOptions, 'timeoutMs' | 'ttlMs' | 'allowReentry'>>;
 
 /**
- * @internal
  * A default queue manager common to the process.
+ * { maxConcurrency: 5, maxPending: 500 }
  */
-export const defaultQueueManager = new QueueManager<string>({ maxConcurrency: 5, maxPending: 500 });
+export const defaultQueueManager = new QueueManager({ maxConcurrency: 5, maxPending: 500 });
 
 /**
  * @internal
@@ -560,7 +560,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @internal
    * Add a lock request (callback) to the queue. 
    */
-  async #enqueue<T>(queue: Queue<string>, cb: () => Promise<T>, options: AllOptions<O, I>): Promise<T> {
+  async #enqueue<T>(queue: Queue, cb: () => Promise<T>, options: AllOptions<O, I>): Promise<T> {
     try {
       return queue.enqueue<T>(cb, {
         timeout: options.timeoutMs,
@@ -754,7 +754,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * Select a queue while checking the context to avoid nested locks. 
    * If no suitable queue can be found among the `regular queue`s, use a `dedicated queue`.
    */
-  #selectQueue(options: AllOptions): Queue<string> | undefined {
+  #selectQueue(options: AllOptions): Queue | undefined {
     if (!this._config.queueManager) return undefined;
     let selected = undefined;
     try {

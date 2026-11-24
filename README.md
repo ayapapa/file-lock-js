@@ -115,6 +115,7 @@ npm install @ayapapa-npm/file-lock-js
 | `defaultOptions` | `FileLockOptions` | `default options`[^defaultOptions] N/A | Global default options used by `withLock()`. | Applied when options are not explicitly specified in `withLock()`. |
 | `lockDirectory` | `string` | `${process.cwd()}/.lock` N/A | Directory used to store lock information. | If the directory does not exist and cannot be created, an error is thrown. |
 | `logger` | `LogProvider` | `console` N/A | External logger instance. | Must provide `log`, `trace`, `debug`, `info`, `warn`, and `error`. `fatal` is optional. |
+| `queueManager` | `QueueManager` \| `undefined` | `defaultQueueManager` N/A  | Lock request queue manager. |  `defaultQueueManager`  |
 | `_debug` | `boolean` | `false` N/A | Enables debug mode for this class. | Internal use. When `true`, process-related information is added to the lock info file and history tracking is enabled. |
 | `history` | `boolean` | `false` N/A | Enables lock information history. | Internal debug option. When `true`, history is appended to `xxxx.json` files under `lockDirectory/history/`. |
 | `maxHistoryEntries` | `number` | `100` `1` | Maximum number of history entries to retain. | If exceeded, the oldest entries are removed first. Values below `1` are treated as `1`. |
@@ -170,6 +171,8 @@ npm install @ayapapa-npm/file-lock-js
 | InvalidOptions | Found invalid option | The value of the specified options('option name') is invalid. | { code: 'EINVAL', name: '(option name)' } | Modification it to valid value. |
 | TTLExceeded | Lock processing time limit exceeded | The maximum processing time('ttlMs' milliseconds) while locked has been exceeded. | { code: 'ETTLEXCEEDED', key: '(`lock key`)', ttlMs: '(`Options.ttlMs`)' } | Adjust `ttlMs` in [Options](#options). |
 | LockCompromised | Corruption of lock file contents | The lock was compromised during the locking process. | { code: 'ECOMPROMISED', key: '(`lock key`)' } | Check for and delete the lock file (specified by `path`). Before deletion, ensure that no process is holding the file.[^handleWithCare1]
+| PendingLocksExceeded | An error that occurs when the maximum number of concurrent lock requests is exceeded. | The number of pending lock requests exceeds the allowable limit. | { code: 'EMAXPENDING', key: '(`lock key`)', timeoutMs: '(`maxPending`)' } | `maxPending` is `QueueManager`'s constructor option. |
+| QueueWaitTimeout | Queue wait time timeout error | Queue wait timeout. | { code : 'EQUEUETIMEOUT', key: '(`lock key`)', timeoutMs: '(`Options.timeoutMs`)' } | It is recommended to adjust the `timeoutMs` in [Options](#options), or to specifiy `queueManger` om [Configuration](#configurations). |
 | ReleaseFailed | Failure to release the lock or decrement the lock counter | Processing is interrupted because the lock release or lock counter decrement failed. | { code: 'ERELEASE', key: '(`lock key`)' } | See this[^ReleaseFailed]. |
 
 [^handleWithCare1]: Although FileLock is designed to maintain a consistent `lock file` during normal operation, it cannot prevent other processes that do not use FileLock from accessing the lock file. If the execution of such processes is anticipated, it is recommended to avoid conflicts by changing the `lock directory`.(see also [Configurations](#configurations))

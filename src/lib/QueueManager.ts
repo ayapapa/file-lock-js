@@ -19,8 +19,8 @@ export interface Config {
 /**
  * Queue definition.
  */
-export type Queue<I> = {
-  id: I | string,
+export type Queue = {
+  id: string,
   enqueue: <T>(task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }) => Promise<T>,
 }
 
@@ -32,14 +32,11 @@ export type Queue<I> = {
  * the `maxConcurrency` setting passed to the constructor.
  * - `dedicated queues`: These are called `dedicated queue(s)`, and are created via `getDedicatedQueue()` 
  * whenever a specific (special) queue is required for a particular use case. 
- * 
- *
- * @template DQID - キューに格納する項目の型。
  */
-export class QueueManager<DQID = unknown> {
+export class QueueManager {
   readonly #config: Required<Config>;
-  readonly #dedicatedQueues = new Map<unknown, AsyncQueue<DQID | string>>();
-  readonly #queues: AsyncQueue<DQID | string>[] = [];
+  readonly #dedicatedQueues = new Map<unknown, AsyncQueue<string>>();
+  readonly #queues: AsyncQueue<string>[] = [];
 
   /** Get number of pending entries. */
   public get numberOfPending() {
@@ -62,7 +59,12 @@ export class QueueManager<DQID = unknown> {
     return this.#dedicatedQueues.size;
   }
 
-  /** Constructor */
+  /**
+   * Constructor
+   * @param config  Configurations.
+   * - maxConcurrency: `number` The degree of parallelism for lock requests. A queue of this size is created and utilized.
+   * - maxPending: `number`     The maximum number of pending lock requests.
+   */
   public constructor(config: Config = { maxConcurrency: 5, maxPending: 500 }) {
     const conf = { ...config };
     if (!conf.maxConcurrency) conf.maxConcurrency = 5;
@@ -71,11 +73,11 @@ export class QueueManager<DQID = unknown> {
     conf.maxPending = Math.max(conf.maxPending, 1);
     this.#config = conf as Required<Config>;
     for(let i = 0; i < this.#config.maxConcurrency; i++)
-      this.#queues.push(new AsyncQueue<DQID | string>(Math.random().toString(36).slice(2)));
+      this.#queues.push(new AsyncQueue<string>(Math.random().toString(36).slice(2)));
   }
 
   /** Get an array of enqueue functions, ordered by the number of entries (in ascending order). */
-  public getCandidates(): Queue<DQID>[] {
+  public getCandidates(): Queue[] {
     const q = [...this.#queues];
     return q.sort((a, b) => a.numberOfEntries - b.numberOfEntries)
     .map(q => {
@@ -88,11 +90,14 @@ export class QueueManager<DQID = unknown> {
     });
   }
 
-  /** Get a dedicated queue */
-  public getDedicatedQueue(key: DQID): Queue<DQID> {
-    let queue = this.#dedicatedQueues.get(key);
+  /** 
+   * Get a dedicated queue 
+   * @param id  An identifier for a dedicated queue. It is recommended to use one that is uniquely linked to the lock key.
+   */
+  public getDedicatedQueue(id: string): Queue {
+    let queue = this.#dedicatedQueues.get(id);
     if (!queue) {
-      this.#dedicatedQueues.set(key, (queue = new AsyncQueue<DQID | string>(key)));
+      this.#dedicatedQueues.set(id, (queue = new AsyncQueue<string>(id)));
     }
     return {
       id: queue.id,
@@ -106,7 +111,7 @@ export class QueueManager<DQID = unknown> {
    * @internal
    * Add a task to the queue.
    */
-  async #enqueue<T>(queue: AsyncQueue<DQID | string>, task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }): Promise<T> {
+  async #enqueue<T>(queue: AsyncQueue<string>, task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }): Promise<T> {
     if (this.numberOfPending >= this.#config.maxPending) {
       throw new QueueMaxPendingExceeded(this.#config.maxPending)
     }
@@ -117,14 +122,14 @@ export class QueueManager<DQID = unknown> {
    * @internal
    * Get number of pending entries in the queue.
    */
-  #getNumberOfPending(q: AsyncQueue<DQID | string>[] | Map<unknown, AsyncQueue<DQID | string>>) {
+  #getNumberOfPending(q: AsyncQueue<string>[] | Map<unknown, AsyncQueue<string>>) {
     let ret = 0;
     q.forEach(q => { ret += q.numberOfPending });
     return ret;
   }
 
   /*
-  #getNumberOfRunning(q: AsyncQueue<DQID | string>[] | Map<unknown, AsyncQueue<DQID | string>>) {
+  #getNumberOfRunning(q: AsyncQueue<DQID | string>[] | Map<unknown, AsyncQueue<string>>) {
     let ret = 0;
     q.forEach(q => { ret += q.numberOfRunning });
     return ret;
