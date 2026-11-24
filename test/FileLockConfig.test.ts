@@ -102,7 +102,7 @@ describe('FileLock.Config', () => {
       history?: boolean;
       maxHistoryEntries?: number;
       maxHistoryFiles?: number;
-      queueManager?: QueueManager<string> | undefined
+      queueManager?: QueueManager | undefined
       //maxConcurrency?: number;
       //maxPending?: number;
       //queue?: boolean;
