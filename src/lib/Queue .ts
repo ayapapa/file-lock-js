@@ -53,6 +53,11 @@ export class AsyncQueue<I> {
 	/** Id of this queue. */
 	public get id(): I { return this.#id; }
 
+	/** Number of all (pending and running) entries. */
+	public get numberOfEntries(): number { 
+		return this.numberOfPending + this.numberOfRunning;
+	}
+
 	/** Number of pending entries. */
 	public get numberOfPending(): number { 
 		return this.#queue.length;

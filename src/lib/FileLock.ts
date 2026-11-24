@@ -1,77 +1,38 @@
-//import { REQUIRE } from './Contracts.ts';
 import { type FileLockOptions } from './FileLockOptions.ts';
-import { FileLockInternal, /*minimumFileLockOptions, */type CallbackOnLock, /*type FileLockRequiredOptions*/ } from './FileLockInternal.ts';
-//import { FileLockOptionsResolver } from "./FileLockOptionsResolver.ts";
+import { defaultFileLockConfig, /*defaultFileLockOptions, */FileLockImpl, /*minimumFileLockOptions, */type CallbackOnLock, /*type FileLockRequiredOptions*/ } from './FileLockImpl.ts';
 import { type FileLockConfig } from './FileLockConfig.ts';
-//import { InvalidOptions } from './LockBaseErrors.ts';
 
 /**
-* File-based lock class. 
-* Acquires a lock by creating a file derived from the specified key, executes the provided callback, and then releases the lock (by deleting the created file). 
-* While the file exists, no other lock can be acquired for the same key. 
-* Settings such as `timeoutMs` allow for waiting until an unreleased lock is freed. 
-*/
-export class FileLock {
-  /** 
-   * Static methods
-   */
-
+ * Interface of FileLock.
+ */
+export interface FileLockInterface {
   /** Get current configurations. */
-  public static getConfig(): FileLockConfig {
-    return FileLockInternal.getConfig();
-  }
-
+  getConfig(): Readonly<FileLockConfig>;
   /** Get default configurations. */
-  public static get defaultConfig(): FileLockConfig {
-    return FileLockInternal.defaultConfig;
-  }
-
-  /**
-   * Get default options.
-   * @returns Default options.
-   */
-  public static get defaultOptions(): FileLockOptions {
-    return FileLockInternal.defaultOptions;
-  }
-
-  /**
-   * Get the history informations.
-   * @returns Returns the history permission flag, history identifier, history file path, and process identification.
-   */
-  public static get historyInfo(): Readonly<{
+  get defaultConfig(): FileLockConfig;
+  /** Get default options. */
+  get defaultOptions(): FileLockOptions;
+  /**Get the history informations. */
+  get historyInfo(): Readonly<{
     historyEnabled: boolean, 
     historyId: string, 
     historyPath: string, 
     processId: number 
-  }> {
-    return FileLockInternal.historyInfo;
-  }
-
+  }>;
   /** Get `lock directory` */
-  public static get lockDir() { return FileLockInternal.lockDir; }
-
+  get lockDir(): string;
   /** 
    * get number of queues.
    * The initial value matches `maxConcurrency`. 
    * If any `extra queue`s are created, their count is also included.
    */
-  public static get numberOfQueues() { return FileLockInternal.numberOfQueues; }
-
+  get numberOfQueues(): number;
   /** Resets the current settings to their default values. */
-  public static resetConfig(): void {
-    FileLockInternal.resetConfig();
-  }
-
-  /**
-   * Set configurations.<br>
-   * Overwrite part of the current settings. 
+  resetConfig(): void;
+  /** Set configurations. Overwrite part of the current settings.
    * At the same time, the cache is cleared.
-   * @param config  Lock configurations. 
    */
-  public static setConfig(config: FileLockConfig): void {
-    FileLockInternal.setConfig(config);
-  }
-
+  setConfig(config: FileLockConfig): void;
   /**
    * Acquires a lock for the specified key, executes the function `onLockFn` under exclusive control, 
    * and returns a Promise that resolves with the return value of `onLockFn` after the lock is released. 
@@ -91,15 +52,115 @@ export class FileLock {
    * @throws {@link LockDirectoryCreationFailed} Failed to create the `lock directory`.
    * @throws {@link LockCompromised} The lock was compromised during the locking process.
    */
-  public static async withLock<T>(key: string, onLockFn: CallbackOnLock<T>, options: FileLockOptions  = {}): Promise<T> {
-    return FileLockInternal.withLock(key, onLockFn, options);
-    /*
-    REQUIRE(typeof key === 'string' && key !== '', '`key` must be specified as a non-empty string.', InvalidOptions, { name: 'key' });
-    // If defaultOptions is specified in the config, it will be used as the default options.
-    const defaultOpts = { ...FileLockInternal.defaultOptions, ...FileLockInternal.getConfig().defaultOptions } as FileLockRequiredOptions;
-    // Resolve options.
-    const rOpt = new FileLockOptionsResolver(options, minimumFileLockOptions, defaultOpts).getRequiredOptions();
-    return FileLockInternal._getLock(key)._withLock(onLockFn, rOpt);
-    */
+  withLock<T>(key: string, onLockFn: CallbackOnLock<T>, options?: FileLockOptions): Promise<T>;
+};
+
+/**
+* A global file-lock object. 
+* As long as this object is used, it will be shared across any instances, provided they belong to the same process.
+ */
+export const FileLock = createFileLock();
+
+/**
+ * Creates a file lock object. 
+ * Objects created by this function do not share their settings with other objects.  
+ * @param config 
+ * @returns 
+ */
+export function createFileLock(config: FileLockConfig = defaultFileLockConfig): FileLockInterface {
+
+  /**
+  * File-based lock class. 
+  * Acquires a lock by creating a file derived from the specified key, executes the provided callback, and then releases the lock (by deleting the created file). 
+  * While the file exists, no other lock can be acquired for the same key. 
+  * Settings such as `timeoutMs` allow for waiting until an unreleased lock is freed. 
+  */
+  class FileLock {
+    /** 
+     * Static methods
+     */
+
+    /** Get current configurations. */
+    public static getConfig(): Readonly<FileLockConfig> {
+      return FileLockImpl.getConfig();
+    }
+
+    /** Get default configurations. */
+    public static get defaultConfig(): Readonly<FileLockConfig> {
+      return FileLockImpl.defaultConfig;
+    }
+
+    /**
+     * Get default options.
+     * @returns Default options.
+     */
+    public static get defaultOptions(): Readonly<FileLockOptions> {
+      return FileLockImpl.defaultOptions;
+    }
+
+    /**
+     * Get the history informations.
+     * @returns Returns the history permission flag, history identifier, history file path, and process identification.
+     */
+    public static get historyInfo(): Readonly<{
+      historyEnabled: boolean, 
+      historyId: string, 
+      historyPath: string, 
+      processId: number 
+    }> {
+      return FileLockImpl.historyInfo;
+    }
+
+    /** Get `lock directory` */
+    public static get lockDir() { return FileLockImpl.lockDir; }
+
+    /** 
+     * get number of queues.
+     * The initial value matches `maxConcurrency`. 
+     * If any `extra queue`s are created, their count is also included.
+     */
+    public static get numberOfQueues() { return FileLockImpl.numberOfQueues; }
+
+    /** Resets the current settings to their default values. */
+    public static resetConfig(): void {
+      FileLockImpl.resetConfig();
+    }
+
+    /**
+     * Set configurations.<br>
+     * Overwrite part of the current settings. 
+     * At the same time, the cache is cleared.
+     * @param config  Lock configurations. 
+     */
+    public static setConfig(config: FileLockConfig): void {
+      FileLockImpl.setConfig(config);
+    }
+
+    /**
+     * Acquires a lock for the specified key, executes the function `onLockFn` under exclusive control, 
+     * and returns a Promise that resolves with the return value of `onLockFn` after the lock is released. 
+     *
+     * @param key       Lock key.
+     * If the specified key contains characters that are invalid for a file path, 
+     * it is converted into a valid file path by replacing those characters with underscores 
+     * and removing double quotation marks.
+     * @param onLockFn  Callback function to execute while the lock is held.
+     *                  Both synchronous and asynchronous functions can be specified.
+     * @param options   Lock options.
+     * @return A Promise that resolves with the return value of onLockFn.
+     * @throws {@link InvalidOptions} Invalid options.
+     * @throws {@link AlreadyLocked}  Failed to acquire the lock within the specified time. See {@link FileLockOptions}'s `timeoutMs`.
+     * @throws {@link TTLExceeded}  Failed to release the lock within the specified time. See {@link FileLockOptions}'s`ttlMs`.
+     * @throws {@link DeadlockDetected} A deadlock has been detected. See {@link FileLockOptions}'s `allowReentry`.
+     * @throws {@link LockDirectoryCreationFailed} Failed to create the `lock directory`.
+     * @throws {@link LockCompromised} The lock was compromised during the locking process.
+     */
+    public static async withLock<T>(key: string, onLockFn: CallbackOnLock<T>, options: FileLockOptions  = {}): Promise<T> {
+      return FileLockImpl.withLock(key, onLockFn, options);
+    }
   }
+
+  FileLock.setConfig(config);
+
+  return FileLock;
 }

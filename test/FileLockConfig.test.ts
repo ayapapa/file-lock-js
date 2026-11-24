@@ -712,6 +712,9 @@ describe('FileLock.Config', () => {
         name: "lockDirectory",
       });
     }
+    finally {
+      fs.rmSync()
+    }
   });
 
   it("lock and update `lock directory`.", async () => {

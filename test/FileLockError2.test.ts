@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { getHistoryPath,  getLockMetaPath, getLockSharerDir, removeLockFiles, setLockMeta, sleepAsync, TestLock  } from './FileLockTestCommon.ts';
 import { AlreadyLocked, type FileLockConfig,  FileLock, FileLockError, PendingLocksExceeded, QueueManager, ReleaseFailed, type LockMonitor, type FileLockOptions } from '../src/index.ts';
-import { FileLockInternal } from '../src/lib/FileLockInternal.ts';
+import { FileLockImpl } from '../src/lib/FileLockImpl.ts';
 
 let orgConfig: FileLockConfig;
 beforeEach(() => {
@@ -248,7 +248,7 @@ describe('FileLockError2', () => {
       await FileLock.withLock(key, async monitor => {
         mon = monitor;
         await sleepAsync(200);
-        FileLockInternal.onExit(2, 'SIGTERM');
+        FileLockImpl.onExit(2, 'SIGTERM');
         },
         {}
       );

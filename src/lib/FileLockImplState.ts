@@ -3,7 +3,7 @@ import { type LockBaseInternalState } from './LockBaseInternalState.ts';
 /**
  * FileLock status information. 
  */
-export interface FileLockInternalState extends LockBaseInternalState {
+export interface FileLockImplState extends LockBaseInternalState {
   /** Path to the lock file. */
   _filePath: string;
 

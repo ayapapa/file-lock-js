@@ -6,7 +6,7 @@
 
 # Interface: FileLockConfig
 
-Defined in: [src/lib/FileLockConfig.ts:7](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockConfig.ts#L7)
+Defined in: [src/lib/FileLockConfig.ts:7](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockConfig.ts#L7)
 
 FileLock cofiguration.
 
@@ -20,23 +20,10 @@ FileLock cofiguration.
 
 > `optional` **cache?**: `boolean`
 
-Defined in: [src/lib/FileLockConfig.ts:22](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockConfig.ts#L22)
+Defined in: [src/lib/FileLockConfig.ts:18](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockConfig.ts#L18)
 
 Whether to enable caching for FileLock instances associated with a key.
 Default is `true`.
-
-***
-
-### maxCacheEntries?
-
-> `optional` **maxCacheEntries?**: `number`
-
-Defined in: [src/lib/FileLockConfig.ts:30](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockConfig.ts#L30)
-
-Maximum number that can be cached. 
-`0` means `cache` is disabled, even if `cache` is true.
-Minimum is `0`; if a value lower than this is specified, this minimum value is used.
-Default is `100`.
 
 ***
 
@@ -44,9 +31,10 @@ Default is `100`.
 
 > `optional` **cacheTtlMs?**: `number`
 
-Defined in: [src/lib/FileLockConfig.ts:36](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockConfig.ts#L36)
+Defined in: [src/lib/FileLockConfig.ts:33](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockConfig.ts#L33)
 
 Cache expiration time (milliseconds). 
+Valid only when `cache` is `true`.
 Default and minimum `10000`.
 
 ***
@@ -55,7 +43,7 @@ Default and minimum `10000`.
 
 > `optional` **defaultOptions?**: [`FileLockOptions`](FileLockOptions.md)
 
-Defined in: [src/lib/FileLockConfig.ts:43](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockConfig.ts#L43)
+Defined in: [src/lib/FileLockConfig.ts:40](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockConfig.ts#L40)
 
 Global default options.
 These are used as the default values ​​for options specified in `withLock()`.
@@ -67,14 +55,10 @@ Default is the return value of `FileLock.getDefaultOptions()`.
 
 > `optional` **lockDirectory?**: `string`
 
-Defined in: [src/lib/FileLockConfig.ts:16](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockConfig.ts#L16)
+Defined in: [src/lib/FileLockConfig.ts:12](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockConfig.ts#L12)
 
 Specifies the directory path to stored locking imformations.
-If it has been specified, use this as the top priority.
-The directory is determined based on the following order of priority:<br>
- 1. Specified via an `Config` (user's explicit intent)
- 2. `${process.cwd()}/.lock` ('.lock' under the current working directory at runtime.)
-Note: In cases where the directory is explicitly specified (1 above), an error occurs if the specified directory does not exist and its creation fails.
+Default is `${process.cwd()}/.lock` ('.lock' under the current working directory at runtime.)
 
 ***
 
@@ -82,7 +66,7 @@ Note: In cases where the directory is explicitly specified (1 above), an error o
 
 > `optional` **logger?**: [`LogProvider`](../type-aliases/LogProvider.md)
 
-Defined in: [src/lib/LockBaseConfig.ts:12](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseConfig.ts#L12)
+Defined in: [src/lib/LockBaseConfig.ts:14](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseConfig.ts#L14)
 
 External logger. 
 Default is `console`.
@@ -90,3 +74,33 @@ Default is `console`.
 #### Inherited from
 
 `LockBaseConfig.logger`
+
+***
+
+### maxCacheEntries?
+
+> `optional` **maxCacheEntries?**: `number`
+
+Defined in: [src/lib/FileLockConfig.ts:26](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockConfig.ts#L26)
+
+Maximum number of cache entries. 
+Valid only when `cache` is `true`.
+Minimum is `1`; if a value lower than this is specified, this minimum value is used.
+Default is `100`.
+
+***
+
+### queueManager?
+
+> `optional` **queueManager?**: [`QueueManager`](../classes/QueueManager.md)\<`string`\>
+
+Defined in: [src/lib/LockBaseConfig.ts:22](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseConfig.ts#L22)
+
+Queue manager.
+Specifying a `QueueManager` instance enables a lock request queuing system that operates according to the configured settings.
+If `undefined` is specified, disable a lock request queuing system.
+* The default value is the process-wide default queue manager (`QueueManager({ maxConcurrency: 5, maxPending: 500 })`).
+
+#### Inherited from
+
+`LockBaseConfig.queueManager`

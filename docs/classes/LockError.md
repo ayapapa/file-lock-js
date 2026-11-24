@@ -4,9 +4,9 @@
 
 [@ayapapa-npm/file-lock-js](../api.md) / LockError
 
-# Class: LockError
+# Class: LockError\<C\>
 
-Defined in: [src/lib/LockBaseErrors.ts:7](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L7)
+Defined in: [src/lib/LockBaseErrors.ts:11](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L11)
 
 Basic lock handling error.
 
@@ -19,17 +19,23 @@ Basic lock handling error.
 - [`AlreadyLocked`](AlreadyLocked.md)
 - [`DeadlockDetected`](DeadlockDetected.md)
 - [`FileLockError`](FileLockError.md)
-- [`InvalidOptions`](InvalidOptions.md)
+- [`PendingLocksExceeded`](PendingLocksExceeded.md)
 - [`ReleaseFailed`](ReleaseFailed.md)
 - [`TTLExceeded`](TTLExceeded.md)
+
+## Type Parameters
+
+### C
+
+`C` *extends* `string` = [`LockErrorCode`](../type-aliases/LockErrorCode.md)
 
 ## Constructors
 
 ### Constructor
 
-> **new LockError**(`msg`, `params?`): `LockError`
+> **new LockError**\<`C`\>(`msg`, `params?`): `LockError`\<`C`\>
 
-Defined in: [src/lib/LockBaseErrors.ts:14](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L14)
+Defined in: [src/lib/LockBaseErrors.ts:20](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L20)
 
 Constructor.
 
@@ -44,10 +50,12 @@ Error message.
 ##### params?
 
 Parameters.
+- code: `string`  Error code. 
+- props: `LockErrorProps`  Additional properties.
 
 ###### code?
 
-`string`
+`C`
 
 ###### props?
 
@@ -55,7 +63,7 @@ Parameters.
 
 #### Returns
 
-`LockError`
+`LockError`\<`C`\>
 
 #### Overrides
 
@@ -79,7 +87,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:12](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L12)
 
 ***
 

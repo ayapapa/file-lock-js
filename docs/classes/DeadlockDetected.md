@@ -6,7 +6,7 @@
 
 # Class: DeadlockDetected
 
-Defined in: [src/lib/LockBaseErrors.ts:31](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L31)
+Defined in: [src/lib/LockBaseErrors.ts:37](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L37)
 
 Deadlock detection error.
 
@@ -18,23 +18,25 @@ Deadlock detection error.
 
 ### Constructor
 
-> **new DeadlockDetected**(`msg`, `params?`): `DeadlockDetected`
+> **new DeadlockDetected**(`msg?`, `params?`): `DeadlockDetected`
 
-Defined in: [src/lib/LockBaseErrors.ts:37](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L37)
+Defined in: [src/lib/LockBaseErrors.ts:45](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L45)
 
 Constructor.
 
 #### Parameters
 
-##### msg
+##### msg?
 
-`string` \| `null`
+`string`
 
 Error message.
 
 ##### params?
 
 Parameters.
+- key: `string`  `lock key`. 
+- props: `LockErrorProps`  Additional properties.
 
 ###### key
 
@@ -70,7 +72,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:12](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L12)
 
 #### Inherited from
 

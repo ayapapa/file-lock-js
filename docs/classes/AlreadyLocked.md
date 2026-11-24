@@ -6,7 +6,7 @@
 
 # Class: AlreadyLocked
 
-Defined in: [src/lib/LockBaseErrors.ts:65](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L65)
+Defined in: [src/lib/LockBaseErrors.ts:76](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L76)
 
 Already locked error.
 
@@ -18,15 +18,15 @@ Already locked error.
 
 ### Constructor
 
-> **new AlreadyLocked**(`msg`, `params?`): `AlreadyLocked`
+> **new AlreadyLocked**(`msg?`, `params?`): `AlreadyLocked`
 
-Defined in: [src/lib/LockBaseErrors.ts:71](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L71)
+Defined in: [src/lib/LockBaseErrors.ts:85](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L85)
 
 Constructor.
 
 #### Parameters
 
-##### msg
+##### msg?
 
 `string`
 
@@ -35,6 +35,9 @@ Error message.
 ##### params?
 
 Parameters.
+- key: `string`  `lock key`. 
+- timeoutMs: `number`  Maximum wait time to acquire a lock (in milliseconds).
+- props: `LockErrorProps`  Additional properties.
 
 ###### key
 
@@ -74,7 +77,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:12](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L12)
 
 #### Inherited from
 

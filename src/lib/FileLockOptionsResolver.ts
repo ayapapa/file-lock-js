@@ -1,5 +1,5 @@
 import { LockBaseOptionsResolver } from './LockBaseOptionsResolver.ts';
-import { type FileLockRequiredNumericOptions, type FileLockRequiredOptions } from './FileLockInternal.ts';
+import { type FileLockRequiredNumericOptions, type FileLockRequiredOptions } from './FileLockImpl.ts';
 import { type FileLockOptions } from './FileLockOptions.ts';
 import { type TimeBasedKey } from './Util.ts';
 

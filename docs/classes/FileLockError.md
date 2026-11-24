@@ -6,13 +6,13 @@
 
 # Class: FileLockError
 
-Defined in: [src/lib/FileLockErrors.ts:6](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockErrors.ts#L6)
+Defined in: [src/lib/FileLockErrors.ts:9](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockErrors.ts#L9)
 
 Basic lock handling error.
 
 ## Extends
 
-- [`LockError`](LockError.md)
+- [`LockError`](LockError.md)\<[`FileLockErrorCode`](../type-aliases/FileLockErrorCode.md)\>
 
 ## Extended by
 
@@ -24,7 +24,7 @@ Basic lock handling error.
 
 > **new FileLockError**(`msg`, `params?`): `FileLockError`
 
-Defined in: [src/lib/FileLockErrors.ts:12](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockErrors.ts#L12)
+Defined in: [src/lib/FileLockErrors.ts:17](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockErrors.ts#L17)
 
 Constructor.
 
@@ -39,10 +39,12 @@ Error message.
 ##### params?
 
 Parameters.
+- code: `FileLockErrorCode` Error code.
+- props: `LockErrorProps`  Additional   properties.
 
 ###### code
 
-`string`
+[`FileLockErrorCode`](../type-aliases/FileLockErrorCode.md)
 
 ###### props?
 
@@ -74,7 +76,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:12](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L12)
 
 #### Inherited from
 
@@ -214,7 +216,7 @@ a();
 
 > `static` **lockFailedDueToHistory**(`history`, `causes`): `FileLockError`
 
-Defined in: [src/lib/FileLockErrors.ts:47](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/FileLockErrors.ts#L47)
+Defined in: [src/lib/FileLockErrors.ts:52](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/FileLockErrors.ts#L52)
 
 Create a lock acquisition errors caused by history file analysis errors.
  *

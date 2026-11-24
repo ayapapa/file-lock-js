@@ -146,6 +146,7 @@ vite.config.ts.timestamp-*
 test/tmp/
 generalClassDefinition.txt
 .lock/
+.lock*/
 .cache/
 undefined
 memo/

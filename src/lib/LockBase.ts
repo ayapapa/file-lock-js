@@ -1,14 +1,14 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { onExit } from 'signal-exit';
 import Contracts, { ENSURE_DEBUG, REQUIRE, REQUIRE_DEBUG } from './Contracts.ts';
-import { AlreadyLocked, DeadlockDetected, InvalidConfiguration, LockError, TTLExceeded } from './LockBaseErrors.ts';
+import { DeadlockDetected, InvalidConfiguration, LockError, PendingLocksExceeded, QueueWaitTimeout, TTLExceeded } from './LockBaseErrors.ts';
 import { type AllOptions } from './AllOptions.ts';
 import { type LockBaseOptions } from './LockBaseOptions.ts';
 import { type LockBaseInternalState } from './LockBaseInternalState.ts'
 import { type LockBaseConfig, type LogProvider } from './LockBaseConfig.ts'
 import { checkValuesType, includesAllKeysOf/*, isEqualObjectType*/ } from './Util.ts';
 import { type Monitor } from './LockMonitor.ts';
-import { QueueManager, type Queue } from './QueueManager.ts';
+import { QueueManager, QueueMaxPendingExceeded, type Queue } from './QueueManager.ts';
 
 /**
  * An internal options type consisting only of the required properties of LockBaseOptions.
@@ -19,7 +19,7 @@ export type LockBaseRequiredOptions = Required<Pick<LockBaseOptions, 'timeoutMs'
  * @internal
  * A default queue manager common to the process.
  */
-const defaultQueueManager = new QueueManager<string>({ maxConcurrency: 5, maxPending: 500 });
+export const defaultQueueManager = new QueueManager<string>({ maxConcurrency: 5, maxPending: 500 });
 
 /**
  * @internal
@@ -548,124 +548,40 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
         );
       };
       const queue = this.#selectQueue(options);
-      const timeout = options.timeoutMs;
       return queue === undefined
       ? exec()
-      : queue.enqueue<T>(exec, {
-        timeout,
-        reason: new AlreadyLocked('The `lock file` already exists.', {
-          timeoutMs: timeout, key: this.#key, props: { reason: 'ExistingLock' } 
-        })
-      });
-      /*queue.enqueue(async (): Promise<T> => {
-        options._queueId = queue.id;
-        return exec();
-      }, {
-        timeout,
-        reason: new AlreadyLocked('The `lock file` already exists.', {
-          timeoutMs: timeout, key: this.#key, props: { reason: 'ExistingLock' } 
-        })
-      });
-      */
+      : this.#enqueue(queue, exec, options)
     }
 
     return whithLockInContext();
   }
-/*
-  async #enqueue<T>(exec: () => Promise<T>, options : AllOptions<O, I>): Promise<T> {
-    if (this.#getNumberOfPending() >= LockBase.#config.maxPending) {
-      throw new PendingLocksExceeded(undefined, { maxPending: LockBase.#config.maxPending });
-    }
-    const timeout = options.timeoutMs
-    const queue = this.#selectQueue();
-    return queue.enqueue(async (): Promise<T> => {
-      options._queueId = queue.id;
-      return exec();
-    }, {
-      timeout,
-      reason: new AlreadyLocked('The `lock file` already exists.', {
-        timeoutMs: timeout, key: this.#key, props: { reason: 'ExistingLock' } 
-      })
-    });
-  }
-*/
-  /*
-  #getQueues(): AsyncQueue[] {
-    const ret: AsyncQueue[] = [];
-    // regular queues
-    for(let i = 0; i < LockBase.#config.maxConcurrency; i++) {
-      ret.push(LockBase.#getQueue(i));
-    }
-    //
-    if (withExtraQues) {
-      LockBase.#queues.forEach((q, key) => {
-        if (typeof key === 'string') ret.push(q);
-      });
-    }
-    //
-    ENSURE(ret.length > 0, "No queues are available.", LockError, { code: 'ENOQUEUE' });
-    return ret;
-  }
-*/
-/*
-  #getNumberOfPending() {
-    /*
-    let ret = 0;
-    [...LockBase.#queues.values()].forEach(q => {
-      ret += q.size;      
-    });
-    //console.log(ret);
-    return ret;
-  }
-*/
-  #selectQueue(options: AllOptions): Queue<string> | undefined {
-    if (!this._config.queueManager) return undefined;
-    let selected = undefined;
-    try {
-      const queues = this._config.queueManager.getCandidates();
-      const heldLocks = this.#getReentrantContext()?.heldLocks;
-      if (heldLocks == null || heldLocks.size === 0)
-        return selected = queues[0];
-      const hla = [...heldLocks.values()];
-      for(const q of queues) {
-        if (hla.findIndex(hl => hl.queueId === q.id) === undefined) {
-          return selected = q;
-        }
-      };
-      return selected = this._config.queueManager.getDedicatedQueue(this._key);
-    }
-    finally {
-      ENSURE_DEBUG(selected !== undefined, "Failed to select queue.", LockError, {
-        code: 'EINVAL', props: { name: 'selected' }
-      });
-      options._queueId = selected?.id;
-    }
 
-    /*
-    const queues = this.#getQueues();
-    const idxSet = new Set<number>(queues.map((_, i) => i));
-    if (heldLocks != null && heldLocks.size > 0) {
-      [...heldLocks.values()].forEach(value => {
-        if (typeof value.queueId === 'number') {
-          idxSet.delete(value.queueId);
-        }
+  /**
+   * @internal
+   * Add a lock request (callback) to the queue. 
+   */
+  async #enqueue<T>(queue: Queue<string>, cb: () => Promise<T>, options: AllOptions<O, I>): Promise<T> {
+    try {
+      return queue.enqueue<T>(cb, {
+        timeout: options.timeoutMs,
+        reason: new QueueWaitTimeout(undefined, {
+          timeoutMs: options.timeoutMs,
+          key: this.#key,
+          props: { reason: 'ExistingLock' } 
+        })
       });
     }
-    let min = Number.MAX_SAFE_INTEGER;
-    let q: AsyncQueue | undefined = undefined;
-    [...idxSet].forEach(idx => {
-      if (min > queues[idx].size) {
-        min = queues[idx].size;
-        q = queues[idx];
+    catch (err) {
+      if (err instanceof QueueMaxPendingExceeded) {
+        throw new PendingLocksExceeded(undefined, {
+          maxPending: err.maxPending,
+          key: this.#key
+        })
       }
-    })
-    if (q !== undefined) {
-      return q;
+      else {
+        throw err;
+      }
     }
-    else {
-      return this.#getDedicatedQueue();
-    }
-    */
   }
 
   /**
@@ -831,6 +747,35 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
   #runInNewContext<T>(fn: () => unknown): T {
     const initialContext: ReentrantContext = { heldLocks: new Map<string, HeldLockValue>() };
     return LockBase.#als.run(initialContext, () => fn()) as T;
+  }
+
+  /**
+   * @internal
+   * Select a queue while checking the context to avoid nested locks. 
+   * If no suitable queue can be found among the `regular queue`s, use a `dedicated queue`.
+   */
+  #selectQueue(options: AllOptions): Queue<string> | undefined {
+    if (!this._config.queueManager) return undefined;
+    let selected = undefined;
+    try {
+      const queues = this._config.queueManager.getCandidates();
+      const heldLocks = this.#getReentrantContext()?.heldLocks;
+      if (heldLocks == null || heldLocks.size === 0)
+        return selected = queues[0];
+      const hla = [...heldLocks.values()];
+      for(const q of queues) {
+        if (hla.findIndex(hl => hl.queueId === q.id) === undefined) {
+          return selected = q;
+        }
+      };
+      return selected = this._config.queueManager.getDedicatedQueue(this._key);
+    }
+    finally {
+      ENSURE_DEBUG(selected !== undefined, "Failed to select queue.", LockError, {
+        code: 'EINVAL', props: { name: 'selected' }
+      });
+      options._queueId = selected?.id;
+    }
   }
 
   /**

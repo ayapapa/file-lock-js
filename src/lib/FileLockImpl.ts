@@ -7,7 +7,7 @@ import { defaultLockBaseConfig, defaultLockBaseOptions, minimumLockBaseOptions, 
   type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions, type MaybePromise } from './LockBase.ts';
 import { type LogProvider } from './LockBaseConfig.ts';
 import { type FileLockOptions } from './FileLockOptions.ts';
-import { type FileLockInternalState } from './FileLockInternalState.ts';
+import { type FileLockImplState } from './FileLockImplState.ts';
 import { FileLockOptionsResolver } from "./FileLockOptionsResolver.ts";
 import { FileLockError, LockCompromised, LockDirectoryCreationFailed, LockDirectoryStatFailed, type FileLockErrorCode} from './FileLockErrors.ts';
 import { type AllOptions as AllOptionsT } from './AllOptions.ts';
@@ -36,7 +36,7 @@ export type HistoryInfo = { historyEnabled: boolean, historyId: string, historyP
  * @ internal
  * All options type.
  */
-type AllOptions = AllOptionsT<FileLockAllOptions, FileLockInternalState>;
+type AllOptions = AllOptionsT<FileLockAllOptions, FileLockImplState>;
 
 /**
  * @ internal
@@ -96,10 +96,10 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
   maxHistoryFiles:    100,
 };
 
-//export const FileLockInternal = createContracts();
+//export const FileLockImpl = createContracts();
 
 /**
- * Create a `FileLockInternal` object that does not share static fields with other `FileLockInternal` objects. 
+ * Create a `FileLockImpl` object that does not share static fields with other `FileLockImpl` objects. 
  * @param config Configurations.
  * @returns A contract class object. Please refer to `See` for the definition of this object..
  * @see [ContractsAPI](https://github.com/ayapapa/contracts-js/blob/main/docs/api/ContractsImpl.md).
@@ -113,7 +113,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
    * While the file exists, no other lock can be acquired for the same key. 
    * Settings such as `timeoutMs` allow for waiting until an unreleased lock is freed. 
    */
-  export class FileLockInternal extends LockBase<FileLockAllOptions, FileLockInternalState> {
+  export class FileLockImpl extends LockBase<FileLockAllOptions, FileLockImplState> {
 
     /** 
      * Static fields 
@@ -123,22 +123,22 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * @internal
      * FileLock instance cache associated with a key. 
      */
-    static #cache: Cache<string, FileLockInternal> | null;
+    static #cache: Cache<string, FileLockImpl> | null;
 
     /** 
      * @internal
      * Current configurations.
      */
-    static #config: FileLockConfigRequired = FileLockInternal._copyConfig(defaultFileLockConfig);
+    static #config: FileLockConfigRequired = FileLockImpl._copyConfig(defaultFileLockConfig);
   
     /**
      * @internal
      * The `lock directory`
      */
-    static #lockDir: string = FileLockInternal.#getLockDirPath();
+    static #lockDir: string = FileLockImpl.#getLockDirPath();
 /*
     static get #lockDir(): string {
-      return FileLockInternal.#getLockDirPath();
+      return FileLockImpl.#getLockDirPath();
     }
 */
     /**
@@ -146,7 +146,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * The history directory path.
      */
     static get #historyDir(): string {
-      return path.join(FileLockInternal.#lockDir, 'history');
+      return path.join(FileLockImpl.#lockDir, 'history');
     }
 
     /**
@@ -159,14 +159,14 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * @internal
      * The history file name.
      */
-    static #historyName: string = `${FileLockInternal.#historyId}.json`;
+    static #historyName: string = `${FileLockImpl.#historyId}.json`;
 
     /**
      * @internal
      * The history file path.
      */
     static get #historyPath(): string {
-      return path.join(FileLockInternal.#historyDir, FileLockInternal.#historyName);
+      return path.join(FileLockImpl.#historyDir, FileLockImpl.#historyName);
     };
 
     /** 
@@ -178,18 +178,18 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * Initialize.
      */
     public static _initialize() {
-      FileLockInternal.resetConfig();
-      FileLockInternal._addOnExit(FileLockInternal.#onExitFn);
+      FileLockImpl.resetConfig();
+      FileLockImpl._addOnExit(FileLockImpl.#onExitFn);
     }
 
     /** Get current configurations. */
     public static getConfig(): FileLockConfigRequired {
-      return FileLockInternal._copyConfig(FileLockInternal.#config);
+      return FileLockImpl._copyConfig(FileLockImpl.#config);
     }
 
     /** Get default configurations. */
     public static get defaultConfig(): FileLockConfigRequired {
-      return FileLockInternal._copyConfig(defaultFileLockConfig);
+      return FileLockImpl._copyConfig(defaultFileLockConfig);
     }
 
     /**
@@ -206,15 +206,15 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      */
     public static get historyInfo(): Readonly<HistoryInfo> {
       return {
-        historyEnabled: FileLockInternal.#config.history,
-        historyId: FileLockInternal.#historyId,
-        historyPath: FileLockInternal.#historyPath,
+        historyEnabled: FileLockImpl.#config.history,
+        historyId: FileLockImpl.#historyId,
+        historyPath: FileLockImpl.#historyPath,
         processId: process.pid,
       }
     }
 
     /** Get `lock directory` */
-    public static get lockDir() { return FileLockInternal.#lockDir; }
+    public static get lockDir() { return FileLockImpl.#lockDir; }
 
     /** 
      * @internal
@@ -226,7 +226,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
 
     /** Resets the current settings to their default values. */
     public static resetConfig(): void {
-      FileLockInternal.setConfig(defaultFileLockConfig);
+      FileLockImpl.setConfig(defaultFileLockConfig);
     }
 
     /**
@@ -238,8 +238,8 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
     public static setConfig(config: FileLockConfig): void {
       checkValuesType(config, { ...defaultFileLockConfig, lockDirectory: 'string' }, 'configuration', InvalidConfiguration);
       REQUIRE(config.lockDirectory == null 
-        || FileLockInternal.#config.lockDirectory == null 
-        || path.resolve(FileLockInternal.#config.lockDirectory) === path.resolve(config.lockDirectory),
+        || FileLockImpl.#config.lockDirectory == null 
+        || path.resolve(FileLockImpl.#config.lockDirectory) === path.resolve(config.lockDirectory),
         "Updating the `lock directory` is prohibited.",
         InvalidConfiguration, { name: 'lockDirectory' }
       )
@@ -247,7 +247,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
       // Configure the base settings and receive the resulting resolved settings.
       const rConf = super._setConfig(config);
 
-      const dConf = Object.assign(this._config, FileLockInternal._copyConfig(rConf));
+      const dConf = Object.assign(this._config, FileLockImpl._copyConfig(rConf));
       if (dConf.cacheTtlMs != null) dConf.cacheTtlMs = Math.max(dConf.cacheTtlMs, 10000);
       if (dConf.maxCacheEntries != null) dConf.maxCacheEntries  = Math.max(dConf.maxCacheEntries, 1);
       if (dConf.maxHistoryEntries != null) dConf.maxHistoryEntries = Math.max(dConf.maxHistoryEntries, 1);
@@ -257,35 +257,35 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
       if (dConf.defaultOptions) {
         dConf.defaultOptions = new FileLockOptionsResolver(dConf.defaultOptions, minimumFileLockOptions, defaultFileLockOptions).getOptions();
       }
-      FileLockInternal.#config = { ...FileLockInternal.getConfig(), ...dConf };
+      FileLockImpl.#config = { ...FileLockImpl.getConfig(), ...dConf };
 
       // chache
-      FileLockInternal.#cache?.clear();
+      FileLockImpl.#cache?.clear();
       // If cache is enabled, (Re)create cache.
-      if (FileLockInternal.#config.cache) {
-        FileLockInternal.#cache = new Cache<string, FileLockInternal>({
-          max: FileLockInternal.#config.maxCacheEntries,
-          ttlMs: FileLockInternal.#config.cacheTtlMs,
+      if (FileLockImpl.#config.cache) {
+        FileLockImpl.#cache = new Cache<string, FileLockImpl>({
+          max: FileLockImpl.#config.maxCacheEntries,
+          ttlMs: FileLockImpl.#config.cacheTtlMs,
         });
       }
       // or set null to chache.
       else {
-        FileLockInternal.#cache = null;
+        FileLockImpl.#cache = null;
       }
 
       // `lock directory`
-      FileLockInternal.#lockDir = FileLockInternal.#getLockDirPath();
+      FileLockImpl.#lockDir = FileLockImpl.#getLockDirPath();
 
       // history
-      if (FileLockInternal.#config.history || FileLockInternal.#config._debug) {
-        //FileLockInternal.#historyDir =  path.join(FileLockInternal.#lockDir, 'history');
+      if (FileLockImpl.#config.history || FileLockImpl.#config._debug) {
+        //FileLockImpl.#historyDir =  path.join(FileLockImpl.#lockDir, 'history');
         try {
-          fs.mkdirSync(FileLockInternal.#historyDir, { recursive: true });
+          fs.mkdirSync(FileLockImpl.#historyDir, { recursive: true });
         }
         catch (err) {
           throw new FileLockError('Failed to create the directory for storing history files.', { code: 'EIO', props: { causes: [err] }})
         }
-        //FileLockInternal.#historyPath =  path.join(FileLockInternal.#historyDir, FileLockInternal.#historyName);
+        //FileLockImpl.#historyPath =  path.join(FileLockImpl.#historyDir, FileLockImpl.#historyName);
       }
     }
 
@@ -300,10 +300,10 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
     public static async withLock<T>(key: string, onLockFn: CallbackOnLock<T>, userOpts: FileLockOptions): Promise<T> {
       REQUIRE(typeof key === 'string' && key !== '', '`key` must be specified as a non-empty string.', InvalidOptions, { name: 'key' });
       // If defaultOptions is specified in the config, it will be used as the default options.
-      const defaultOpts = { ...FileLockInternal.defaultOptions, ...FileLockInternal.getConfig().defaultOptions } as FileLockRequiredOptions;
+      const defaultOpts = { ...FileLockImpl.defaultOptions, ...FileLockImpl.getConfig().defaultOptions } as FileLockRequiredOptions;
       // Resolve options.
       const rOpt = new FileLockOptionsResolver(userOpts, minimumFileLockOptions, defaultOpts).getRequiredOptions();
-      return FileLockInternal.#getLock(key).#withLock(onLockFn, rOpt);
+      return FileLockImpl.#getLock(key).#withLock(onLockFn, rOpt);
       /*
       const lock = this.#getLock(key);
       return lock._withLock(onLockFn, userOpts);
@@ -316,11 +316,11 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * It is set to `private` for testing purposes.
      * @param key Lock key. 
      */
-    static #getLock(key: string): FileLockInternal {
-      let lock = FileLockInternal.#cache?.get(key);
+    static #getLock(key: string): FileLockImpl {
+      let lock = FileLockImpl.#cache?.get(key);
       if (!lock) {
-        lock = new FileLockInternal(key);
-        FileLockInternal.#cache?.set(key, lock);
+        lock = new FileLockImpl(key);
+        FileLockImpl.#cache?.set(key, lock);
       }
       return lock;
     }
@@ -361,8 +361,8 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
       }
 
       // Create a `lock directory`.
-      const dir = FileLockInternal.#config.lockDirectory 
-      ? path.resolve(FileLockInternal.#config.lockDirectory) 
+      const dir = FileLockImpl.#config.lockDirectory 
+      ? path.resolve(FileLockImpl.#config.lockDirectory) 
       : path.resolve('.lock');
       
       if (existsDir(dir) === false) mkdir(dir);
@@ -377,8 +377,8 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * @param signal  The signal that caused the termination.
      */
     static #onExitFn(code: number | null | undefined, signal: NodeJS.Signals | null) {
-      FileLockInternal.#config.logger.trace("Exited by", { code, signal });
-      FileLockInternal.#cache?.forEach(value => value.#onExit(code, signal));
+      FileLockImpl.#config.logger.trace("Exited by", { code, signal });
+      FileLockImpl.#cache?.forEach(value => value.#onExit(code, signal));
     }
 
     /** 
@@ -386,7 +386,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * Current configurations.
      */
     protected override get _config(): Readonly<FileLockConfigRequired> { 
-      return FileLockInternal._config;
+      return FileLockImpl._config;
     }
 
     /**
@@ -428,7 +428,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      *  Logger.
      */
     protected override get _logger(): LogProvider {
-      return FileLockInternal.#config.logger;
+      return FileLockImpl.#config.logger;
     }
 
     /**
@@ -475,7 +475,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
         err = new AlreadyLocked(lockError.message, { key: this._key, timeoutMs: options.timeoutMs, props });
       }
       else if (lastRes.reason === 'EHISTORY') {
-        err = FileLockError.lockFailedDueToHistory(FileLockInternal.#historyPath, causes);
+        err = FileLockError.lockFailedDueToHistory(FileLockImpl.#historyPath, causes);
       }
       else {
         // v8 ignore else -- @preserve
@@ -551,10 +551,10 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      */
     protected override _prepare(options: AllOptions): void {
       super._prepare(options);
-      const dirPath       = FileLockInternal.#lockDir;
+      const dirPath       = FileLockImpl.#lockDir;
       // If a lock directory has not been specified, it is determined here.
-      if (FileLockInternal.#config.lockDirectory == null)
-        FileLockInternal.#config.lockDirectory = dirPath;
+      if (FileLockImpl.#config.lockDirectory == null)
+        FileLockImpl.#config.lockDirectory = dirPath;
       const encodedKey    = this._key.replace(/[<>:/\\|?*]/g, () => '_').replace(/"/g, () => '');
       options._filePath   = path.join(dirPath, encodedKey + '.json');
       options._sharerDir  = path.join(dirPath, encodedKey + '.sharer');
@@ -613,9 +613,9 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * @param options Lock options.
      */
     async #addHistory(meta: FileLockMeta, options: AllOptions) {
-      const maxEntries = FileLockInternal.#config.maxHistoryEntries;
+      const maxEntries = FileLockImpl.#config.maxHistoryEntries;
       const dateTimeStr = DateFormatter.format(new Date());
-      const historyFile = FileLockInternal.#historyPath;
+      const historyFile = FileLockImpl.#historyPath;
       let contents = null;
       if (await this.#existsSync(historyFile, options, `Failed to check the existence of the history file.`)) {
         try { contents = await this.#readFileSync(historyFile, options, "Failed to read the history file."); }
@@ -638,13 +638,13 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
       await this.#writeFileSync(historyFile, history, options, "Failed to update the history file.");
 
       // Adjusting the number of history files
-      const list = await this.#readdirSync(FileLockInternal.#historyDir, options);
+      const list = await this.#readdirSync(FileLockImpl.#historyDir, options);
       const names = list.filter(item => item.isFile()).map(item => item.name);
-      if (names.length >= FileLockInternal.#config.maxHistoryFiles) {
+      if (names.length >= FileLockImpl.#config.maxHistoryFiles) {
         names.sort();
-        for( let i = 0; i < names.length - FileLockInternal.#config.maxHistoryFiles; i++) {
+        for( let i = 0; i < names.length - FileLockImpl.#config.maxHistoryFiles; i++) {
           try {
-            await this.#unlinkSync(path.join(FileLockInternal.#historyDir, names[i]), options, 'normal', `Failed to remove the history file.`);
+            await this.#unlinkSync(path.join(FileLockImpl.#historyDir, names[i]), options, 'normal', `Failed to remove the history file.`);
           }
           // v8 ignore next
           catch (_e) {/* do nothing */};
@@ -1344,7 +1344,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
         throw err;
       }
 
-      if (FileLockInternal.#config.history || this._isDebug) {
+      if (FileLockImpl.#config.history || this._isDebug) {
         await this.#addHistory(meta, options);
       }
     }
@@ -1380,10 +1380,10 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
   //　以下、initとsetを融合させよ！
 
   // Initialize
-  FileLockInternal._initialize();  
+  FileLockImpl._initialize();  
 
-//  FileLockInternal.setConfig(config);
-//  return FileLockInternal;
+//  FileLockImpl.setConfig(config);
+//  return FileLockImpl;
 //}
 
 

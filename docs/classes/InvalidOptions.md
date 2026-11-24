@@ -6,27 +6,27 @@
 
 # Class: InvalidOptions
 
-Defined in: [src/lib/LockBaseErrors.ts:81](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L81)
+Defined in: [src/lib/LockBaseErrors.ts:132](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L132)
 
 Invalid options error.
 
 ## Extends
 
-- [`LockError`](LockError.md)
+- `InvalidObjectValueType`
 
 ## Constructors
 
 ### Constructor
 
-> **new InvalidOptions**(`msg`, `params?`): `InvalidOptions`
+> **new InvalidOptions**(`msg?`, `params?`): `InvalidOptions`
 
-Defined in: [src/lib/LockBaseErrors.ts:87](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L87)
+Defined in: [src/lib/LockBaseErrors.ts:140](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L140)
 
 Constructor.
 
 #### Parameters
 
-##### msg
+##### msg?
 
 `string`
 
@@ -35,10 +35,12 @@ Error message.
 ##### params?
 
 Parameters.
+- name: `string` | `string`[]  Invalid property's key or keys. 
+- props: `LockErrorProps`    Additional properties.
 
 ###### name?
 
-`string`
+`string` \| `string`[]
 
 ###### props?
 
@@ -50,7 +52,7 @@ Parameters.
 
 #### Overrides
 
-[`LockError`](LockError.md).[`constructor`](LockError.md#constructor)
+`InvalidObjectValueType.constructor`
 
 ## Properties
 
@@ -62,7 +64,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 #### Inherited from
 
-[`LockError`](LockError.md).[`cause`](LockError.md#cause)
+`InvalidObjectValueType.cause`
 
 ***
 
@@ -70,11 +72,11 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:12](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L12)
 
 #### Inherited from
 
-[`LockError`](LockError.md).[`code`](LockError.md#code)
+`InvalidObjectValueType.code`
 
 ***
 
@@ -86,7 +88,7 @@ Defined in: node\_modules/typescript/lib/lib.es5.d.ts:1077
 
 #### Inherited from
 
-[`LockError`](LockError.md).[`message`](LockError.md#message)
+`InvalidObjectValueType.message`
 
 ***
 
@@ -98,7 +100,7 @@ Defined in: node\_modules/typescript/lib/lib.es5.d.ts:1076
 
 #### Inherited from
 
-[`LockError`](LockError.md).[`name`](LockError.md#name)
+`InvalidObjectValueType.name`
 
 ***
 
@@ -110,7 +112,7 @@ Defined in: node\_modules/typescript/lib/lib.es5.d.ts:1078
 
 #### Inherited from
 
-[`LockError`](LockError.md).[`stack`](LockError.md#stack)
+`InvalidObjectValueType.stack`
 
 ***
 
@@ -132,7 +134,7 @@ not capture any frames.
 
 #### Inherited from
 
-[`LockError`](LockError.md).[`stackTraceLimit`](LockError.md#stacktracelimit)
+`InvalidObjectValueType.stackTraceLimit`
 
 ## Methods
 
@@ -202,7 +204,7 @@ a();
 
 #### Inherited from
 
-[`LockError`](LockError.md).[`captureStackTrace`](LockError.md#capturestacktrace)
+`InvalidObjectValueType.captureStackTrace`
 
 ***
 
@@ -232,4 +234,4 @@ https://v8.dev/docs/stack-trace-api#customizing-stack-traces
 
 #### Inherited from
 
-[`LockError`](LockError.md).[`prepareStackTrace`](LockError.md#preparestacktrace)
+`InvalidObjectValueType.prepareStackTrace`

@@ -6,7 +6,7 @@
 
 # Class: TTLExceeded
 
-Defined in: [src/lib/LockBaseErrors.ts:48](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L48)
+Defined in: [src/lib/LockBaseErrors.ts:56](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L56)
 
 TTL exceeded error.
 
@@ -18,23 +18,26 @@ TTL exceeded error.
 
 ### Constructor
 
-> **new TTLExceeded**(`msg`, `params?`): `TTLExceeded`
+> **new TTLExceeded**(`msg?`, `params?`): `TTLExceeded`
 
-Defined in: [src/lib/LockBaseErrors.ts:54](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L54)
+Defined in: [src/lib/LockBaseErrors.ts:65](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L65)
 
 Constructor.
 
 #### Parameters
 
-##### msg
+##### msg?
 
-`string` \| `null`
+`string`
 
 Error message.
 
 ##### params?
 
 Parameters.
+- ttlMs: `number`  The specified validity period (time to live) in milliseconds of the lock. 
+- key: `string`  `lock key`. 
+- props: `LockErrorProps`  Additional properties.
 
 ###### key
 
@@ -74,7 +77,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:12](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L12)
 
 #### Inherited from
 

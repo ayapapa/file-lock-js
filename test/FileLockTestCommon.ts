@@ -6,8 +6,8 @@ import { PrettyConsole, type Config as PrettyCOnfig,  type LogEntry } from '@aya
 import { pino } from 'pino'
 import { createStream } from 'rotating-file-stream'
 import { AlreadyLocked, FileLock, type FileLockOptions } from '../src/index.ts';
-//import { type FileLockRequiredOptions } from '../src/lib/FileLockInternal.ts';
-import { FileLockInternal } from '../src/lib/FileLockInternal.ts';
+//import { type FileLockRequiredOptions } from '../src/lib/FileLockImpl.ts';
+import { FileLockImpl } from '../src/lib/FileLockImpl.ts';
 
 export async function sleepAsync(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -308,7 +308,7 @@ export async function testMultiProcess(n: number, oneKey?: string, opts?: { slee
  * Lock for testing
  */
 // @ts-expect-error constructor of `FileLock` is private.
-export class TestLock extends FileLockInternal {
+export class TestLock extends FileLockImpl {
 
   static getExitFuncs() {
     return super["_onExitFns"];
@@ -356,7 +356,7 @@ export class TestLock extends FileLockInternal {
     super._addOnExit(fn);
   }
 
-  constructor(lock?: FileLock) {
+  constructor(lock?: FileLockImpl) {
     super("TestLock_Key");
     Object.assign(this, lock);
   }

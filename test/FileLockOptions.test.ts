@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { FileLock, type FileLockConfig, type FileLockOptions, InvalidOptions } from '../src/index.ts';
 import { FileLockOptionsResolver } from '../src/lib/FileLockOptionsResolver.ts';
-import { defaultFileLockOptions, minimumFileLockOptions } from '../src/lib/FileLockInternal.ts';
+import { defaultFileLockOptions, minimumFileLockOptions } from '../src/lib/FileLockImpl.ts';
 import { type OptionsForTesting } from '../src/lib/AllOptions.ts'
 
 let orgConfig: FileLockConfig;

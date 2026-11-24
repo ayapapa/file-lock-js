@@ -6,7 +6,7 @@
 
 # Class: ReleaseFailed
 
-Defined in: [src/lib/LockBaseErrors.ts:102](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L102)
+Defined in: [src/lib/LockBaseErrors.ts:151](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L151)
 
 Processing was interrupted due to a failure to release the lock or decrement the lock counter. 
 As this is likely caused by a file I/O error, a system check is recommended. 
@@ -21,15 +21,15 @@ may remain, so they must be manually deleted.
 
 ### Constructor
 
-> **new ReleaseFailed**(`msg`, `params?`): `ReleaseFailed`
+> **new ReleaseFailed**(`msg?`, `params?`): `ReleaseFailed`
 
-Defined in: [src/lib/LockBaseErrors.ts:108](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L108)
+Defined in: [src/lib/LockBaseErrors.ts:159](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L159)
 
 Constructor.
 
 #### Parameters
 
-##### msg
+##### msg?
 
 `string`
 
@@ -38,6 +38,8 @@ Error message.
 ##### params?
 
 Parameters.
+- key: `string`  `lock key`. 
+- props: `LockErrorProps`  Additional properties.
 
 ###### key
 
@@ -73,7 +75,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 > **code**: `string` = `'ELOCK'`
 
-Defined in: [src/lib/LockBaseErrors.ts:8](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBaseErrors.ts#L8)
+Defined in: [src/lib/LockBaseErrors.ts:12](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBaseErrors.ts#L12)
 
 #### Inherited from
 

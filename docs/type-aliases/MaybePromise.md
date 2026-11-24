@@ -8,7 +8,7 @@
 
 > **MaybePromise**\<`T`\> = `T` \| `PromiseLike`\<`T`\>
 
-Defined in: [src/lib/LockBase.ts:40](https://github.com/ayapapa/file-lock-js/blob/e068e890c5be6dc2f1ef7ce9a3526d7905ac5b45/src/lib/LockBase.ts#L40)
+Defined in: [src/lib/LockBase.ts:57](https://github.com/ayapapa/file-lock-js/blob/87736ff46f2aa40d20ed6dacac3b8eebf19ba03e/src/lib/LockBase.ts#L57)
 
 Definition of the return type of callback function to be executed after acquiring the lock.
 

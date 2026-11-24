@@ -1,4 +1,3 @@
-import { PendingLocksExceeded } from './LockBaseErrors.ts';
 import { AsyncQueue, type QueueTask } from './Queue .ts'
 
 export interface Config {
@@ -17,6 +16,9 @@ export interface Config {
   maxPending?: number;
 }
 
+/**
+ * Queue definition.
+ */
 export type Queue<I> = {
   id: I | string,
   enqueue: <T>(task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }) => Promise<T>,
@@ -75,7 +77,7 @@ export class QueueManager<DQID = unknown> {
   /** Get an array of enqueue functions, ordered by the number of entries (in ascending order). */
   public getCandidates(): Queue<DQID>[] {
     const q = [...this.#queues];
-    return q.sort((a, b) => a.numberOfPending - b.numberOfPending)
+    return q.sort((a, b) => a.numberOfEntries - b.numberOfEntries)
     .map(q => {
       return {
         id: q.id,
@@ -106,7 +108,7 @@ export class QueueManager<DQID = unknown> {
    */
   async #enqueue<T>(queue: AsyncQueue<DQID | string>, task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }): Promise<T> {
     if (this.numberOfPending >= this.#config.maxPending) {
-      throw new PendingLocksExceeded(undefined, { maxPending: this.#config.maxPending })
+      throw new QueueMaxPendingExceeded(this.#config.maxPending)
     }
     return queue.enqueue(task, timerInfo);
   }
@@ -130,4 +132,13 @@ export class QueueManager<DQID = unknown> {
   */
 }
 
-export { AsyncQueue, type Config as QueueMgrConfig };
+/** Max pending exceeded error. */
+export class QueueMaxPendingExceeded extends Error {
+  maxPending: number;
+  constructor(maxPending: number) {
+    super('The number of pending entries has reached the maximum limit.');
+    this.maxPending = maxPending;
+  }
+}
+
+export { type Config as QueueMgrConfig, type QueueTask };
