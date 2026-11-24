@@ -41,6 +41,10 @@ describe('LockBase and Util', () => {
       super("Key");
     }
 
+    protected override get _logger() { return console };
+    protected override get _config() { return FileLock.defaultConfig as Required<FileLockConfig>; };
+
+
     protected async _incReantryCount(_: unknown): Promise<void> {
     }
     protected async _decReantryCount(_: unknown): Promise<void> {

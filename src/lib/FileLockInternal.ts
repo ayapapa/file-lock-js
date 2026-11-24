@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import { Cache } from './Cache.ts';
 import { DateFormatter } from '@ayapapa-npm/date-formatter-js';
 import { ENSURE_DEBUG, REQUIRE, REQUIRE_DEBUG, VERIFY } from './Contracts.ts';
-import { defaultLockBaseConfig, defaultLockBaseOptions, minimumLockBaseOptions, LockBase, type CallbackOnLock, type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions, type MaybePromise } from './LockBase.ts';
+import { defaultLockBaseConfig, defaultLockBaseOptions, minimumLockBaseOptions, LockBase, type CallbackOnLock, 
+  type LockBaseRequiredNumericOptions, type LockBaseRequiredOptions, type MaybePromise } from './LockBase.ts';
+import { type LogProvider } from './LockBaseConfig.ts';
 import { type FileLockOptions } from './FileLockOptions.ts';
 import { type FileLockInternalState } from './FileLockInternalState.ts';
 import { FileLockOptionsResolver } from "./FileLockOptionsResolver.ts";
@@ -214,6 +216,14 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
     /** Get `lock directory` */
     public static get lockDir() { return FileLockInternal.#lockDir; }
 
+    /** 
+     * @internal
+     * Current configurations.
+     */
+    protected static get _config(): Readonly<FileLockConfigRequired> { 
+      return this._copyConfig(this.#config);
+    }
+
     /** Resets the current settings to their default values. */
     public static resetConfig(): void {
       FileLockInternal.setConfig(defaultFileLockConfig);
@@ -225,7 +235,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * At the same time, the cache is cleared.
      * @param config  Lock configurations. 
      */
-    public static override setConfig(config: FileLockConfig): void {
+    public static setConfig(config: FileLockConfig): void {
       checkValuesType(config, { ...defaultFileLockConfig, lockDirectory: 'string' }, 'configuration', InvalidConfiguration);
       REQUIRE(config.lockDirectory == null 
         || FileLockInternal.#config.lockDirectory == null 
@@ -234,9 +244,10 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
         InvalidConfiguration, { name: 'lockDirectory' }
       )
 
-      super.setConfig(config);
+      // Configure the base settings and receive the resulting resolved settings.
+      const rConf = super._setConfig(config);
 
-      const dConf = Object.assign(FileLockInternal._copyConfig(config), LockBase._config);
+      const dConf = Object.assign(this._config, FileLockInternal._copyConfig(rConf));
       if (dConf.cacheTtlMs != null) dConf.cacheTtlMs = Math.max(dConf.cacheTtlMs, 10000);
       if (dConf.maxCacheEntries != null) dConf.maxCacheEntries  = Math.max(dConf.maxCacheEntries, 1);
       if (dConf.maxHistoryEntries != null) dConf.maxHistoryEntries = Math.max(dConf.maxHistoryEntries, 1);
@@ -366,8 +377,16 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      * @param signal  The signal that caused the termination.
      */
     static #onExitFn(code: number | null | undefined, signal: NodeJS.Signals | null) {
-      FileLockInternal._logger.trace("Exited by", { code, signal });
+      FileLockInternal.#config.logger.trace("Exited by", { code, signal });
       FileLockInternal.#cache?.forEach(value => value.#onExit(code, signal));
+    }
+
+    /** 
+     * @internal
+     * Current configurations.
+     */
+    protected override get _config(): Readonly<FileLockConfigRequired> { 
+      return FileLockInternal._config;
     }
 
     /**
@@ -402,6 +421,14 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
      */
     protected get _isALiveHeartbeatTimer() {
       return this.#heartbeatTimer != null;
+    }
+
+    /**
+     * @internal
+     *  Logger.
+     */
+    protected override get _logger(): LogProvider {
+      return FileLockInternal.#config.logger;
     }
 
     /**
@@ -536,7 +563,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
                                                 // to avoid issues caused by changes 
                                                 // to the `lock directory` configuration.
       */
-    options._sharerLockIntervalMs = Math.max(options._sharerLockIntervalMs ?? 100, 100);
+      options._sharerLockIntervalMs = Math.max(options._sharerLockIntervalMs ?? 100, 100);
       options._sharerLocktimeoutMs = Math.max(options._sharerLocktimeoutMs ?? 5000, 0);
     }
 

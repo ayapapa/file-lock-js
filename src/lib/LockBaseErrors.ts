@@ -2,7 +2,7 @@
 export type LockErrorProps = Record<string, unknown>;
 
 /** Error codes for LockBase */
-export type LockErrorCode = 'ELOCK' | 'EDEADLK' | 'ETTLEXCEEDED' | 'EALREADYLOCKED' | 'EINVAL' | 'ERELEASE' | 'EMAXPENDING';
+export type LockErrorCode = 'ELOCK' | 'EDEADLK' | 'ETTLEXCEEDED' | 'EALREADYLOCKED' | 'EINVAL' | 'ERELEASE' | 'EMAXPENDING' | 'ENOTIMPL';
 
 /**
  * Basic lock handling error. 

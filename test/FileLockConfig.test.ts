@@ -7,6 +7,72 @@ import { type FileLockConfig, type FileLockOptions, type LogProvider,
   DeadlockDetected, FileLock, FileLockError, InvalidConfiguration, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError, QueueManager } from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
 
+
+class Parent {
+    static config: unknown
+    static execute() {
+        console.log(this.config);
+    }
+}
+
+class Child extends Parent {
+    static config = {
+        name: 'Child'
+    };
+}
+
+Child.execute(); // { name: 'Child' }
+
+
+abstract class A {
+  static config: unknown
+
+  static get _config(): unknown { return ""; }
+
+
+  static Hoge() {
+    console.log("A");
+    console.log(this.config);
+    return this._config;
+  }
+
+  static Hoge2() {
+    return this.config;
+  }
+
+  static AMuhuhu() {
+    return A.Hoge();
+  }
+
+  static TMuhuhu() {
+    return this.Hoge();
+  }
+}
+
+class B extends A {
+  static config = {
+      name: 'Child'
+  };
+    
+  static get _config() { return this.config; }
+
+  static Hoge() {
+    console.log("B");
+    const ret = super.Hoge();
+    return ret;//"B";
+  }
+
+}
+/*
+const a = A.Hoge();
+const b = B.Hoge();
+const am = A.AMuhuhu();
+const tm = A.TMuhuhu();
+*/
+console.log(B.Hoge());
+console.log(A.Hoge());
+
+
 type NumberKeys<T> = {
     [K in keyof T]-?: T[K] extends number ? K : never
 }[keyof T];
