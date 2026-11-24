@@ -713,7 +713,7 @@ describe('FileLock.Config', () => {
       });
     }
     finally {
-      fs.rmSync()
+      //fs.rmSync()
     }
   });
 
