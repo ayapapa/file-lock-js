@@ -352,7 +352,7 @@ export const defaultFileLockConfig: Readonly<FileLockConfigRequired> = {
       // Create a `lock directory`.
       const dir = FileLockInternal.#config.lockDirectory 
       ? path.resolve(FileLockInternal.#config.lockDirectory) 
-      : path.join(process.cwd(), '.lock');
+      : path.resolve('.lock');
       
       if (existsDir(dir) === false) mkdir(dir);
       return dir;
