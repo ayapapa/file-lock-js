@@ -39,30 +39,28 @@ export class QueueManager<DQID = unknown> {
   readonly #dedicatedQueues = new Map<unknown, AsyncQueue<DQID | string>>();
   readonly #queues: AsyncQueue<DQID | string>[] = [];
 
-  public get totalSize() {
-    return this.size + this.dedicatedQueuesSize;
+  /** Get number of pending entries. */
+  public get numberOfPending() {
+    return this.#getNumberOfPending(this.#queues) 
+    + this.#getNumberOfPending(this.#dedicatedQueues);
   }
 
-  public get size() {
-    return this.#getSize(this.#queues);
-  }
-
-  public get dedicatedQueuesSize() {
-    return this.#getSize(this.#dedicatedQueues);
-  }
-
-  public get numberOfTotalQueues() {
+  /** Get number of all queues. */
+  public get numberOfAllQueues() {
     return this.numberOfQueues + this.numberOfDedicatedQueues;
   }
 
+  /** Get number of regular queues. */
   public get numberOfQueues() {
     return this.#queues.length;
   }
 
+  /** Get number of dedicated queues. */
   public get numberOfDedicatedQueues() {
     return this.#dedicatedQueues.size;
   }
 
+  /** Constructor */
   public constructor(config: Config = { maxConcurrency: 5, maxPending: 500 }) {
     const conf = { ...config };
     if (!conf.maxConcurrency) conf.maxConcurrency = 5;
@@ -77,7 +75,7 @@ export class QueueManager<DQID = unknown> {
   /** Get an array of enqueue functions, ordered by the number of entries (in ascending order). */
   public getCandidates(): Queue<DQID>[] {
     const q = [...this.#queues];
-    return q.sort((a, b) => a.size - b.size)
+    return q.sort((a, b) => a.numberOfPending - b.numberOfPending)
     .map(q => {
       return {
         id: q.id,
@@ -102,19 +100,34 @@ export class QueueManager<DQID = unknown> {
     }
   }
 
+  /** 
+   * @internal
+   * Add a task to the queue.
+   */
   async #enqueue<T>(queue: AsyncQueue<DQID | string>, task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }): Promise<T> {
-    if (this.totalSize >= this.#config.maxPending) {
+    if (this.numberOfPending >= this.#config.maxPending) {
       throw new PendingLocksExceeded(undefined, { maxPending: this.#config.maxPending })
     }
     return queue.enqueue(task, timerInfo);
   }
 
-  #getSize(q: AsyncQueue<DQID | string>[] | Map<unknown, AsyncQueue<DQID | string>>) {
+  /**
+   * @internal
+   * Get number of pending entries in the queue.
+   */
+  #getNumberOfPending(q: AsyncQueue<DQID | string>[] | Map<unknown, AsyncQueue<DQID | string>>) {
     let ret = 0;
-    q.forEach(q => { ret += q.size });
+    q.forEach(q => { ret += q.numberOfPending });
     return ret;
   }
 
+  /*
+  #getNumberOfRunning(q: AsyncQueue<DQID | string>[] | Map<unknown, AsyncQueue<DQID | string>>) {
+    let ret = 0;
+    q.forEach(q => { ret += q.numberOfRunning });
+    return ret;
+  }
+  */
 }
 
 export { AsyncQueue, type Config as QueueMgrConfig };

@@ -135,8 +135,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * Number of queues.
    */
   public static get numberOfQueues() {
-    //return LockBase.#queues.size;
-    return this._config.queueManager?.numberOfTotalQueues ?? 0;
+    return this._config.queueManager?.numberOfAllQueues ?? 0;
   }
   
   /** 
@@ -150,12 +149,6 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     return {} as Readonly<Required<LockBaseConfig>>;
   }
 
-  /** 
-   * @internal
-   * Logger.
-   */
-  //protected static get _logger() { return LockBase.#logger; }
-  
   /** 
    * @internal
    * Array of termination handler functions.
@@ -173,30 +166,10 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
 
   /** 
    * @internal
-   * Current basic configurations.
-   */
-//  static #config: Required<LockBaseConfig> = { ...defaultLockBaseConfig };
-
-  //static get config(): Readonly<LockBaseConfig> { return this._config }
-
-  /** 
-   * @internal
-   * Logger.
-   */
-  //static get #logger(): LogProvider { return this._config.logger };
-
-  /** 
-   * @internal
    * Array of termination handler functions.
    */
   static #onExitFns = [] as ((code: number | null | undefined, signal: NodeJS.Signals | null) => void)[];
 
-  /**
-   * @internal
-   * Task queues.
-   */
-  //static #queues = new Map<string | number, AsyncQueue>();
-  //static get #queueMgr() { return this._config.queueManager; }
   
   /**
    * Static methods.
