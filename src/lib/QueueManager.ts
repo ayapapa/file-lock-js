@@ -1,6 +1,9 @@
 import { AsyncQueue, type QueueTask } from './Queue .ts'
 
-export interface Config {
+/**
+ * Queue manager configuration.
+ */
+interface Config {
   /**
    * The maximum number of lock requests that can be executed in parallel.
    * This is also the number of lock request `regular queues`. 
@@ -19,9 +22,22 @@ export interface Config {
 /**
  * Queue definition.
  */
-export type Queue = {
-  id: string,
-  enqueue: <T>(task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }) => Promise<T>,
+export interface Queue {
+  id: string;
+  enqueue: <T>(task: QueueTask<T>, timerInfo: TimerInfo) => Promise<T>;
+}
+
+/** 
+ * Queue timeout infomation.
+ * 
+ * The allowable duration for items to remain pending in the queue, 
+ * and the error information to be returned if this limit is exceeded. 
+ */
+export interface TimerInfo {
+  /** Timeout millisecconds. */
+  timeout: number; 
+  /** An error class instance to be thrown upon timeout.*/
+  reason: unknown;
 }
 
 /**
@@ -38,10 +54,27 @@ export class QueueManager {
   readonly #dedicatedQueues = new Map<unknown, AsyncQueue<string>>();
   readonly #queues: AsyncQueue<string>[] = [];
 
+  /** Get max pending. */
+  public get maxConcurrency() { return this.#config.maxConcurrency };
+
+  /** Get max concurrency. */
+  public get maxPeding() { return this.#config.maxPending };
+
+  /** Get number of pending entries. */
+  public get numberOfAllEntries() {
+    return this.numberOfPending + this.numberOfRunning;
+  }
+
   /** Get number of pending entries. */
   public get numberOfPending() {
     return this.#getNumberOfPending(this.#queues) 
     + this.#getNumberOfPending(this.#dedicatedQueues);
+  }
+
+  /** Get number of pending entries. */
+  public get numberOfRunning() {
+    return this.#getNumberOfRunning(this.#queues) 
+    + this.#getNumberOfRunning(this.#dedicatedQueues);
   }
 
   /** Get number of all queues. */
@@ -76,6 +109,16 @@ export class QueueManager {
       this.#queues.push(new AsyncQueue<string>(Math.random().toString(36).slice(2)));
   }
 
+  /**
+   * Add a task to the least busy queue.
+   * @param task A lock request task—that is, a function that is called back when its turn arrives.
+   * @param timerInfo Timeout information: the timeout duration and the error object to be thrown upon timeout.
+   * @returns A promise that resolves to the return value of a `task`.
+   */
+  public async enqueue<T>(task: QueueTask<T>, timerInfo: TimerInfo): Promise<T> {
+    return this.getCandidates()[0].enqueue<T>(task, timerInfo);
+  }
+
   /** Get an array of enqueue functions, ordered by the number of entries (in ascending order). */
   public getCandidates(): Queue[] {
     const q = [...this.#queues];
@@ -83,8 +126,8 @@ export class QueueManager {
     .map(q => {
       return {
         id: q.id,
-        enqueue: async <T>(task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }) => {
-          return this.#enqueue(q, task, timerInfo);
+        enqueue: async <T>(task: QueueTask<T>, timerInfo: TimerInfo) => {
+          return this.#enqueue<T>(q, task, timerInfo);
         }
       }
     });
@@ -93,6 +136,7 @@ export class QueueManager {
   /** 
    * Get a dedicated queue 
    * @param id  An identifier for a dedicated queue. It is recommended to use one that is uniquely linked to the lock key.
+   * @returns A queue dedicated to a specific ID.
    */
   public getDedicatedQueue(id: string): Queue {
     let queue = this.#dedicatedQueues.get(id);
@@ -101,7 +145,7 @@ export class QueueManager {
     }
     return {
       id: queue.id,
-      enqueue: async <T>(task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }) => {
+      enqueue: async <T>(task: QueueTask<T>, timerInfo: TimerInfo) => {
         return this.#enqueue(queue, task, timerInfo);
       }
     }
@@ -111,7 +155,7 @@ export class QueueManager {
    * @internal
    * Add a task to the queue.
    */
-  async #enqueue<T>(queue: AsyncQueue<string>, task: QueueTask<T>, timerInfo: { timeout: number, reason: unknown }): Promise<T> {
+  async #enqueue<T>(queue: AsyncQueue<string>, task: QueueTask<T>, timerInfo: TimerInfo): Promise<T> {
     if (this.numberOfPending >= this.#config.maxPending) {
       throw new QueueMaxPendingExceeded(this.#config.maxPending)
     }
@@ -128,13 +172,11 @@ export class QueueManager {
     return ret;
   }
 
-  /*
-  #getNumberOfRunning(q: AsyncQueue<DQID | string>[] | Map<unknown, AsyncQueue<string>>) {
+  #getNumberOfRunning(q: AsyncQueue<string>[] | Map<unknown, AsyncQueue<string>>) {
     let ret = 0;
     q.forEach(q => { ret += q.numberOfRunning });
     return ret;
   }
-  */
 }
 
 /** Max pending exceeded error. */
