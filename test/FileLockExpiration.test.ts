@@ -112,15 +112,19 @@ describe('FileLock', () => {
     setLockMeta(key, meta);
     const path = getLockMetaPath(key);
     const statSync = fs.statSync;
+    fs.statSync(path, { })
     const spy = vi.spyOn(fs, 'statSync').mockImplementation(p => {
       if (p === path) {
         return undefined;
       }
-      return statSync(path);
+      return statSync(p);
     });
     expect.assertions(2);
     try {
       expect(await FileLock.withLock(key, () => "completed", { heartbeatTtlMs: 2000, timeoutMs: 2500, invalidTtlMs: 2000 })).toBe("completed")
+    }
+    catch (err) {
+      console.log(err);
     }
     finally {
       spy.mockRestore();

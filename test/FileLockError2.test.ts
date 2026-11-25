@@ -247,6 +247,7 @@ describe('FileLockError2', () => {
       await FileLock.withLock(key, async monitor => {
         mon = monitor;
         await sleepAsync(200);
+        // eslint-disable-next-line
         (FileLockImpl as any).onExit(2, 'SIGTERM');
         },
         {}
@@ -813,12 +814,13 @@ it("Deliberately create an invalid lock file and verify that it results in an er
 
   it("Invalid file: statSyncError.", async () => {
     const key = "invalidLockFileStatSyncError";
+    const metaPath = getLockMetaPath(key);
     await testSpyIO(
       key,
       'statSync',
       (_, args: unknown[], org) => {
         const p = args[0];
-        if (p === getLockMetaPath(key)) {
+        if (p === metaPath) {
           throw Object.assign(new Error("statiSync error!"), { code: 'ESMOON' });
         }
         else {

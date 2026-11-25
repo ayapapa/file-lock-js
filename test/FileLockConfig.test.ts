@@ -4,73 +4,9 @@ import path from 'node:path';
 import { PrettyConsole } from '@ayapapa-npm/pretty-console-js';
 
 import { type FileLockConfig, type FileLockOptions, type LogProvider, 
-  DeadlockDetected, FileLock, FileLockError, InvalidConfiguration, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError, QueueManager } from '../src/index.ts';
+  FileLock, InvalidConfiguration, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError, QueueManager } from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
-
-
-class Parent {
-    static config: unknown
-    static execute() {
-        console.log(this.config);
-    }
-}
-
-class Child extends Parent {
-    static config = {
-        name: 'Child'
-    };
-}
-
-Child.execute(); // { name: 'Child' }
-
-
-abstract class A {
-  static config: unknown
-
-  static get _config(): unknown { return ""; }
-
-
-  static Hoge() {
-    console.log("A");
-    console.log(this.config);
-    return this._config;
-  }
-
-  static Hoge2() {
-    return this.config;
-  }
-
-  static AMuhuhu() {
-    return A.Hoge();
-  }
-
-  static TMuhuhu() {
-    return this.Hoge();
-  }
-}
-
-class B extends A {
-  static config = {
-      name: 'Child'
-  };
-    
-  static get _config() { return this.config; }
-
-  static Hoge() {
-    console.log("B");
-    const ret = super.Hoge();
-    return ret;//"B";
-  }
-
-}
-/*
-const a = A.Hoge();
-const b = B.Hoge();
-const am = A.AMuhuhu();
-const tm = A.TMuhuhu();
-*/
-console.log(B.Hoge());
-console.log(A.Hoge());
+import { createFileLock, defaultFileLockConfig } from '../src/lib/FileLock.ts';
 
 
 type NumberKeys<T> = {
@@ -192,7 +128,7 @@ describe('FileLock.Config', () => {
     const dir = path.join(process.cwd(), '.lock');
     fs.rmSync(dir, { force: true, recursive: true });
     expect(fs.existsSync(dir)).toBeFalsy();
-
+    const FileLock = createFileLock();
     FileLock.setConfig({ lockDirectory: dir });
 
     expect(fs.existsSync(dir)).toBeTruthy();
@@ -228,6 +164,7 @@ describe('FileLock.Config', () => {
     });
     expect.assertions(3);
     const key = "testFsErrorBySpyOn_"+ String(count++).padStart(2, '0');
+    const FileLock = createFileLock();    
     try {
       FileLock.setConfig({ ...config, logger });
       const retVal = key;
@@ -263,9 +200,10 @@ describe('FileLock.Config', () => {
   });
 
   it("An error occurs because the directory path specified in `FileLock.setConfig()` already exists but is not a directory.", async () => {
-    const dir = path.join(process.cwd(), '.lock2');
+    const dir = path.resolve('.lock2');
     fs.writeFileSync(dir, "");
     expect.assertions(2);
+    const FileLock = createFileLock();
     try {
       FileLock.setConfig({ lockDirectory: dir, logger });
       const retVal = "notDirectory", key = retVal;
@@ -285,6 +223,7 @@ describe('FileLock.Config', () => {
     }
   });
 
+/* 途中のロックディレクトリ変更禁止のため、本テストは不要
   it("Changing the directory path while a lock is held does not result in an error.", async () => {
     const retVal = "changeDir1", key = retVal;
     FileLock.setConfig({ logger: console });
@@ -297,7 +236,8 @@ describe('FileLock.Config', () => {
       {}
     )).toBe(retVal);
   });
-
+*/
+/* 途中のロックディレクトリ変更禁止のため、本テストは不要
   it("Changing the directory path while a lock is held and subsequently acquiring another same-key lock.", async () => {
     const retVal = "changeDir2", key = retVal;
     FileLock.setConfig({ logger: console });
@@ -321,7 +261,8 @@ describe('FileLock.Config', () => {
       expect(err).instanceOf(DeadlockDetected);
     }
   });
-
+*/
+/* 途中のロックディレクトリ変更禁止のため、本テストは不要
   it("Changing the directory path while a lock is held and subsequently acquiring another same-key lock.(allowReentry: true)", async () => {
     const retVal = "changeDir3", key = retVal;
     FileLock.setConfig({ logger: console });
@@ -349,7 +290,7 @@ describe('FileLock.Config', () => {
       })
     }
   });
-
+*/
   it("When debug mode is enabled, the history is updated.", async () => {
     const hist = FileLock.historyInfo.historyPath;
     if (fs.existsSync(hist) === false) fs.writeFileSync(hist, '');
@@ -699,8 +640,10 @@ describe('FileLock.Config', () => {
 - 未指定　⇒　ロック　⇒　設定でエラー
 */
   it("update `lock directory`.", () => {
-    FileLock.setConfig({ lockDirectory: '.lock_test' });
-    expect.assertions(1);
+    const lockDirectory = path.resolve('.lock_test');
+    const FileLock = createFileLock();
+    FileLock.setConfig({ lockDirectory });
+    expect.assertions(2);
     try {
       FileLock.setConfig({ lockDirectory: '.lock_test2' });
     }
@@ -713,15 +656,17 @@ describe('FileLock.Config', () => {
       });
     }
     finally {
-      //fs.rmSync()
+      fs.rmSync(lockDirectory, { force: true, recursive: true });
     }
   });
 
   it("lock and update `lock directory`.", async () => {
-    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    const lockDirectory = path.resolve('.lock_test');
+    const FileLock = createFileLock();
+    FileLock.setConfig({ lockDirectory });
     const key = 'update_lock_directory1';
     await FileLock.withLock(key, () => {});
-    expect.assertions(2);
+    expect.assertions(3);
     try {
       FileLock.setConfig({ lockDirectory: '.lock_test2' });
     }
@@ -732,26 +677,38 @@ describe('FileLock.Config', () => {
         message: "[REQUIRE] Updating the `lock directory` is prohibited.",
         name: "lockDirectory",
       });
+    }
+    finally {
+      fs.rmSync(lockDirectory, { force: true, recursive: true });
     }
     expect(TestLock.isReleasedState(key))
   });
 
   it("update `lock directory` but same path.", async () => {
-    FileLock.setConfig({ lockDirectory: '.lock_test' });
-    FileLock.setConfig({ lockDirectory: '.lock_test' });
-    const key = 'update_lock_directory2';
+    const lockDirectory = '.lock_test';
+    const FileLock = createFileLock();
     expect.assertions(1);
-    await FileLock.withLock(key, () => {});
-    FileLock.setConfig({ lockDirectory: '.lock_test' });
-    expect(TestLock.isReleasedState(key))
+    try {
+      FileLock.setConfig({ lockDirectory });
+      FileLock.setConfig({ lockDirectory });
+      const key = 'update_lock_directory2';
+      await FileLock.withLock(key, () => {});
+      FileLock.setConfig({ lockDirectory: '.lock_test' });
+      expect(TestLock.isReleasedState(key))
+    }
+    finally {
+      fs.rmSync(lockDirectory, { force: true, recursive: true });
+    }
   });
 
   it("no specfied `lock directory`, lock and update.", async () => {
     const key = 'update_lock_directory3';
+    const FileLock = createFileLock();
+    const lockDirectory = '.lock_test';
     await FileLock.withLock(key, () => {});
-    expect.assertions(2);
+    expect.assertions(3);
     try {
-      FileLock.setConfig({ lockDirectory: '.lock_test' });
+      FileLock.setConfig({ lockDirectory });
     }
     catch (err) {
       expect(err).instanceOf(InvalidConfiguration);
@@ -761,40 +718,74 @@ describe('FileLock.Config', () => {
         name: "lockDirectory",
       });
     }
+    finally {
+      fs.rmSync(lockDirectory, { force: true, recursive: true });
+    }
     expect(TestLock.isReleasedState(key))
   });
 
-/*
   it("update `lock directory`, lock, reest and update.", async () => {
     const key = 'update_lock_directory4';
-    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    const lockDirectory = '.lock_test';
+    const FileLock = createFileLock();
+    FileLock.setConfig({ lockDirectory });
+    expect.assertions(3);
     await FileLock.withLock(key, () => {});
-    expect.assertions(2);
     FileLock.resetConfig();
-    FileLock.setConfig({ lockDirectory: '.lock_test' });
+    FileLock.setConfig({ lockDirectory });
     try {
       FileLock.setConfig({ lockDirectory: '.lock_test2' });
     }
     catch (err) {
-      expect(err).instanceOf(Error);
+      expect(err).instanceOf(InvalidConfiguration);
+      expect(err).toMatchObject({
+        code: "EINVAL",
+        message: "[REQUIRE] Updating the `lock directory` is prohibited.",
+        name: "lockDirectory",
+      });
+    }
+    finally {
+      fs.rmSync(lockDirectory, { force: true, recursive: true });
     }
     expect(TestLock.isReleasedState(key))
   });
 
   it("no specfied `lock directory`, lock, reest and update.", async () => {
     const key = 'update_lock_directory5';
+    const lockDirectory = '.lock_test';
+    const FileLock = createFileLock();
     await FileLock.withLock(key, () => {});
-    expect.assertions(2);
+    expect.assertions(3);
     FileLock.resetConfig();
     try {
-      FileLock.setConfig({ lockDirectory: '.lock_test' });
+      FileLock.setConfig({ lockDirectory });
     }
     catch (err) {
-      expect(err).instanceOf(Error);
+      expect(err).instanceOf(InvalidConfiguration);
+      expect(err).toMatchObject({
+        code: "EINVAL",
+        message: "[REQUIRE] Updating the `lock directory` is prohibited.",
+        name: "lockDirectory",
+      });
+    }
+    finally {
+      fs.rmSync(lockDirectory, { force: true, recursive: true });
     }
     expect(TestLock.isReleasedState(key))
   });
-*/
+
+  it("tow FileLock class object's settings are independent.", () => {
+    const FileLock1 = createFileLock();
+    const FileLock2 = createFileLock();
+    expect(FileLock1.getConfig()).toMatchObject(defaultFileLockConfig);
+    const config1: FileLockConfig = { ...defaultFileLockConfig, cache: false };
+    FileLock1.setConfig(config1);
+    expect(FileLock1.getConfig()).toMatchObject(config1);
+    expect(FileLock2.getConfig()).not.toMatchObject(config1);
+  });
+
+
+
   // ★★★キューManagerfテストを追加せよ！！
 /*（Successあたりが怪しいから）
 - キューの数設定

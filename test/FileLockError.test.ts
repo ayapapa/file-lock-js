@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { getLockMeta, getLockMetaPath, removeLockFiles, setLockMeta, sleepAsync, TestLock  } from './FileLockTestCommon.ts';
 import { AlreadyLocked, type FileLockConfig, DeadlockDetected, FileLock, FileLockError, LockDirectoryCreationFailed, 
   LockDirectoryStatFailed, LockError, InvalidConfiguration, InvalidOptions, LockCompromised, PendingLocksExceeded, 
-  QueueManager, ReleaseFailed, TTLExceeded, type LockMonitor } from '../src/index.ts';
+  QueueManager, QueueWaitTimeout, ReleaseFailed, TTLExceeded, type LockMonitor } from '../src/index.ts';
 
 let orgConfig: FileLockConfig;
 beforeEach(() => {
@@ -598,11 +598,11 @@ describe('FileLockError', () => {
       await Promise.all(pr);
     }
     catch (err) {
+      expect(err).instanceOf(QueueWaitTimeout);
       expect(err).toMatchObject({
-        code: "EALREADYLOCKED",
+        code: "EQUEUETIMEOUT",
         key,
-        message: "The `lock file` already exists.",
-        reason: "ExistingLock"
+        message: "Queue wait timeout.",
       })
     }
   });

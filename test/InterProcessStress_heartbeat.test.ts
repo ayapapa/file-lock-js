@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it, vi } from 'vitest';
 
 import { FileLock, type FileLockConfig } from '../src/index.ts';
-import {  eachAfterStressTest,  init, isCI, report, resetExecResources, testMultiProcess } from './FileLockTestCommon.ts';
+import {  childErrors, eachAfterStressTest,  init, isCI, report, resetExecResources, testMultiProcess } from './FileLockTestCommon.ts';
 
 let orgConfig: FileLockConfig;
 
@@ -35,6 +35,7 @@ describe('Test involving a single key, multiple processes, and approximately fou
 
   it("5 processes.", async () => {
     await testMultiProcess(5, 'StressHeartbeat5', { sleep: 4500, timout: 10000, hbTtl: 10000 });
+    console.log(childErrors);
   });
 /*
   it("10 processes.", async () => {

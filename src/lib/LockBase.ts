@@ -237,39 +237,30 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
   /**
    * @internal
    * Statically holds the specified `config` (type: `LockBaseConfig`).
-   * **Note: This method does not perform static storage of the configuration; therefore, saving the configuration is the responsibility of the inheriting class.**
+   * **Note:** 
+   * - This method does not perform static storage of the configuration; therefore, saving the configuration is the responsibility of the inheriting class.
+   * - In this method, properties with a value of null or undefined are not copied.
    * @param config  Configurations. 
    * @return Configuration with resolved LockBaseConfig properties.
    */
   protected static _setConfig<T extends LockBaseConfig = LockBaseConfig>(config: T): T {
     LockBase.#checkValuesType(config);
-    const rConfig = this._resolveConfig<T>(config) as Required<LockBaseConfig>;
-    // Set configurations of `Contrats`.
-    Contracts.setConfig({ debug: rConfig._debug, logger: rConfig.logger });
-    return rConfig as T;
-  }
-
-  /**
-   * @interface
-   * @param config  User-specified settings.
-   * @returns A required object for configuration properties.
-   */
-  protected static _resolveConfig<T extends LockBaseConfig = LockBaseConfig>(config: T): Required<T> {
+    //const rConfig = this._resolveConfig<T>(config) as Required<LockBaseConfig>;
     const curConf = this._config as Record<string, unknown>;
+    const orgLogger = curConf.logger;
     const newConf = this._copyConfig(config) as Record<string, unknown>;
     const rConf = { ...curConf } as Record<string, unknown>;
-    const orgLogger = this._config.logger;
-    Object.keys(curConf).forEach(key => {
+    Object.keys(newConf).forEach(key => {
       if (newConf[key] != null) rConf[key] = newConf[key];
     });
     if (orgLogger != rConf.logger) rConf.logger = _resolveLogger(rConf.logger as LogProvider, rConf._debug as boolean);
-    //ENSURE_DEBUG(() => isEqualObjectType(rConf, defaultLockBaseConfig), 余計なチェックのため削除予定
-    //  'The current configuration is invalid.', LockError, { code: 'EINVAL' });
     // Since `queueManager` also allows `undefined` values, it is re-assigned after the check above.
     if ('queueManager' in config && config.queueManager === undefined)
       rConf.queueManager = undefined;
-    // Cast the value, as it has already been verified above.
-    return rConf as Required<T>;
+
+    // Set configurations of `Contrats`.
+    Contracts.setConfig({ debug: rConf._debug as boolean, logger: rConf.logger as LogProvider });
+    return rConf as T;
   }
 
   /** 
@@ -567,7 +558,6 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
         reason: new QueueWaitTimeout(undefined, {
           timeoutMs: options.timeoutMs,
           key: this.#key,
-          props: { reason: 'ExistingLock' } 
         })
       });
     }
@@ -575,7 +565,8 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
       if (err instanceof QueueMaxPendingExceeded) {
         throw new PendingLocksExceeded(undefined, {
           maxPending: err.maxPending,
-          key: this.#key
+          key: this.#key,
+          props: { cause: err }
         })
       }
       else {

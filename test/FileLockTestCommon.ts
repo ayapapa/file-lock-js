@@ -310,7 +310,7 @@ export async function testMultiProcess(n: number, oneKey?: string, opts?: { slee
  * Lock for testing
  */
 export class TestLock  {
-
+  // eslint-disable-next-line
   static Impl = FileLockImpl as any;
   static getExitFuncs() {
     return this.Impl._onExitFns;

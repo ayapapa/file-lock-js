@@ -110,8 +110,6 @@ export function createFileLock(config: FileLockConfig = defaultFileLockConfig): 
     }
   }
 
-  FileLock.setConfig(config);
-
   return FileLock;
 }
 

@@ -159,6 +159,9 @@ export const defaultFileLockConfig: Readonly<FileLockRequiredConfig> = {
  * @returns A FileLockImpl class object. Please refer to `See` for the definition of this object.
  */
 export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfig): FileLockClass {
+
+  const initialConfig: FileLockConfig = { ...config };
+
   /**
    * @internal
    * File locking. 
@@ -189,12 +192,8 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      * @internal
      * The `lock directory`
      */
-    static #lockDir: string = FileLockImpl.#getLockDirPath();
-/*
-    static get #lockDir(): string {
-      return FileLockImpl.#getLockDirPath();
-    }
-*/
+    static get #lockDir(): string { return FileLockImpl.#getLockDirPath(); };
+
     /**
      * @internal
      * The history directory path.
@@ -228,12 +227,12 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      */
 
     /** Get current configurations. */
-    public static getConfig(): FileLockRequiredConfig {
+    public static getConfig(): Readonly<FileLockRequiredConfig> {
       return FileLockImpl._copyConfig(FileLockImpl.#config);
     }
 
     /** Get default configurations. */
-    public static get defaultConfig(): FileLockRequiredConfig {
+    public static get defaultConfig(): Readonly<FileLockRequiredConfig> {
       return FileLockImpl._copyConfig(defaultFileLockConfig);
     }
 
@@ -241,7 +240,7 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      * Get default options.
      * @returns Default options.
      */
-    public static get defaultOptions(): FileLockOptions {
+    public static get defaultOptions(): Readonly<FileLockOptions> {
       return { ...defaultFileLockOptions };
     }
 
@@ -259,7 +258,7 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
     }
 
     /** Get `lock directory` */
-    public static get lockDir() { return FileLockImpl.#lockDir; }
+    public static get lockDir(): Readonly<string> { return FileLockImpl.#lockDir; }
 
     /** 
      * @internal
@@ -281,6 +280,7 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      * @param config  Lock configurations. 
      */
     public static setConfig(config: FileLockConfig): void {
+      FileLockImpl.#initialize(false);
       checkValuesType(config, { ...defaultFileLockConfig, lockDirectory: 'string' }, 'configuration', InvalidConfiguration);
       REQUIRE(config.lockDirectory == null 
         || FileLockImpl.#config.lockDirectory == null 
@@ -290,19 +290,19 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
       )
 
       // Configure the base settings and receive the resulting resolved settings.
-      const rConf = super._setConfig(config);
-
-      const dConf = Object.assign(this._config, FileLockImpl._copyConfig(rConf));
-      if (dConf.cacheTtlMs != null) dConf.cacheTtlMs = Math.max(dConf.cacheTtlMs, 10000);
-      if (dConf.maxCacheEntries != null) dConf.maxCacheEntries  = Math.max(dConf.maxCacheEntries, 1);
-      if (dConf.maxHistoryEntries != null) dConf.maxHistoryEntries = Math.max(dConf.maxHistoryEntries, 1);
-      if (dConf.maxHistoryFiles != null) dConf.maxHistoryFiles = Math.max(dConf.maxHistoryFiles, 1);
+      let rConf = super._setConfig(config);
+      const curConf = this._config;
+      rConf = Object.assign(curConf, rConf/*FileLockImpl._copyConfig(rConf)*/);
+      if (rConf.cacheTtlMs != null) rConf.cacheTtlMs = Math.max(rConf.cacheTtlMs, 10000);
+      if (rConf.maxCacheEntries != null) rConf.maxCacheEntries  = Math.max(rConf.maxCacheEntries, 1);
+      if (rConf.maxHistoryEntries != null) rConf.maxHistoryEntries = Math.max(rConf.maxHistoryEntries, 1);
+      if (rConf.maxHistoryFiles != null) rConf.maxHistoryFiles = Math.max(rConf.maxHistoryFiles, 1);
 
       // If defaultOptions is specified, resolve it.
-      if (dConf.defaultOptions) {
-        dConf.defaultOptions = new FileLockOptionsResolver(dConf.defaultOptions, minimumFileLockOptions, defaultFileLockOptions).getOptions();
+      if (rConf.defaultOptions) {
+        rConf.defaultOptions = new FileLockOptionsResolver(rConf.defaultOptions, minimumFileLockOptions, defaultFileLockOptions).getOptions();
       }
-      FileLockImpl.#config = { ...FileLockImpl.getConfig(), ...dConf };
+      FileLockImpl.#config = { ...FileLockImpl.getConfig(), ...rConf };
 
       // chache
       FileLockImpl.#cache?.clear();
@@ -318,19 +318,18 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
         FileLockImpl.#cache = null;
       }
 
-      // `lock directory`
-      FileLockImpl.#lockDir = FileLockImpl.#getLockDirPath();
+      // check `lock directory`
+      const lockDir = FileLockImpl.#getLockDirPath();
 
-      // history
+      // check `history directory`
       if (FileLockImpl.#config.history || FileLockImpl.#config._debug) {
-        //FileLockImpl.#historyDir =  path.join(FileLockImpl.#lockDir, 'history');
+        const historyDir =  path.join(lockDir, 'history');
         try {
-          fs.mkdirSync(FileLockImpl.#historyDir, { recursive: true });
+          fs.mkdirSync(historyDir, { recursive: true });
         }
         catch (err) {
           throw new FileLockError('Failed to create the directory for storing history files.', { code: 'EIO', props: { causes: [err] }})
         }
-        //FileLockImpl.#historyPath =  path.join(FileLockImpl.#historyDir, FileLockImpl.#historyName);
       }
     }
 
@@ -388,7 +387,7 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
           throw new LockDirectoryStatFailed(e.message, { path: name } );
         }
         
-        if (stat.isDirectory()) return true
+        if (stat?.isDirectory()) return true
 
         throw new LockDirectoryCreationFailed(`'${name}' is not a directory.`, { path: name });
       }
@@ -418,9 +417,13 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      * @internal
      * Initialize.
      */
-    static #initialize(): void {
-      //FileLockImpl.resetConfig();
-      FileLockImpl._addOnExit(FileLockImpl.#onExitFn);
+    static #initialize(setInitialConfig: boolean): void {
+      if (!FileLockImpl.#initialized) {
+        FileLockImpl.#initialized = true;
+        if (setInitialConfig) 
+          FileLockImpl.setConfig(initialConfig);
+        FileLockImpl._addOnExit(FileLockImpl.#onExitFn);
+      } 
     }
 
     /**
@@ -468,10 +471,7 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      */
     private constructor(key: string) {
       super(key);
-      if (!FileLockImpl.#initialized) {
-        FileLockImpl.#initialize();
-        FileLockImpl.#initialized = true;
-      } 
+      FileLockImpl.#initialize(true);
     }
 
     /**
@@ -1434,10 +1434,6 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
       return this.#accessInfo(path, () => fs.writeFileSync(path, str, 'utf8'), options, msg);
     }
   }
-
-  //　以下、initとsetを融合させよ！
-
-  FileLockImpl.setConfig(config);
 
   return FileLockImpl;
 }
