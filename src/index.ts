@@ -7,7 +7,7 @@
 	import { type FileLockOptions } from './lib/FileLockOptions.ts';
 	import { type FileLockConfig } from './lib/FileLockConfig.ts';
 	import { type Monitor as LockMonitor } from './lib/LockMonitor.ts';
-	import { QueueManager, type Queue, type QueueMgrConfig, type QueueTask } from './lib/QueueManager.ts';
+	import { QueueManager, QueueMaxPendingExceeded, type Queue, type QueueMgrConfig, type QueueTask } from './lib/QueueManager.ts';
 	export {
 		defaultFileLockConfig,
 		defaultQueueManager,
@@ -23,6 +23,7 @@
 		LockError,
 		PendingLocksExceeded,
 		QueueManager,
+		QueueMaxPendingExceeded,
 		QueueWaitTimeout,
 		ReleaseFailed,
 		TTLExceeded,
