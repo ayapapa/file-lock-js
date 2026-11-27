@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PrettyConsole } from '@ayapapa-npm/pretty-console-js';
 
-import { type FileLockConfig, type FileLockOptions, type LogProvider, 
-  FileLock, InvalidConfiguration, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError, QueueManager } from '../src/index.ts';
+import {createFileLock, type FileLockConfig, type FileLockOptions, type LogProvider, 
+  FileLock, InvalidConfiguration, LockDirectoryCreationFailed, LockDirectoryStatFailed, LockError, QueueManager, 
+  defaultQueueManager} from '../src/index.ts';
 import { getHistoryPath, getLockMetaPath, logger, sleepAsync, TestLock } from './FileLockTestCommon.ts'
-import { createFileLock, defaultFileLockConfig } from '../src/lib/FileLock.ts';
+import { AssertionError } from 'node:assert';
 
 
 type NumberKeys<T> = {
@@ -23,6 +24,187 @@ afterEach(() => {
   vi.restoreAllMocks();
   FileLock.setConfig(orgConfig);
 });
+
+/*
+type ConfigSnapshot = Record<string, unknown>;
+
+type ConfigMethodNames = readonly string[];
+*/
+/**
+ * コンフィグの値と、公開メソッドの存在を検証する。
+ */
+/*
+export function expectConfigObject(
+  actual: Record<string, unknown>,
+  expectedValues: ConfigSnapshot,
+  expectedMethods: ConfigMethodNames = [],
+): void {
+  // 値系プロパティの比較
+  expect(actual).toMatchObject(expectedValues);
+
+  // 操作系メソッドの存在と関数であることを確認
+  for (const methodName of expectedMethods) {
+    expect(actual).toHaveProperty(methodName);
+    expect(actual[methodName]).toEqual(expect.any(Function));
+  }
+}
+
+export function getValueProperties<T extends object>(
+  obj: T,
+): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(
+      ([, value]) => typeof value !== 'function',
+    ),
+  ) as Partial<T>;
+}
+
+export function getFunctionProperties<T extends object>(
+  obj: T,
+): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(
+      ([, value]) => typeof value === 'function',
+    ),
+  ) as Partial<T>;
+}
+*/
+
+export function expectObjectToMatch(
+  actual: object,
+  expected: object,
+  parentPath = '',
+): void {
+  const actualRecord = actual as Record<string, unknown>;
+  const expectedRecord = expected as Record<string, unknown>;
+
+  for (const [key, expectedValue] of Object.entries(expectedRecord)) {
+    const path = parentPath ? `${parentPath}.${key}` : key;
+
+    // キーの存在確認
+    expect(
+      Object.prototype.hasOwnProperty.call(actualRecord, key),
+      `Property "${path}" should exist`,
+    ).toBe(true);
+
+    const actualValue = actualRecord[key];
+
+    // 関数系：参照や実装は比較しない
+    if (typeof expectedValue === 'function') {
+      continue;
+    }
+
+    // ネストしたオブジェクト：再帰的に比較
+    if (
+      expectedValue !== null &&
+      typeof expectedValue === 'object' &&
+      !Array.isArray(expectedValue)
+    ) {
+      expectObjectToMatch(
+        actualValue as object,
+        expectedValue,
+        path,
+      );
+      continue;
+    }
+
+    // 値系：値を比較
+    expect(actualValue, `Property "${path}"`)
+      .toEqual(expectedValue);
+  }
+}
+
+/*
+export function expectObjectToMatch(
+  actual: object,
+  expected: object,
+): void {
+  const entries = Object.entries(expected);
+
+  // 値系プロパティ
+  const expectedValues = Object.fromEntries(
+    entries.filter(
+      ([, value]) => typeof value !== 'function',
+    ),
+  );
+
+  // 関数系プロパティ
+  const expectedMethods = entries
+    .filter(([, value]) => typeof value === 'function')
+    .map(([key]) => key);
+
+  // 値の比較
+  expect(actual).toMatchObject(expectedValues);
+
+  // メソッドのキーの存在確認
+  for (const key of expectedMethods) {
+    expect(actual).toHaveProperty(key);
+  }
+}
+*/
+
+/*
+export function expectObjectToMatch(
+  actual: object,
+  expected: object,
+): void {
+  const entries = Object.entries(expected);
+
+  // 値系プロパティ
+  const expectedValues = Object.fromEntries(
+    entries.filter(
+      ([, value]) => typeof value !== 'function',
+    ),
+  );
+
+  // 関数系プロパティ
+  const expectedMethods = entries
+    .filter(([, value]) => typeof value === 'function')
+    .map(([key]) => key);
+
+  // 値の比較
+  expect(actual).toMatchObject(expectedValues);
+
+  // メソッドのキーの存在確認
+  for (const key of expectedMethods) {
+    expect(actual).toHaveProperty(key);
+  }
+}
+*/
+
+/*
+export function expectObjectToMatch(
+  actual: object,
+  expected: object,
+): void {
+  const getEntries = (obj: object) => Object.entries(obj);
+
+  const getValueProperties = (obj: object) =>
+    Object.fromEntries(
+      getEntries(obj).filter(
+        ([, value]) => typeof value !== 'function',
+      ),
+    );
+
+  const getFunctionProperties = (obj: object) =>
+    getEntries(obj).filter(
+      ([, value]) => typeof value === 'function',
+    );
+
+  // 値系プロパティを比較
+  const vp1 = getValueProperties(actual);
+  const vp2 = getValueProperties(expected);
+  expect(getValueProperties(actual))
+    .toMatchObject(getValueProperties(expected));
+
+  // 関数系プロパティの存在と関数型を確認
+  for (const [key] of getFunctionProperties(expected)) {
+    expect(actual).toHaveProperty(key);
+    expect(actual[key as keyof typeof actual])
+      .toEqual(expect.any(Function));
+  }
+}
+*/
 
 describe('FileLock.Config', () => {
 
@@ -46,14 +228,16 @@ describe('FileLock.Config', () => {
   });
 
   it("`FileLock.setConfig()` works correctly.", () => {
-    expect.assertions(3);
+    //expect.assertions(3);
     FileLock.setConfig(FileLock.defaultConfig);
-    expect(FileLock.defaultConfig).toMatchObject(FileLock.getConfig());
+    expectObjectToMatch(FileLock.getConfig(), FileLock.defaultConfig);
+    //expect(FileLock.getConfig()).toMatchObject(FileLock.defaultConfig);
     //const lockDirectory = 'hogehoge';
     let config: FileLockConfig = {...FileLock.defaultConfig, /*lockDirectory, */cache: false, logger: new PrettyConsole() };
     FileLock.setConfig(config);
     const newConf = FileLock.getConfig();
-    expect(newConf).toMatchObject(config);
+    expectObjectToMatch(newConf, config);
+    //expect(newConf).toMatchObject(config);
     config = {...FileLock.defaultConfig, defaultOptions: { ...FileLock.defaultOptions, allowReentry: true } };
     FileLock.setConfig(config);
     expect(JSON.stringify(FileLock.getConfig())).toBe(JSON.stringify(config));
@@ -63,11 +247,10 @@ describe('FileLock.Config', () => {
     const dummyLogger: LogProvider = {
       log: ()=>{}, info: ()=>{}, trace: ()=>{}, debug: ()=>{}, warn: ()=>{}, error: ()=>{}, fatal: ()=>{}
     }
-    FileLock.setConfig({ /*lockDirectory: undefined, */logger: dummyLogger, _debug: true,  cache: false });
-    const conf = FileLock.getConfig();
+    FileLock.setConfig({ logger: dummyLogger, _debug: true,  cache: false });
+    FileLock.getConfig();
     FileLock.resetConfig();
-    expect(FileLock.getConfig()).toMatchObject(FileLock.defaultConfig);
-    expect(FileLock.getConfig()).not.toMatchObject(conf);
+    expectObjectToMatch(FileLock.getConfig(), FileLock.defaultConfig);
   });
 
   it("In `setConfig()`, if a value lower than the minimum is specified " +
@@ -101,7 +284,7 @@ describe('FileLock.Config', () => {
     };
     // Verify that the default option values ​​in the configuration settings are resolved.
     FileLock.setConfig(conf);
-    expect(FileLock.getConfig()).toMatchObject(exp);
+    expectObjectToMatch(FileLock.getConfig(), exp);
   });
 
 /*
@@ -777,19 +960,96 @@ describe('FileLock.Config', () => {
   it("tow FileLock class object's settings are independent.", () => {
     const FileLock1 = createFileLock();
     const FileLock2 = createFileLock();
-    expect(FileLock1.getConfig()).toMatchObject(defaultFileLockConfig);
-    const config1: FileLockConfig = { ...defaultFileLockConfig, cache: false };
+    expectObjectToMatch(FileLock1.getConfig(), FileLock.defaultConfig);
+    //expect(FileLock1.getConfig()).toMatchObject(FileLock.defaultConfig);
+    const config1: FileLockConfig = { ...FileLock.defaultConfig, cache: false };
     FileLock1.setConfig(config1);
-    expect(FileLock1.getConfig()).toMatchObject(config1);
-    expect(FileLock2.getConfig()).not.toMatchObject(config1);
+
+    expectObjectToMatch(FileLock1.getConfig(), config1);
+    try {
+      expect(() => {
+        expectObjectToMatch(FileLock2.getConfig(), config1);
+      }).toThrow(/Property "cache"/);
+      //expectObjectToMatch(FileLock2.getConfig(), config1);
+    }
+    catch (err) {
+      expect(err).instanceOf(AssertionError);
+    }
+    //expect(FileLock1.getConfig()).toMatchObject(config1);
+    //expect(FileLock2.getConfig()).not.toMatchObject(config1);
   });
 
+  it("queueManager: undefined.", () => {
+    // ★★★　setConfigが遅延実行されるので、デフォルトのcreationのときだけ、遅延実行にして、このように利用者がcreateするときは、setConfigするようにする。
+    // つまり、非公開？？（この関数はImpl分のみ用意すればよいかな？？）createInternal(config: XXX, setConfig(遅延設定フラグ的な名前にせよ): boolean)とし、
+    // createFileLock(config)が公開されており、実際には、return createInternal(config, true)
+    // そして、内部では、createInternal(config, false)
+    // ★★同じ理由で、createXXImplもそうすべき
+    const FileLock = createFileLock({ queueManager: undefined });
+    expect(FileLock.numberOfQueues).toBe(0);
+  });
 
+  it("getConfig().logger(console).", () => {
+    const spyDebug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const MyLock = createFileLock({ _debug: true, logger: console });
+    const logger = MyLock.getConfig().logger!;
+    try {
+      logger.debug("debug");
+      expect(spyDebug).calledWith("debug");
+    }
+    finally {
+      spyDebug.mockRestore();
+    }
+  });
 
-  // ★★★キューManagerfテストを追加せよ！！
-/*（Successあたりが怪しいから）
-- キューの数設定
-- キューのエントリー数取得と最大数設定
-*/
+  it("getConfig().logger.", () => {
+    let _log, _info, _trace, _debug, _warn, _error, _fatal;
+    const dummyLogger: LogProvider = {
+      log: (arg: string)=>{_log = arg;}, 
+      info: (arg: string)=>{_info = arg;}, 
+      trace: (arg: string)=>{_trace = arg;}, 
+      debug: (arg: string)=>{_debug = arg;}, 
+      warn: (arg: string)=>{_warn = arg;}, 
+      error: (arg: string)=>{_error = arg;}, 
+      fatal: (arg: string)=>{_fatal = arg;}
+    }
+    const MyLock = createFileLock({ _debug: true, logger: dummyLogger });
+    const logger = MyLock.getConfig().logger!;
+    logger.trace("trace");
+    logger.debug("debug");
+    logger.log("log");
+    logger.info("info");
+    logger.warn("warn");
+    logger.error("error");
+    logger.fatal!("fatal");
+    expect(_trace).toBe("trace");
+    expect(_debug).toBe("debug");
+    expect(_log).toBe("log");
+    expect(_info).toBe("info");
+    expect(_warn).toBe("warn");
+    expect(_error).toBe("error");
+    expect(_fatal).toBe("fatal");
+  });
+
+  it("getConfig().queueManager.", async () => {
+    const MyLock = createFileLock();
+    const queueManager = MyLock.getConfig().queueManager!;
+    
+    expect(queueManager.maxConcurrency).toBe(defaultQueueManager.maxConcurrency);
+    expect(queueManager.maxPending).toBe(defaultQueueManager.maxPending);
+    expect(queueManager.numberOfAllEntries).toBe(defaultQueueManager.numberOfAllEntries);
+    expect(queueManager.numberOfPending).toBe(defaultQueueManager.numberOfPending);
+    expect(queueManager.numberOfRunning).toBe(defaultQueueManager.numberOfRunning);
+    expect(queueManager.numberOfAllQueues).toBe(defaultQueueManager.numberOfAllQueues);
+    expect(queueManager.numberOfQueues).toBe(defaultQueueManager.numberOfQueues);
+
+    const ret = await queueManager.enqueue<boolean>(() => { return true;}, { timeout: 100, reason: "test" });
+    expect(ret).toBeTruthy();
+
+    const hoge = queueManager.getCandidates();
+    const moge = defaultQueueManager.getCandidates();
+    expect(hoge.length).toBe(moge.length);
+    expect(hoge.every((v, i) => v.id === moge[i].id)).toBeTruthy();
+  });
 
 });

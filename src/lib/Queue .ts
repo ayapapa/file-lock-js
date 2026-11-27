@@ -1,5 +1,5 @@
 /** Task definition to be registered in a queue. */
-export type QueueTask<T> = () => Promise<T>;
+export type QueueTask<T> = () => T | Promise<T>;
 
 /** Data structure to be added to a queue. */
 interface QueueItem<T> {

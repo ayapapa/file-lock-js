@@ -8,16 +8,17 @@ import { type LockBaseInternalState } from './LockBaseInternalState.ts'
 import { type LockBaseConfig, type LogProvider } from './LockBaseConfig.ts'
 import { checkValuesType, includesAllKeysOf/*, isEqualObjectType*/ } from './Util.ts';
 import { type Monitor } from './LockMonitor.ts';
-import { QueueManager, QueueMaxPendingExceeded, type Queue } from './QueueManager.ts';
+import { QueueManager, QueueMaxPendingExceeded, type Queue, type QueueTask, type TimerInfo } from './QueueManager.ts';
 
+export type LockBaseRequiredConfig = Required<Omit<LockBaseConfig, 'logger'>> & { logger: Required<LogProvider> };
 /**
  * An internal options type consisting only of the required properties of LockBaseOptions.
  */
 export type LockBaseRequiredOptions = Required<Pick<LockBaseOptions, 'timeoutMs' | 'ttlMs' | 'allowReentry'>>;
 
 /**
- * A default queue manager common to the process.
- * { maxConcurrency: 5, maxPending: 500 }
+ * A default queue manager common to the process. 
+ * Configuration is { maxConcurrency: 5, maxPending: 500 }.
  */
 export const defaultQueueManager = new QueueManager({ maxConcurrency: 5, maxPending: 500 });
 
@@ -25,8 +26,9 @@ export const defaultQueueManager = new QueueManager({ maxConcurrency: 5, maxPend
  * @internal
  * Default values of LockBaseConfig.
  */
- export const defaultLockBaseConfig: Readonly<Required<LockBaseConfig>> = {
-  logger: _resolveLogger(console, false),
+ //export const defaultLockBaseConfig: Readonly<Required<LockBaseConfig>> = {
+ export const defaultLockBaseConfig: Readonly<LockBaseRequiredConfig> = {
+  logger: _resolveLogger(console/*, false*/),
   queueManager: defaultQueueManager,
   _debug: false,
 }
@@ -83,7 +85,7 @@ interface ReentrantContext  {
  * このメソッドは、toConfigViewとする、返すConfigViewは、logger, queueManager以外をPickした型 & {loggerConfigured: boolean, queueManagerConfigured: boolean} 
  * @param config Configurations.
  */
-function _copyConfig<T extends LockBaseConfig>(config: T): T {
+function _copyConfig<T extends LockBaseConfig>(config: T, publicUse: boolean): T {
   const withoutInstance  = { ...config };
   // Since function objects cannot be copied via `structuredClone`, they are excluded for the time being.
   const { logger, queueManager } = withoutInstance;
@@ -95,8 +97,47 @@ function _copyConfig<T extends LockBaseConfig>(config: T): T {
   }
   // Adds `logger` to the copied object and returns it.
   const cloned = structuredClone(withoutInstance);
-  Object.assign(cloned, { queueManager/* undefnined available */ });
-  return logger ? Object.assign(cloned, { logger }) : cloned;
+  const setObjects = (q: QueueManager | undefined, l: LogProvider | undefined) => {
+    const objects = {} as Record<string, unknown>;
+    if (q) {
+      objects.queueManager = q;
+    }
+    else if ('queueManager' in config) {
+      // `queueManager` may be set to `undefined`.
+      objects.queueManager = undefined;
+    }
+    if (l) {
+      objects.logger = l;
+    }
+    return objects;
+  };
+  let qm = queueManager;
+  let lg = logger;
+  if (publicUse) {
+    queueManager && (qm = {
+      maxConcurrency: queueManager.maxConcurrency,
+      maxPending: queueManager.maxPending,
+      numberOfAllEntries: queueManager.numberOfAllEntries,
+      numberOfPending: queueManager.numberOfPending,
+      numberOfRunning: queueManager.numberOfRunning,
+      numberOfAllQueues: queueManager.numberOfAllQueues,
+      numberOfQueues: queueManager.numberOfQueues,
+      numberOfDedicatedQueues: queueManager.numberOfDedicatedQueues,
+      enqueue: async (task: QueueTask<T>, timerInfo: TimerInfo) => { return queueManager.enqueue<T>(task, timerInfo); },
+      getCandidates: () => { return queueManager.getCandidates(); },
+    } as unknown as QueueManager);
+    logger && (lg = {
+      trace: (...args: unknown[]) => logger.trace(...args),
+      debug:  (...args: unknown[]) => logger.debug(...args),
+      log:  (...args: unknown[]) => logger.log(...args),
+      info:  (...args: unknown[]) => logger.info(...args),
+      warn:  (...args: unknown[]) => logger.warn(...args),
+      error:  (...args: unknown[]) => logger.error(...args),
+      fatal:  (...args: unknown[]) => logger.fatal && logger.fatal(...args),
+    } as LogProvider);
+  }
+
+  return Object.assign(cloned, setObjects(qm, lg));
 }
 
   /**
@@ -105,12 +146,15 @@ function _copyConfig<T extends LockBaseConfig>(config: T): T {
  * @param config 
  * @returns A logger where all methods are mandatory.
  */
-function _resolveLogger(logger: LogProvider, debug: boolean): Readonly<Required<LogProvider>> {
+function _resolveLogger(logger: LogProvider/*, debug: boolean*/): Readonly<Required<LogProvider>> {
   let ret = logger;
   if (ret === console) {
     ret = { ...console as LogProvider };
-    const orgDebug = ret.debug;
-    ret.debug = (...args:unknown[]) => { if (debug) orgDebug(...args); }
+    /*const orgDebug = ret.debug;
+    ret.debug = (...args:unknown[]) => { 
+      if (debug) orgDebug(...args);
+     }
+    */
     ret.trace = ret.error;
   }
   // There are cases where 'fatal' is not present; in such instances, use 'error'.
@@ -134,7 +178,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
   /**
    * Number of queues.
    */
-  public static get numberOfQueues() {
+  public static get numberOfQueues(): number {
     return this._config.queueManager?.numberOfAllQueues ?? 0;
   }
   
@@ -202,8 +246,8 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * Copy config. 
    * @param config Configurations.
    */
-  protected static _copyConfig<T extends LockBaseConfig>(config: T): T {
-    return _copyConfig(config);
+  protected static _copyConfig<T extends LockBaseConfig>(config: T, publicUse: boolean = false): T {
+    return _copyConfig(config, publicUse);
 /*
     const withoutLogger  = { ...config };
     // Since function objects cannot be copied via `structuredClone`, they are excluded for the time being.
@@ -228,9 +272,12 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
         msg, InvalidConfiguration, { name: 'logger' });
     }
     if (config.queueManager) {
-      REQUIRE(config.queueManager instanceof QueueManager, 
-        msg, 
-        InvalidConfiguration, { name: 'queueManager' });
+      REQUIRE(includesAllKeysOf(config.queueManager, [
+        'maxConcurrency', 'maxPending', 'numberOfAllEntries', 'numberOfPending', 'numberOfRunning', 
+        'numberOfAllQueues', 'numberOfQueues', 'numberOfDedicatedQueues', 'enqueue', 'getCandidates'
+      ]), msg, InvalidConfiguration, {
+        name: 'queueManager'
+      });
     }
   }
 
@@ -253,7 +300,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
     Object.keys(newConf).forEach(key => {
       if (newConf[key] != null) rConf[key] = newConf[key];
     });
-    if (orgLogger != rConf.logger) rConf.logger = _resolveLogger(rConf.logger as LogProvider, rConf._debug as boolean);
+    if (orgLogger != rConf.logger) rConf.logger = _resolveLogger(rConf.logger as LogProvider/*, rConf._debug as boolean*/);
     // Since `queueManager` also allows `undefined` values, it is re-assigned after the check above.
     if ('queueManager' in config && config.queueManager === undefined)
       rConf.queueManager = undefined;
@@ -283,7 +330,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * @internal
    *  Logger.
    */
-  protected abstract get _logger(): LogProvider;// { return LockBase._logger; }
+  protected abstract get _logger(): Required<LogProvider>;
 
   protected abstract get _config(): Readonly<Required<LockBaseConfig>>;
 
@@ -369,10 +416,10 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
    * Headers (such as [DEBUG]) are not automatically added.
    * @param args The arguments passed to `logger.log()`.
    */
-  protected _debugLog(...args: unknown[]): void {
+/*  protected _debugLog(...args: unknown[]): void {
     this._isDebug && this._logger.log(...args);
   }
-
+*/
   /**
    * @internal
    * @abstract
@@ -755,7 +802,7 @@ export abstract class LockBase <O extends LockBaseRequiredOptions = LockBaseRequ
         return selected = queues[0];
       const hla = [...heldLocks.values()];
       for(const q of queues) {
-        if (hla.findIndex(hl => hl.queueId === q.id) === undefined) {
+        if (hla.find(hl => hl.queueId === q.id) === undefined) {
           return selected = q;
         }
       };

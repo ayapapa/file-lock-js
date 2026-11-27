@@ -53,7 +53,7 @@ export interface FileLockConfig extends LockBaseConfig {
    * Maximum number of history entries to keep. 
    * This is for debugging.
    * If the number of entries exceeds this value, the oldest entries will be deleted in order.
-   * Minimum is `0`; if a value lower than this is specified, this minimum value is used.
+   * Minimum is `1`; if a value lower than this is specified, this minimum value is used.
    * Default is `100`.
    */
   maxHistoryEntries?: number;
@@ -63,7 +63,7 @@ export interface FileLockConfig extends LockBaseConfig {
    * Maximum number of history files to keep. 
    * This is for debugging.
    * If the number of entries exceeds this value, the oldest entries will be deleted in order.
-   * Minimum is `0`; if a value lower than this is specified, this minimum value is used.
+   * Minimum is `1`; if a value lower than this is specified, this minimum value is used.
    * Default is `100`.
    */
   maxHistoryFiles?: number;

@@ -25,15 +25,21 @@ describe('QueueManager', () => {
   it("new QueueManager.", () => {
     const qm = new QueueManager();
     expect(qm.maxConcurrency).toBe(5);
-    expect(qm.maxPeding).toBe(500);
+    expect(qm.maxPending).toBe(500);
   });
 
   it("new QueueManager.", () => {
     const qm = new QueueManager({ maxConcurrency:10, maxPending: 100 });
     expect(qm.maxConcurrency).toBe(10);
-    expect(qm.maxPeding).toBe(100);
+    expect(qm.maxPending).toBe(100);
   });
 
+  it("maxPending: undefined, maxConcurrency: undefined.", () => {
+    const qm = new QueueManager({});
+    expect(qm.maxConcurrency).toBe(5);
+    expect(qm.maxPending).toBe(500);
+  });
+    
   it("maxPending: 10, add 5 tasks.", async () => {
     const qm = new QueueManager({ maxConcurrency:1, maxPending: 10 });
     const pr = [] as Promise<number>[];

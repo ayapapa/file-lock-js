@@ -24,7 +24,7 @@ interface Config {
  */
 export interface Queue {
   id: string;
-  enqueue: <T>(task: QueueTask<T>, timerInfo: TimerInfo) => Promise<T>;
+  enqueue: <T>(task: QueueTask<T>, timerInfo: TimerInfo) => T | Promise<T>;
 }
 
 /** 
@@ -58,7 +58,7 @@ export class QueueManager {
   public get maxConcurrency() { return this.#config.maxConcurrency };
 
   /** Get max concurrency. */
-  public get maxPeding() { return this.#config.maxPending };
+  public get maxPending() { return this.#config.maxPending };
 
   /** Get number of pending entries. */
   public get numberOfAllEntries() {
@@ -100,8 +100,8 @@ export class QueueManager {
    */
   public constructor(config: Config = { maxConcurrency: 5, maxPending: 500 }) {
     const conf = { ...config };
-    if (!conf.maxConcurrency) conf.maxConcurrency = 5;
-    if (!conf.maxPending) conf.maxPending = 500;
+    if (conf.maxConcurrency == null) conf.maxConcurrency = 5;
+    if (conf.maxPending == null) conf.maxPending = 500;
     conf.maxConcurrency = Math.max(conf.maxConcurrency, 1);
     conf.maxPending = Math.max(conf.maxPending, 1);
     this.#config = conf as Required<Config>;

@@ -1,4 +1,3 @@
-
 /**
  * @intenal
  * Definition of cache entry.

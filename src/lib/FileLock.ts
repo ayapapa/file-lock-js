@@ -13,8 +13,11 @@ export const FileLock = createFileLock();
  * Objects created by this function do not share their settings with other objects.  
  * @param config User configuration, {@link FileLockConfig}
  * @returns Implementation class of FileLockClass.
+ * @throws {@link LockDirectoryCreationFailed} Failed to create the `lock directory`.
+ * @throws {@link LockDirectoryStatFailed}  Failed to check the status of the `lock directory`.
+ * @throws {@link InvalidConfiguration} Invalid configuration error.
  */
-export function createFileLock(config: FileLockConfig = defaultFileLockConfig): FileLockClass {
+export function createFileLock(config?: FileLockConfig): FileLockClass {
 
   /** create FileLockImpl. */
   const FileLockImpl = createFileLockImpl(config);

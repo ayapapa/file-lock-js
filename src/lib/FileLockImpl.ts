@@ -158,9 +158,9 @@ export const defaultFileLockConfig: Readonly<FileLockRequiredConfig> = {
  * @param config Configurations.
  * @returns A FileLockImpl class object. Please refer to `See` for the definition of this object.
  */
-export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfig): FileLockClass {
+export function createFileLockImpl(config?: FileLockConfig): FileLockClass {
 
-  const initialConfig: FileLockConfig = { ...config };
+  //const initialConfig: FileLockConfig = { ...config };
 
   /**
    * @internal
@@ -228,12 +228,12 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
 
     /** Get current configurations. */
     public static getConfig(): Readonly<FileLockRequiredConfig> {
-      return FileLockImpl._copyConfig(FileLockImpl.#config);
+      return FileLockImpl._copyConfig(FileLockImpl.#config, true);
     }
 
     /** Get default configurations. */
     public static get defaultConfig(): Readonly<FileLockRequiredConfig> {
-      return FileLockImpl._copyConfig(defaultFileLockConfig);
+      return FileLockImpl._copyConfig(defaultFileLockConfig, true);
     }
 
     /**
@@ -280,7 +280,7 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      * @param config  Lock configurations. 
      */
     public static setConfig(config: FileLockConfig): void {
-      FileLockImpl.#initialize(false);
+      FileLockImpl.#initialize(/*false*/);
       checkValuesType(config, { ...defaultFileLockConfig, lockDirectory: 'string' }, 'configuration', InvalidConfiguration);
       REQUIRE(config.lockDirectory == null 
         || FileLockImpl.#config.lockDirectory == null 
@@ -293,16 +293,16 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
       let rConf = super._setConfig(config);
       const curConf = this._config;
       rConf = Object.assign(curConf, rConf/*FileLockImpl._copyConfig(rConf)*/);
-      if (rConf.cacheTtlMs != null) rConf.cacheTtlMs = Math.max(rConf.cacheTtlMs, 10000);
-      if (rConf.maxCacheEntries != null) rConf.maxCacheEntries  = Math.max(rConf.maxCacheEntries, 1);
-      if (rConf.maxHistoryEntries != null) rConf.maxHistoryEntries = Math.max(rConf.maxHistoryEntries, 1);
-      if (rConf.maxHistoryFiles != null) rConf.maxHistoryFiles = Math.max(rConf.maxHistoryFiles, 1);
+      rConf.cacheTtlMs        != null && (rConf.cacheTtlMs = Math.max(rConf.cacheTtlMs, 10000));
+      rConf.maxCacheEntries   != null && (rConf.maxCacheEntries  = Math.max(rConf.maxCacheEntries, 1));
+      rConf.maxHistoryEntries != null && (rConf.maxHistoryEntries = Math.max(rConf.maxHistoryEntries, 1));
+      rConf.maxHistoryFiles   != null && (rConf.maxHistoryFiles = Math.max(rConf.maxHistoryFiles, 1));
 
       // If defaultOptions is specified, resolve it.
-      if (rConf.defaultOptions) {
-        rConf.defaultOptions = new FileLockOptionsResolver(rConf.defaultOptions, minimumFileLockOptions, defaultFileLockOptions).getOptions();
-      }
-      FileLockImpl.#config = { ...FileLockImpl.getConfig(), ...rConf };
+      rConf.defaultOptions && 
+      (rConf.defaultOptions = new FileLockOptionsResolver(rConf.defaultOptions, minimumFileLockOptions, defaultFileLockOptions).getOptions());
+
+      FileLockImpl.#config = { ...FileLockImpl._config, ...rConf };
 
       // chache
       FileLockImpl.#cache?.clear();
@@ -417,12 +417,14 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      * @internal
      * Initialize.
      */
-    static #initialize(setInitialConfig: boolean): void {
+    static #initialize(/*setInitialConfig: boolean*/): void {
       if (!FileLockImpl.#initialized) {
         FileLockImpl.#initialized = true;
+        /*
         if (setInitialConfig) 
           FileLockImpl.setConfig(initialConfig);
-        FileLockImpl._addOnExit(FileLockImpl.#onExitFn);
+        */
+       FileLockImpl._addOnExit(FileLockImpl.#onExitFn);
       } 
     }
 
@@ -471,7 +473,7 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      */
     private constructor(key: string) {
       super(key);
-      FileLockImpl.#initialize(true);
+      FileLockImpl.#initialize(/*true*/);
     }
 
     /**
@@ -485,8 +487,9 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
      * @internal
      *  Logger.
      */
-    protected override get _logger(): LogProvider {
-      return FileLockImpl.#config.logger;
+    protected override get _logger(): Required<LogProvider> {
+      ENSURE_DEBUG(FileLockImpl.#config.logger.fatal != null, 'logger ha no fatal-method.', FileLockError, { code: 'EINVAL' });
+      return FileLockImpl.#config.logger as Required<LogProvider>;
     }
 
     /**
@@ -1435,7 +1438,11 @@ export function createFileLockImpl(config: FileLockConfig = defaultFileLockConfi
     }
   }
 
-  return FileLockImpl;
+  const impl = FileLockImpl;
+  if (config) {
+    impl.setConfig(config);
+  }
+  return impl;
 }
 
 

@@ -203,7 +203,7 @@ describe('FileLock', () => {
       },
     );
     expect(fs.existsSync(histInfo.historyPath)).toBeTruthy();
-    const h = JSON.parse(fs.readFileSync(histInfo.historyPath, 'utf-8'));
+    const h = JSON.parse(fs.readFileSync(histInfo.historyPath, 'utf8'));
     expect(Object.keys(h).length).toBe(1);
   });
 
@@ -216,7 +216,7 @@ describe('FileLock', () => {
       },
     );
     expect(fs.existsSync(hist)).toBeTruthy();
-    const c = fs.readFileSync(hist, 'utf-8');
+    const c = fs.readFileSync(hist, 'utf8');
     const h = JSON.parse(c);
     expect(Object.keys(h).length).toBe(1);
   });
@@ -264,8 +264,38 @@ describe('FileLock', () => {
     expect(TestLock.isReleasedState(key2)).toBeTruthy();
     expect(TestLock.isReleasedState(key3)).toBeTruthy();
   });
-/*
-  it("extra queue", async () => {
+
+  it("dedicated queue 0", async () => {
+    const key1 = "extra_queue_1";
+    const key2 = "extra_queue_2";
+    const q = new QueueManager({ maxConcurrency: 2 });
+    FileLock.setConfig({ queueManager: q });
+    await FileLock.withLock(key1, 
+      async () => {
+        // one normal queue, beause of {maxConcurrency: 1}
+        expect(FileLock.numberOfQueues).toBe(2);
+        await FileLock.withLock(key2, async () => {
+          // `extra queue` for key2 has been created.
+          expect(FileLock.numberOfQueues).toBe(2);
+          await sleepAsync(100);
+        });
+        // once more
+        await FileLock.withLock(key2, async () => {
+          // `extra queue` for key2 has been created.
+          expect(FileLock.numberOfQueues).toBe(2);
+          expect(q.numberOfAllQueues).toBe(FileLock.numberOfQueues);
+          expect(q.numberOfQueues).toBe(q.numberOfAllQueues);
+          expect(q.numberOfDedicatedQueues).toBe(0);
+          await sleepAsync(100);
+        });
+        await sleepAsync(100);
+      },
+    );
+    expect(TestLock.isReleasedState(key1)).toBeTruthy();
+    expect(TestLock.isReleasedState(key2)).toBeTruthy();
+  });
+
+  it("dedicated queue", async () => {
     const key1 = "extra_queue_1";
     const key2 = "extra_queue_2";
     const q = new QueueManager({ maxConcurrency: 1 });
@@ -283,6 +313,9 @@ describe('FileLock', () => {
         await FileLock.withLock(key2, async () => {
           // `extra queue` for key2 has been created.
           expect(FileLock.numberOfQueues).toBe(2);
+          expect(q.numberOfAllQueues).toBe(FileLock.numberOfQueues);
+          expect(q.numberOfQueues).toBe(1);
+          expect(q.numberOfDedicatedQueues).toBe(1);
           await sleepAsync(100);
         });
         await sleepAsync(100);
@@ -291,5 +324,5 @@ describe('FileLock', () => {
     expect(TestLock.isReleasedState(key1)).toBeTruthy();
     expect(TestLock.isReleasedState(key2)).toBeTruthy();
   });
-*/
+
 });

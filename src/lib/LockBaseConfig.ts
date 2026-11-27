@@ -17,7 +17,7 @@ export interface LockBaseConfig {
    * Queue manager.
    * Specifying a `QueueManager` instance enables a lock request queuing system that operates according to the configured settings.
    * If `undefined` is specified, disable a lock request queuing system.
-   * * The default value is the process-wide default queue manager (`QueueManager({ maxConcurrency: 5, maxPending: 500 })`).
+   * The default value is the process-wide default queue manager (`QueueManager({ maxConcurrency: 5, maxPending: 500 })`).
    */
   queueManager?: QueueManager | undefined;
   /**

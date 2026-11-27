@@ -29,6 +29,7 @@ Examples include limiting access to a specific service to a single process or th
 | `lock sharer directory` | A directory that stores the `lock sharer`s. <br>It stores the  and the IDs of reentrant invocations that are allowed to share the lock. <br>In this library, reentrant locking is implemented by adding IDs to this directory instead of incrementing a lock counter. <br>For example, if the `lock key` is "key001", this directory is created under the `lock directory` with the name "key001.sharer". | `lock key`, `lock file` |
 | `re-entrant lock` | A lock that allows the same owner to acquire it multiple times without blocking itself. Enable this behavior with `{ allowReentry: true }`. <br>It prevents `self-deadlock` when the same owner acquires the same lock again. <br>It does not prevent `circular deadlocks` between different owners. | `deadlock`, `allowReentry` in [Options](#options) |
 | `deadlock` | It is a state where operations cannot proceed because they keep waiting. <br>A `self-deadlock` is caused by reacquiring the same lock, while `circular deadlock` is caused by different owners waiting on each other.<br>Due to the timeout setting, it will not wait indefinitely; however, this results in a lock acquisition error. | `re-entrant lock`, `timeourMs` or `timeoutSec` in [Options](#options) |
+| `queue manager` | A queuing mechanism for lock requests. This library defines a default queue management object as a global object; however, you can also specify a custom queue management object. | `queueManager` in [Configurations](#configurations), class [QueueMabager](https://github.com/ayapapa/file-lock-js/blob/main/docs/classes/QueueManager.md) |
 
 ### `lock directory` structure 
 ```
@@ -89,22 +90,35 @@ npm install @ayapapa-npm/file-lock-js
 [API document](https://github.com/ayapapa/file-lock-js/blob/main/docs/api.md)
 
 ## Usage
-  ```js
-  // Specify `lock directory`.
-  // If not specified, `${process.cwd()}/.lock` is used as the `lock directory`. 
-  FileLock.setConfig({ 
-    lockDirectory: "Specify the directory path where the file containing lock information is stored.",
-  });
+```js
+// Specify `lock directory`.
+// If not specified, `${process.cwd()}/.lock` is used as the `lock directory`. 
+// see also `Note` below.
+FileLock.setConfig({ 
+  lockDirectory: "Specify the directory path where the file containing lock information is stored.",
+});
 
-  const ret = await FileLock.withLock(
-    "Specify the lock key.", 
-    () => { // Callback function to execute while locked
-      "Describes the operations to be performed while the lock is held.";
-      return "Specify the results if any.";
-    },
-  );
-  console.log(ret); // "Specify the results if any."
-  ```
+const ret = await FileLock.withLock(
+  "Specify the lock key.", 
+  () => { // Callback function to execute while locked
+    "Describes the operations to be performed while the lock is held.";
+    return "Specify the results if any.";
+  },
+);
+console.log(ret); // "Specify the results if any."
+```
+
+**Note: `FileLock` is a global object; therefore, its configuration settings are shared across all modules that use it.
+If you require a dedicated object, please use one created via `createFileLock()`.** The following is an example of this.
+```js
+const MyLock = createFileLock({
+  lockDirectory: "Specify the directory path where the file containing lock information is stored.",
+});
+
+const ret = await MyLock.withLock(
+...and so on
+```
+
 
 ## Configurations
 | Name | Type | Default and Min | Description | Notes |
@@ -168,7 +182,10 @@ npm install @ayapapa-npm/file-lock-js
 | AlreadyLocked | Found an invalid `lock file` | The `lock file` already exists, but its metadata is invalid. | { code: 'EALREADYLOCKED', key: '(`lock key`)', reason: 'InvalidMetadata', timeoutMs: '(`Options.timeoutMs`)' }  | If this error persists, use `invalidTtlMs` in [Options](#options) or manually delete the `lock file`. [^handleWithCare2] |
 | AlreadyLocked | Found an `lock file`, but couldn't read it. | The `lock file` already exists, but its validity could not be determined due to an I/O error. | { code: 'EALREADYLOCKED', key: '(`lock key`)', reason: 'MetadataReadError', timeoutMs: '(`Options.timeoutMs`)' }  | If this error persists, use `invalidTtlMs` in [Options](#options) or manually delete the `lock file`. [^handleWithCare2] |
 | DeadlockDetected | Detected a `self-deadlock` | A deadlock was detected. | { code: 'EDEADLK', key: '(`lock key`)' } | Resolve the deadlock by using `allowReentry` in [Options](#options) ([^allowReentry]) or by modifying the logic. |
-| InvalidOptions | Found invalid option | The value of the specified options('option name') is invalid. | { code: 'EINVAL', name: '(option name)' } | Modification it to valid value. |
+| InvalidConfiguration | Found invalid configuration | The value of the specified configuration contains values of invalid types. | { code: 'EINVAL', name(s): '(property name or names)' } | Modification it to valid value. |
+| InvalidOptions | Found invalid option | The value of the specified options contains values of invalid types.. | { code: 'EINVAL', name(s): '(property name or names)' } | Modification it to valid value. |
+| LockDirectoryCreationFailed | `lock directory` creation error. | Failed to create the `lock directory`.  | { code: 'ELOCKDIRCREATE', path: '(`lock directory` path)' } | Verification of the validity of the specified path. |
+| LockDirectoryStatFailed | `lock directory`'s status check error. | Failed to check the status of the `lock directory`. | { code: 'ELOCKDIRSTAT', path: '(`lock directory` path)' } | Checking the permissions, type, etc., of a specified path. |
 | TTLExceeded | Lock processing time limit exceeded | The maximum processing time('ttlMs' milliseconds) while locked has been exceeded. | { code: 'ETTLEXCEEDED', key: '(`lock key`)', ttlMs: '(`Options.ttlMs`)' } | Adjust `ttlMs` in [Options](#options). |
 | LockCompromised | Corruption of lock file contents | The lock was compromised during the locking process. | { code: 'ECOMPROMISED', key: '(`lock key`)' } | Check for and delete the lock file (specified by `path`). Before deletion, ensure that no process is holding the file.[^handleWithCare1]
 | PendingLocksExceeded | An error that occurs when the maximum number of concurrent lock requests is exceeded. | The number of pending lock requests exceeds the allowable limit. | { code: 'EMAXPENDING', key: '(`lock key`)', timeoutMs: '(`maxPending`)' } | `maxPending` is `QueueManager`'s constructor option. |

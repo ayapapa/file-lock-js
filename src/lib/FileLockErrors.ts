@@ -78,7 +78,7 @@ class LockDirectoryAccessFailed extends FileLockError {
 }
 
 /**
- * Lock directory 'Stat' error.
+ * Failed to check the status of the `lock directory`.
  */
 export class LockDirectoryStatFailed extends LockDirectoryAccessFailed {
   /**
@@ -94,7 +94,7 @@ export class LockDirectoryStatFailed extends LockDirectoryAccessFailed {
 }
 
 /**
- * Lock directory 'Creaate' error.
+ * Failed to create the `lock directory`.
  */
 export class LockDirectoryCreationFailed extends LockDirectoryAccessFailed {
   /**

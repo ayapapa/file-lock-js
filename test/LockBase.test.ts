@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FileLock, type FileLockConfig, type LockMonitor } from '../src/index.ts';
+import { FileLock, LockError, type FileLockConfig, type LockMonitor, type LogProvider } from '../src/index.ts';
 import { LockBase } from '../src/lib/LockBase.ts';
 import { TestLock } from './FileLockTestCommon.ts'
 import { getCallStack, isEqualObjectType, sleepAsync/*, sleepSync*/ } from '../src/lib/Util.ts'
@@ -41,7 +41,7 @@ describe('LockBase and Util', () => {
       super("Key");
     }
 
-    protected override get _logger() { return console };
+    protected override get _logger() { return console as unknown as Required<LogProvider> };
     protected override get _config() { return FileLock.defaultConfig as Required<FileLockConfig>; };
 
 
@@ -82,9 +82,13 @@ describe('LockBase and Util', () => {
     get acquired() {
       return this._acquired;
     }
+
+    static test_config(): FileLockConfig {
+      return super._config;
+    }
   }
 
-  it("`LockBase._acquire()`.", async () => {
+  it("`LockBase._acquire()`.", async () => {  
       const tlb = new TestLockBase();
       await tlb.test_acquire();
       expect(tlb.acquired).toBeTruthy();
@@ -140,20 +144,22 @@ describe('LockBase and Util', () => {
     LockBase.onExit(0, null);
     expect(count).toBe(1);
   });
-/*
-  it("debugLog", () => {
-    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
-    FileLock.setConfig({ logger: console });
+
+  //test_config
+  it("_config.", () => {
+    expect.assertions(2);
     try {
-      //const lock = TestLock.getLock("debugLog");
-      //lock.debugLog("TEST!!!");
-      expect(spy).toHaveBeenCalledWith("TEST!!!");
+      TestLockBase.test_config();
     }
-    finally {
-      spy.mockRestore();
+    catch (err) {
+      expect(err).instanceOf(LockError);
+      expect(err).toMatchObject({
+        code: 'ENOTIMPL',
+        message: '[REQUIRE] not implementd.',
+      });
     }
   });
-*/
+
 });
 
 
